@@ -478,7 +478,7 @@ chromosomes_num_table <- chromosomes_num_table[-grep("LRG", chromosomes_num_tabl
 chromosomes_num_table <- chromosomes_num_table[-grep("KI", chromosomes_num_table$Var1), ]
 chromosomes_num_table <- chromosomes_num_table[-grep("GL", chromosomes_num_table$Var1), ]
 
-chromosomes_2 <- chromosomes[!duplicated(chromosomes[, 4]), c(4,6)]
+chromosomes_2 <- chromosomes[!duplicated(chromosomes$SEQNAME), c(3,2)] #SEQNAME & SEQLENGTH
 chromosomes_2 <- chromosomes_2[-grep("CHR", chromosomes_2$SEQNAME), ]
 chromosomes_2 <- chromosomes_2[-grep("LRG", chromosomes_2$SEQNAME), ]
 chromosomes_2 <- chromosomes_2[-grep("KI", chromosomes_2$SEQNAME), ]

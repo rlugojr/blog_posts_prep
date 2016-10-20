@@ -16,9 +16,13 @@ Here, I want to showcase some of these packages and compare the information they
 
 ## org.Hs.eg.db
 
-We start with [org.Hs.eg.db](http://bioconductor.org/packages/release/data/annotation/html/org.Hs.eg.db.html), which contains genome wide annotation for the human genome.
+We start with [org.Hs.eg.db](http://bioconductor.org/packages/release/data/annotation/html/org.Hs.eg.db.html), which contains genome wide annotations for the human genome.
 
-First, we want to know how many genes there are according to this package. Because genes can have identifiers from many databases (but not necessarily from all and there is not always a one-to-one mapping between them), we compare the number of unique identifiers for Refseq, Entrez and Ensembl, as well for gene symbol.
+### How many genes are there in different databases?
+
+Genes are ...
+
+First, we want to know how many genes there are according to this package. Because genes can have identifiers from many databases (but not necessarily from all and there is not always a one-to-one mapping between them), we compare the number of unique identifiers for Refseq, Entrez and Ensembl, as well as for gene symbol.
 
 > "[Entrez Gene](https://www.ncbi.nlm.nih.gov/gene) is NCBI's database for gene-specific information. It does not include all known or predicted genes; instead Entrez Gene focuses on the genomes that have been completely sequenced, that have an active research community to contribute gene-specific information, or that are scheduled for intense sequence analysis." [Maglott et al., Nucleic Acids Research 2005](http://nar.oxfordjournals.org/content/33/suppl_1/D54.full)
 
@@ -26,18 +30,34 @@ First, we want to know how many genes there are according to this package. Becau
 
 > Gene symbols represent the official gene name abbreviation from [HGNC](http://www.genenames.org/).
 
-> [RefSeq](https://www.ncbi.nlm.nih.gov/refseq/) contains a database of well-characterized genes.
+> [RefSeq](https://www.ncbi.nlm.nih.gov/refseq/) contains a database of well-characterized genes and includes [genomic DNA, transcripts, and proteins](https://www.ncbi.nlm.nih.gov/books/NBK21091/table/ch18.T.refseq_accession_numbers_and_mole/?report=objectonly). 
 
 
 ```{r org.Hs.eg.db, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
 library(AnnotationDbi)
 library(org.Hs.eg.db)
 
-ENTREZID <- keys(org.Hs.eg.db,keytype="ENTREZID")
-ENSEMBL <- keys(org.Hs.eg.db,keytype="ENSEMBL")
-HGNC <- keys(org.Hs.eg.db,keytype="SYMBOL")
-REFSEQ <- keys(org.Hs.eg.db,keytype="REFSEQ")
+# We can find out which keys and/or columns can be accessed by running
+# keytypes(org.Hs.eg.db) or columns(org.Hs.eg.db)
 
+ENTREZID <- keys(org.Hs.eg.db, keytype = "ENTREZID")
+ENSEMBL <- keys(org.Hs.eg.db, keytype = "ENSEMBL")
+HGNC <- keys(org.Hs.eg.db, keytype = "SYMBOL")
+REFSEQ <- keys(org.Hs.eg.db, keytype = "REFSEQ")
+
+# Refseq includes the following ID types:
+unique(gsub("_[0-9]*", "", REFSEQ))
+
+# Here, I only want NM (mRNA) and NR (RNA)
+REFSEQ <- grep(paste(c("NM_", "NR_"), collapse = "|"), REFSEQ, value = TRUE)
+```
+
+- Number of Entrez IDs: `r length(unique(ENTREZID))`
+- Number of Ensembl IDs: `r length(unique(ENSEMBL))`
+- Number of gene symbols: `r length(unique(HGNC))`
+- Number of Refseq IDs: `r length(unique(REFSEQ))`
+
+```{r gene_numbers, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
 gene_table <- data.frame(DB = c("Entrez", "Ensembl", "HGNC", "RefSeq"), 
                          no_genes = c(length(unique(ENTREZID)), length(unique(ENSEMBL)), length(unique(HGNC)), length(unique(REFSEQ))))
 
@@ -54,21 +74,16 @@ p <- ggplot(gene_table, aes(x = factor(DB), y = no_genes, label = no_genes)) +
     strip.background = element_rect(fill = "cornsilk", color = "maroon", size = 2),
     strip.text = element_text(face = "bold", size = 15, colour = "maroon")
   ) +
-  labs(title = "Number of genes in database", y = "Count", x = "")
+  labs(title = "Number of genes in databases", y = "Count", x = "")
 
 p + geom_text(size=6, vjust=1.5)
 ```
 
-- Number of Entrez IDs: `r length(unique(ENTREZID))`
-- Number of Ensembl IDs: `r length(unique(ENSEMBL))`
-- Number of gene symbols: `r length(unique(HGNC))`
-- Number of Refseq IDs: `r length(unique(REFSEQ))`
 
 
 
 
-
-
+---------------------------
 
 ```{r sessionInfo}
 sessionInfo()
