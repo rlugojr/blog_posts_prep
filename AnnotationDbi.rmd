@@ -52,10 +52,6 @@ unique(gsub("_[0-9]*", "", REFSEQ))
 REFSEQ <- grep(paste(c("NM_", "NR_"), collapse = "|"), REFSEQ, value = TRUE)
 ```
 
-- Number of Entrez IDs: `r length(unique(ENTREZID))`
-- Number of Ensembl IDs: `r length(unique(ENSEMBL))`
-- Number of gene symbols: `r length(unique(HGNC))`
-- Number of Refseq IDs: `r length(unique(REFSEQ))`
 
 ```{r gene_numbers, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
 gene_table <- data.frame(DB = c("Entrez", "Ensembl", "HGNC", "RefSeq"), 
