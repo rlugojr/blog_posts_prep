@@ -1,0 +1,75 @@
+---
+title: "Exploring the human genome (Part 1)"
+author: "Dr. Shirin Glander"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: tactile
+    highlight: github
+---
+
+# AnnotationDbi
+
+The R package [AnnotationDbi](http://www.bioconductor.org/packages/release/bioc/html/AnnotationDbi.html) provides connections to a large number of annotation resources for gene and genome information of many organisms. It can access feature data from a number of gene or genome centric packages.
+
+Here, I want to showcase some of these packages and compare the information they contain.
+
+## org.Hs.eg.db
+
+We start with [org.Hs.eg.db](http://bioconductor.org/packages/release/data/annotation/html/org.Hs.eg.db.html), which contains genome wide annotation for the human genome.
+
+First, we want to know how many genes there are according to this package. Because genes can have identifiers from many databases (but not necessarily from all and there is not always a one-to-one mapping between them), we compare the number of unique identifiers for Refseq, Entrez and Ensembl, as well for gene symbol.
+
+> "[Entrez Gene](https://www.ncbi.nlm.nih.gov/gene) is NCBI's database for gene-specific information. It does not include all known or predicted genes; instead Entrez Gene focuses on the genomes that have been completely sequenced, that have an active research community to contribute gene-specific information, or that are scheduled for intense sequence analysis." [Maglott et al., Nucleic Acids Research 2005](http://nar.oxfordjournals.org/content/33/suppl_1/D54.full)
+
+> [Ensembl](http://www.ensembl.org/index.html) is a genome browser but it also includes gene annotations.
+
+> Gene symbols represent the official gene name abbreviation from [HGNC](http://www.genenames.org/).
+
+> [RefSeq](https://www.ncbi.nlm.nih.gov/refseq/) contains a database of well-characterized genes.
+
+
+```{r org.Hs.eg.db, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+
+ENTREZID <- keys(org.Hs.eg.db,keytype="ENTREZID")
+ENSEMBL <- keys(org.Hs.eg.db,keytype="ENSEMBL")
+HGNC <- keys(org.Hs.eg.db,keytype="SYMBOL")
+REFSEQ <- keys(org.Hs.eg.db,keytype="REFSEQ")
+
+gene_table <- data.frame(DB = c("Entrez", "Ensembl", "HGNC", "RefSeq"), 
+                         no_genes = c(length(unique(ENTREZID)), length(unique(ENSEMBL)), length(unique(HGNC)), length(unique(REFSEQ))))
+
+library(ggplot2)
+
+p <- ggplot(gene_table, aes(x = factor(DB), y = no_genes, label = no_genes)) + 
+  geom_bar(stat = "identity", fill="maroon") +
+  theme(
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 14),
+    panel.grid.major = element_line(colour = "grey"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    strip.background = element_rect(fill = "cornsilk", color = "maroon", size = 2),
+    strip.text = element_text(face = "bold", size = 15, colour = "maroon")
+  ) +
+  labs(title = "Number of genes in database", y = "Count", x = "")
+
+p + geom_text(size=6, vjust=1.5)
+```
+
+- Number of Entrez IDs: `r length(unique(ENTREZID))`
+- Number of Ensembl IDs: `r length(unique(ENSEMBL))`
+- Number of gene symbols: `r length(unique(HGNC))`
+- Number of Refseq IDs: `r length(unique(REFSEQ))`
+
+
+
+
+
+
+
+```{r sessionInfo}
+sessionInfo()
+```
