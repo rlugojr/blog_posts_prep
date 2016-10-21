@@ -17,6 +17,17 @@ columns <- c("SYMBOL","UCSCKG")
 kkk <- select(org.Hs.eg.db, keys=kk, columns=columns, keytype="ENTREZID")
 kkk
 
+REFSEQ_org <- keys(org.Hs.eg.db, keytype = "REFSEQ")
+
+# Refseq includes the following ID types:
+unique(gsub("_[0-9]*", "", REFSEQ_org))
+
+# Here, I only want NM (mRNA) and NR (RNA)
+REFSEQ_org <- grep(
+  paste(c("NM_", "NR_"), collapse = "|"),
+  REFSEQ_org, value = TRUE)
+
+
 library(GO.db)
 GOIDs <- c("GO:0042254","GO:0044183")
 select(GO.db, keys=GOIDs, columns="DEFINITION", keytype="GOID")

@@ -20,7 +20,7 @@ We start with [org.Hs.eg.db](http://bioconductor.org/packages/release/data/annot
 
 ### How many genes are there in different databases?
 
-Genes are ...
+Genes are ... https://ghr.nlm.nih.gov/primer/basics/gene
 
 First, we want to know how many genes there are according to this package. Because genes can have identifiers from many databases (but not necessarily from all and there is not always a one-to-one mapping between them), we compare the number of unique identifiers for Refseq, Entrez and Ensembl, as well as for gene symbol.
 
@@ -30,8 +30,6 @@ First, we want to know how many genes there are according to this package. Becau
 
 > Gene symbols represent the official gene name abbreviation from [HGNC](http://www.genenames.org/).
 
-> [RefSeq](https://www.ncbi.nlm.nih.gov/refseq/) contains a database of well-characterized genes and includes [genomic DNA, transcripts, and proteins](https://www.ncbi.nlm.nih.gov/books/NBK21091/table/ch18.T.refseq_accession_numbers_and_mole/?report=objectonly). 
-
 
 ```{r org.Hs.eg.db, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
 library(AnnotationDbi)
@@ -40,42 +38,167 @@ library(org.Hs.eg.db)
 # We can find out which keys and/or columns can be accessed by running
 # keytypes(org.Hs.eg.db) or columns(org.Hs.eg.db)
 
-ENTREZID <- keys(org.Hs.eg.db, keytype = "ENTREZID")
-ENSEMBL <- keys(org.Hs.eg.db, keytype = "ENSEMBL")
-HGNC <- keys(org.Hs.eg.db, keytype = "SYMBOL")
-REFSEQ <- keys(org.Hs.eg.db, keytype = "REFSEQ")
-
-# Refseq includes the following ID types:
-unique(gsub("_[0-9]*", "", REFSEQ))
-
-# Here, I only want NM (mRNA) and NR (RNA)
-REFSEQ <- grep(paste(c("NM_", "NR_"), collapse = "|"), REFSEQ, value = TRUE)
+ENTREZID_org <- keys(org.Hs.eg.db, keytype = "ENTREZID")
+ENSEMBL_org <- keys(org.Hs.eg.db, keytype = "ENSEMBL")
+HGNC_org <- keys(org.Hs.eg.db, keytype = "SYMBOL")
 ```
 
 
-```{r gene_numbers, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
-gene_table <- data.frame(DB = c("Entrez", "Ensembl", "HGNC", "RefSeq"), 
-                         no_genes = c(length(unique(ENTREZID)), length(unique(ENSEMBL)), length(unique(HGNC)), length(unique(REFSEQ))))
+```{r EnsDb.Hsapiens.v79, echo=FALSE, message=FALSE, warning=FALSE, fig.width=10, fig.height=8, fig.align="center", cache=FALSE}
+library(EnsDb.Hsapiens.v79)
 
+# keytypes(EnsDb.Hsapiens.v79)
+
+ENTREZID_EnsDb <- keys(EnsDb.Hsapiens.v79, keytype = "ENTREZID")
+ENSEMBL_EnsDb <- keys(EnsDb.Hsapiens.v79, keytype = "GENEID")
+HGNC_EnsDb <- keys(EnsDb.Hsapiens.v79, keytype = "SYMBOL")
+```
+
+```{r my_theme, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
 library(ggplot2)
 
-p <- ggplot(gene_table, aes(x = factor(DB), y = no_genes, label = no_genes)) + 
-  geom_bar(stat = "identity", fill="maroon") +
+my_theme <- function(base_size = 12, base_family = "sans"){
+  theme_grey(base_size = base_size, base_family = base_family) +
   theme(
-    axis.text = element_text(size = 14),
+    axis.text = element_text(size = 14, angle = 90, hjust = 1),
     axis.title = element_text(size = 14),
     panel.grid.major = element_line(colour = "grey"),
     panel.grid.minor = element_blank(),
     panel.background = element_rect(fill = "white"),
     strip.background = element_rect(fill = "cornsilk", color = "maroon", size = 2),
     strip.text = element_text(face = "bold", size = 15, colour = "maroon")
-  ) +
+  )
+}
+```
+
+```{r gene_numbers, echo=TRUE, message=FALSE, warning=FALSE, fig.width=10, fig.height=8, fig.align="center", cache=FALSE}
+gene_table <- data.frame(DB = c("Entrez_orgDb", "Ensembl_orgDb", "HGNC_orgDb", 
+                                "Entrez_EnsDb", "Ensembl_EnsDb", "HGNC_EnsDb"), 
+                         no_genes = c(length(unique(ENTREZID_org)), length(unique(ENSEMBL_org)), 
+                                      length(unique(HGNC_org)), length(unique(ENTREZID_EnsDb)),
+                                      length(unique(ENSEMBL_EnsDb)), length(unique(HGNC_EnsDb))))
+
+p <- ggplot(gene_table, aes(x = factor(DB), y = no_genes, label = no_genes)) + 
+  geom_bar(stat = "identity", fill = "maroon") +
+  my_theme() +
   labs(title = "Number of genes in databases", y = "Count", x = "")
 
 p + geom_text(size=6, vjust=1.5)
 ```
 
+#### Overlap between databases
 
+```{r VennDiagram, echo=FALSE, message=FALSE, warning=FALSE, fig.width=5, fig.height=3, fig.align="center", cache=FALSE}
+library(VennDiagram)
+
+area1 = length(unique(ENTREZID_org))
+area2 = length(unique(ENTREZID_EnsDb))
+cross.area = length(unique(which(ENTREZID_org %in% ENTREZID_EnsDb)))
+
+draw.pairwise.venn(area1, area2, cross.area,
+                   category = c("org.Hs.eg.db", "EnsDb.Hsapiens.v79"),
+                   euler.d = TRUE, scaled = TRUE, inverted = FALSE,
+                   lwd = rep(2, 2),
+                   lty = rep(2, 2), col = rep("black", 2),
+                   fill = c("red", "lightblue"), alpha = c(0.25, 0.5), label.col =
+                     rep("black", 3), cex = rep(1, 3), fontface =
+                     rep("plain", 3), fontfamily = rep("serif", 3))
+```
+
+```{r VennDiagram2, echo=FALSE, message=FALSE, warning=FALSE, fig.width=5, fig.height=3, fig.align="center", cache=FALSE}
+area1 = length(unique(ENSEMBL_org))
+area2 = length(unique(ENSEMBL_EnsDb))
+cross.area = length(unique(which(ENSEMBL_org %in% ENSEMBL_EnsDb)))
+
+draw.pairwise.venn(area1, area2, cross.area,
+                   category = c("org.Hs.eg.db", "EnsDb.Hsapiens.v79"),
+                   euler.d = TRUE, scaled = TRUE, inverted = FALSE,
+                   lwd = rep(2, 2),
+                   lty = rep(2, 2), col = rep("black", 2),
+                   fill = c("red", "lightblue"), alpha = c(0.25, 0.5), label.col =
+                     rep("black", 3), cex = rep(1, 3), fontface =
+                     rep("plain", 3), fontfamily = rep("serif", 3))
+```
+
+```{r VennDiagram3, echo=FALSE, message=FALSE, warning=FALSE, fig.width=5, fig.height=3, fig.align="center", cache=FALSE}
+area1 = length(unique(HGNC_org))
+area2 = length(unique(HGNC_EnsDb))
+cross.area = length(unique(which(HGNC_org %in% HGNC_EnsDb)))
+
+draw.pairwise.venn(area1, area2, cross.area,
+                   category = c("org.Hs.eg.db", "EnsDb.Hsapiens.v79"),
+                   euler.d = TRUE, scaled = TRUE, inverted = FALSE,
+                   lwd = rep(2, 2),
+                   lty = rep(2, 2), col = rep("black", 2),
+                   fill = c("red", "lightblue"), alpha = c(0.25, 0.5), label.col =
+                     rep("black", 3), cex = rep(1, 3), fontface =
+                     rep("plain", 3), fontfamily = rep("serif", 3))
+```
+
+### Gene biotypes
+
+Gene biotype information is only available for genes in EnsemblDb!
+
+```{r genebiotypes, echo=FALSE, message=FALSE, warning=FALSE, fig.width=10, fig.height=8, fig.align="center", cache=FALSE}
+gene_dataframe_orgDb <- AnnotationDbi::select(org.Hs.eg.db, keys=ENTREZID_org, columns=c("ENSEMBL", "SYMBOL"), keytype="ENTREZID")
+colnames(gene_dataframe_orgDb) <- c("Entrez", "Ensembl", "HGNC")
+colnames(gene_dataframe_orgDb) <- paste(colnames(gene_dataframe_orgDb), "orgDb", sep = "_")
+gene_dataframe_orgDb$HGNC <- gene_dataframe_orgDb$HGNC_orgDb
+
+gene_dataframe_EnsDb <- ensembldb::select(EnsDb.Hsapiens.v79, keys=ENSEMBL_EnsDb, 
+                                          columns=c("ENTREZID", "SYMBOL", "GENEBIOTYPE"), keytype="GENEID")
+colnames(gene_dataframe_EnsDb) <- c("Ensembl", "Entrez", "HGNC", "GENEBIOTYPE")
+colnames(gene_dataframe_EnsDb) <- paste(colnames(gene_dataframe_EnsDb), "EnsDb", sep = "_")
+gene_dataframe_EnsDb$HGNC <- gene_dataframe_EnsDb$HGNC_EnsDb
+
+library(dplyr)
+gene_dataframe <- full_join(gene_dataframe_EnsDb, gene_dataframe_orgDb, by = "HGNC")
+gene_dataframe <- gene_dataframe[, -5]
+
+for (i in 1:length(colnames(gene_dataframe))){
+  key = colnames(gene_dataframe)[i]
+  gene_dataframe_subs <- gene_dataframe[!duplicated(gene_dataframe[, key]), c(key, "GENEBIOTYPE_EnsDb")]
+  gene_dataframe_subs <- gene_dataframe_subs[!is.na(gene_dataframe_subs[, key]), ]
+  
+  if (i == 1){
+    genebiotypes_table <- as.data.frame(table(gene_dataframe_subs$GENEBIOTYPE_EnsDb))
+    genebiotypes_table$percent <- round(genebiotypes_table$Freq/sum(genebiotypes_table$Freq)*100, digits = 4)
+  } else {
+      genebiotypes_table_pre <- as.data.frame(table(gene_dataframe_subs$GENEBIOTYPE_EnsDb))
+      genebiotypes_table_pre$percent <- round(genebiotypes_table_pre$Freq/sum(genebiotypes_table_pre$Freq)*100, digits = 4)
+      genebiotypes_table <- full_join(genebiotypes_table, genebiotypes_table_pre, by = "Var1")
+  }
+}
+
+colnames(genebiotypes_table) <- make.unique(c("Key", rep(colnames(gene_dataframe), each = 2)))
+genebiotypes_table <- genebiotypes_table[, -c(8, 9)]
+
+genebiotypes_table <- genebiotypes_table[order(genebiotypes_table$Ensembl_EnsDb.1, decreasing = TRUE), ]
+
+genebiotypes_table_percent <- genebiotypes_table[, c(1, grep(".1", colnames(genebiotypes_table)))]
+genebiotypes_table_percent$Key <- factor(genebiotypes_table_percent$Key, levels=paste0(genebiotypes_table_percent$Key))
+
+library(tidyr)
+genebiotypes_table_gather <- genebiotypes_table_percent %>% gather(Key, Percent, Ensembl_EnsDb.1:HGNC_orgDb.1)
+colnames(genebiotypes_table_gather)[2] <- "DB"
+
+
+bp <- ggplot(genebiotypes_table_gather, aes(x="", y=Percent, fill=Key)) + geom_bar(width = 1, stat = "identity") + theme_minimal()
+pie <- bp + coord_polar("y", start=0) +
+  ggtitle("Percentage of gene biotypes in gene databases") +
+  theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.border = element_blank(),
+  panel.grid=element_blank(),
+  axis.ticks = element_blank(),
+  plot.title=element_text(size=14, face="bold"),
+  legend.title=element_blank(),
+  legend.position="bottom",
+  legend.text = element_text(size=8)
+  )
+pie + facet_wrap(~ DB, ncol = 3)
+``` 
 
 
 
