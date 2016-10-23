@@ -169,7 +169,8 @@ p + geom_text(data = ann_text, aes(x, y, label = labs, group=NULL), size = 4)
 
 ```{r gene_transcripts_3, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=8, fig.align="center", cache=TRUE}
 #columns(edb)
-
+#keytypes(edb)
+#
 keys <- keys(edb, keytype="GENEID")
 ## Get the data
 transcripts <-  select(edb, keys=keys, columns=c("ENTREZID", "GENENAME", "TXID", "TXBIOTYPE"), keytype="GENEID")
