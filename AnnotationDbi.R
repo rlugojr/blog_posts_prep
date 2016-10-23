@@ -75,3 +75,16 @@ nrow(txs)
 ## Alternatively, we could specify/pass the filters with the keys argument.
 txs <- select(edb, keys=list(GenebiotypeFilter("lincRNA"), SeqnameFilter("Y")),
               columns=c("TXID", "TXSEQSTART", "TXBIOTYPE"))
+
+area1 = length(unique())
+area2 = length(unique())
+cross.area = length(unique(which(ENSEMBL_org %in% ENSEMBL_EnsDb)))
+
+draw.pairwise.venn(area1, area2, cross.area,
+                   category = c("org.Hs.eg.db", "EnsDb.Hsapiens.v79"),
+                   euler.d = TRUE, scaled = TRUE, inverted = FALSE,
+                   lwd = rep(2, 2),
+                   lty = rep(2, 2), col = rep("black", 2),
+                   fill = c("red", "lightblue"), alpha = c(0.25, 0.5), label.col =
+                     rep("black", 3), cex = rep(1, 3), fontface =
+                     rep("plain", 3), fontfamily = rep("serif", 3))

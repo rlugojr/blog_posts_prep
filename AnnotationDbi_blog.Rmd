@@ -3,9 +3,8 @@ title: "Exploring the human genome (Part 1) - Gene Annotations"
 author: "Dr. Shirin Glander"
 date: "`r Sys.Date()`"
 output:
-  prettydoc::html_pretty:
-    theme: tactile
-    highlight: github
+  md_document:
+    variant: markdown_github
 ---
 
 When working with any type of genome data, we often look for annotation information about genes, e.g. what's the gene's full name, what's its abbreviated symbol, what ID it has in other databases, what functions have been described, how many and which transcripts exist, etc. 
