@@ -1,0 +1,48 @@
+---
+title: "Exploring the human genome (Part 2) - Transcripts"
+author: "Dr. Shirin Glander"
+date: "`r Sys.Date()`"
+output: html_notebook
+---
+
+In [Exploring the human genome (Part 1) - Gene Annotations](https://shiring.github.io/genome/2016/10/23/AnnotationDbi) I explored Ensembl, Entrez and HGNC gene annotations with [AnnotationDbi](http://www.bioconductor.org/packages/release/bioc/html/AnnotationDbi.html) via three R packages: **org.Hs.eg.db**, **EnsDb.Hsapiens.v79** and **TxDb.Hsapiens.UCSC.hg38.knownGene.**
+
+# How many transcripts and proteins do genes have?
+
+Now, I want to know how many transcripts there are for these genes in these databases. 
+
+## org.Hs.eg.db
+
+I am using Entrez ID as keys in org.Hs.eg.db because they had the most entries compared to Ensembl and HGNC.
+
+```{r gene_transcripts1, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+
+ENTREZID_org <- keys(org.Hs.eg.db, keytype = "ENTREZID")
+org_trans <- AnnotationDbi::select(org.Hs.eg.db, keys=ENTREZID_org, columns=c("ENSEMBL", "ENSEMBLTRANS", "ENSEMBLPROT", "ENTREZID", "SYMBOL"), keytype="ENTREZID")
+```
+
+## TxDb.Hsapiens.UCSC.hg38.knownGene
+
+```{r gene_transcripts2, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+
+ENTREZID_TxDb <- keys(TxDb.Hsapiens.UCSC.hg38.knownGene, keytype = "GENEID")
+TxDb_trans <- AnnotationDbi::select(TxDb.Hsapiens.UCSC.hg38.knownGene, keys=ENTREZID_TxDb, columns=c("TXID", "TXNAME"), keytype="GENEID")
+```
+
+## EnsDb.Hsapiens.v79
+
+```{r gene_transcripts3, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
+library(EnsDb.Hsapiens.v79)
+
+ENSEMBL_EnsDb <- keys(EnsDb.Hsapiens.v79, keytype = "GENEID")
+EnsDb_trans <- ensembldb::select(EnsDb.Hsapiens.v79, keys=ENSEMBL_EnsDb, columns=c("TXID", "TXNAME", "TXBIOTYPE", "ENTREZID", "SYMBOL"), keytype="GENEID")
+```
+
+
+```{r gene_transcripts4, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
+library(dplyr)
+org_EnsDb_trans <- full_join(org_trans, EnsDb_trans, by = c("ENSEMBLTRANS" = "TXID"))
+```
