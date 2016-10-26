@@ -21,6 +21,14 @@ library(org.Hs.eg.db)
 
 ENTREZID_org <- keys(org.Hs.eg.db, keytype = "ENTREZID")
 org_trans <- AnnotationDbi::select(org.Hs.eg.db, keys=ENTREZID_org, columns=c("ENSEMBL", "ENSEMBLTRANS", "ENSEMBLPROT", "ENTREZID", "SYMBOL"), keytype="ENTREZID")
+
+# how many NAs are in each column?
+sapply(org_trans, function(x) sum(is.na(x)))
+
+# Summarize number of transcripts per gene
+# using Entrez IDs because they have no NAs
+org_transcript_num_table <- as.data.frame(table(org_trans$ENTREZID))
+colnames(org_transcript_num_table) <- c("Entrez", "orgDb")
 ```
 
 ## TxDb.Hsapiens.UCSC.hg38.knownGene
@@ -30,6 +38,14 @@ library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 
 ENTREZID_TxDb <- keys(TxDb.Hsapiens.UCSC.hg38.knownGene, keytype = "GENEID")
 TxDb_trans <- AnnotationDbi::select(TxDb.Hsapiens.UCSC.hg38.knownGene, keys=ENTREZID_TxDb, columns=c("TXID", "TXNAME"), keytype="GENEID")
+
+# how many NAs are in each column?
+sapply(TxDb_trans, function(x) sum(is.na(x)))
+
+# Summarize number of transcripts per gene
+# using Entrez IDs because they have no NAs
+TxDb_transcript_num_table <- as.data.frame(table(TxDb_trans$GENEID))
+colnames(TxDb_transcript_num_table) <- c("Entrez", "TxDb")
 ```
 
 ## EnsDb.Hsapiens.v79
@@ -39,10 +55,94 @@ library(EnsDb.Hsapiens.v79)
 
 ENSEMBL_EnsDb <- keys(EnsDb.Hsapiens.v79, keytype = "GENEID")
 EnsDb_trans <- ensembldb::select(EnsDb.Hsapiens.v79, keys=ENSEMBL_EnsDb, columns=c("TXID", "TXNAME", "TXBIOTYPE", "ENTREZID", "SYMBOL"), keytype="GENEID")
+
+# how many NAs are in each column?
+sapply(EnsDb_trans, function(x) sum(is.na(x)))
+
+# Summarize number of transcripts per gene
+# using Entrez IDs because they have no NAs
+EnsDb_transcript_num_table <- as.data.frame(table(EnsDb_trans$ENTREZID))
+colnames(EnsDb_transcript_num_table) <- c("Entrez", "EnsDb")
+
+# divide entries with multiple gene names into one row per gene/ entry
+head(EnsDb_transcript_num_table[grep(";", EnsDb_transcript_num_table$Entrez), ])
+
+library(splitstackshape)
+out <- as.data.frame(cSplit(EnsDb_transcript_num_table, splitCols = "Entrez", sep = ";", direction = "long"), stringsAsFactors = FALSE)
+out$Entrez <- as.character(out$Entrez)
+
+# remove duplicates and take the mean
+library(plyr)
+EnsDb_transcript_num_table <- ddply(out, "Entrez", numcolwise(mean))
 ```
 
+## Comparison of transcript numbers per database
 
-```{r gene_transcripts4, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
+```{r transcript_num_table, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
 library(dplyr)
-org_EnsDb_trans <- full_join(org_trans, EnsDb_trans, by = c("ENSEMBLTRANS" = "TXID"))
+transcript_num_table <- full_join(org_transcript_num_table, TxDb_transcript_num_table, by = "Entrez")
+transcript_num_table <- full_join(transcript_num_table, EnsDb_transcript_num_table, by = "Entrez")
+
+library(tidyr)
+transcript_num_table_gather <- transcript_num_table %>% 
+  gather(DB, count, orgDb:EnsDb)
+
+sapply(transcript_num_table_gather, function(x) sum(is.na(x)))
+
+transcript_num_table_gather <- transcript_num_table_gather[!is.na(transcript_num_table_gather$count), ]
+
+transcript_num_table_gather$group <- ifelse(transcript_num_table_gather$count > 25, "high", "low")
+
+f=c("low", "high")
+transcript_num_table_gather <- within(transcript_num_table_gather, group <- factor(group, levels=f))
+
 ```
+
+```{r my_theme, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE}
+# setting my custom theme of choice
+library(ggplot2)
+
+my_theme <- function(base_size = 12, base_family = "sans"){
+  theme_grey(base_size = base_size, base_family = base_family) +
+  theme(
+    axis.text = element_text(size = 14, angle = 90, hjust = 1),
+    axis.title = element_text(size = 14),
+    panel.grid.major = element_line(colour = "grey"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "aliceblue"),
+    strip.background = element_rect(fill = "wheat1", color = "grey", size = 1),
+    strip.text = element_text(face = "bold", size = 12, colour = "navy"),
+    legend.position = "bottom",
+    panel.margin=unit(.05, "lines"),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)
+  )
+}
+```
+
+```{r transcript_histogram, echo=TRUE, message=FALSE, warning=FALSE, cache=FALSE, fig.width=11, fig.height=10, fig.align="center"}
+p <- ggplot(data = transcript_num_table_gather, aes(as.numeric(count))) + 
+  geom_histogram(fill = "deepskyblue4") +
+  my_theme() +
+  labs(title = "Histogram of number of transcripts per gene") +
+  labs(x = "Number of transcripts per gene", y="Count") +
+  facet_wrap(DB ~ group, scales = "free", ncol = 2)
+
+ann_text <- data.frame(x = c(20, 300, 20, 45000, 20, 100),
+                       y = c(4000, 350, 40000, 1200, 5000, 280),
+                       group = rep(c("low", "high"), 3),
+                       DB = rep(c("EnsDb", "orgDb", "TxDb"), each = 2),
+                       labs = c(paste(length(which(transcript_num_table_gather$group == "low" & transcript_num_table_gather$DB == "EnsDb"))), 
+                                paste(length(which(transcript_num_table_gather$group == "high" & transcript_num_table_gather$DB == "EnsDb"))),
+                                paste(length(which(transcript_num_table_gather$group == "low" & transcript_num_table_gather$DB == "orgDb"))), 
+                                paste(length(which(transcript_num_table_gather$group == "high" & transcript_num_table_gather$DB == "orgDb"))),
+                                paste(length(which(transcript_num_table_gather$group == "low" & transcript_num_table_gather$DB == "TxDb"))), 
+                                paste(length(which(transcript_num_table_gather$group == "high" & transcript_num_table_gather$DB == "TxDb")))))
+
+p + geom_text(data = ann_text, aes(x, y, label = labs, group=NULL), size = 8)
+
+#length(which(transcript_num_table_gather$DB == "EnsDb"))
+#length(which(transcript_num_table_gather$DB == "orgDb"))
+#length(which(transcript_num_table_gather$DB == "TxDb"))
+
+```
+
