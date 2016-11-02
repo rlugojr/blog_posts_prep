@@ -1,0 +1,31 @@
+---
+title: "Text mining and sentiment analysis of a Stuff You Should Know Podcast"
+author: "Dr. Shirin Glander"
+date: '`r Sys.Date()`'
+output:
+  html_document: default
+  html_notebook: default
+---
+
+# Text mining and sentiment analysis of a Stuff You Should Know Podcast
+
+For many years, I've been listening to Josh and Chuck teach me "stuff I should know". I've learned so many things I've never thought much about before and I love them!
+
+Inititally, I wanted to explore all SYSK podcast. Unfortunately however, I could only find a transcript for the episode [Earwax: Live With It](http://www.stuffyoushouldknow.com/podcasts/earwax-live-with-it-2.htm), posted on March 19, 2015.
+
+<br>
+
+## Loading the transcript
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+# read Lines of transcript
+raw <- readLines("sysk_earwax.transcript.txt")
+
+# and convert to a data frame
+df <- do.call("rbind", lapply(raw, as.data.frame))
+head(df)
+```
+
+## Separating Josh and Chuck
+
+Of course, I wouldn't actually want to separate Josh and Chuck. But for comparison's sake, I will create two separate files for lines spoken by Josh and Chuck.
