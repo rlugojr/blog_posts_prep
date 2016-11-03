@@ -63,6 +63,9 @@ Corpus_Josh <- tm_map(Corpus_Josh, removeNumbers)
 
 #remove stopwords using the standard list in tm
 Corpus_Josh <- tm_map(Corpus_Josh, removeWords, stopwords("english"))
+#docs <- tm_map(docs, removeWords, c("department", "email"))
+#toString <- content_transformer(function(x, from, to) gsub(from, to, x))
+#docs <- tm_map(docs, toString, "harbin institute technology", "HIT")
 
 #Strip whitespace (cosmetic?)
 Corpus_Josh <- tm_map(Corpus_Josh, stripWhitespace)
@@ -74,8 +77,14 @@ library(SnowballC)
 #Stem document
 Corpus_Josh <- tm_map(Corpus_Josh,stemDocument)
 
+#treat your preprocessed documents as text documents.
+Corpus_Josh <- tm_map(Corpus_Josh, PlainTextDocument)
+
 
 dtm_Josh <- DocumentTermMatrix(Corpus_Josh)
+
+tdm_Josh <- TermDocumentMatrix(Corpus_Josh)
+tdm_Josh
 
 freq_Josh <- colSums(as.matrix(dtm_Josh))
 
@@ -90,6 +99,15 @@ freq_Josh[tail(ord)]
 
 findFreqTerms(dtm_Josh,lowfreq=40)
 findAssocs(dtm_Josh, "ear",0.3)
+
+# Correlations Plots
+plot(dtm_Josh,
+     terms=findFreqTerms(dtm_Josh, lowfreq=10),
+     corThreshold=0.3)
+
+#  Start by removing sparse terms:
+dtms_Josh <- removeSparseTerms(dtm_Josh, 0.01) # This makes a matrix that is 10% empty space, maximum.
+inspect(dtms_Josh)
 
 wf=data.frame(term=names(freq_Josh),occurrences=freq_Josh)
 head(wf)
@@ -177,6 +195,193 @@ plot(
 )
 
 simple_plot(s_v_sentiment)
+
+######################################################
+
+Needed <- c("tm", "SnowballC", "RColorBrewer", "ggplot2", "wordcloud", "biclust", "cluster", "igraph", "fpc")
+install.packages(Needed, dependencies=TRUE)
+
+install.packages("Rcampdf", repos = "http://datacube.wu.ac.at/", type = "source")
+
+library(tm)
+summary(Corpus_Josh)
+
+
+
+######################################################
+
+# http://onepager.togaware.com/TextMiningO.pdf
+
+# Quantitative Analysis
+
+words <- dtm_Josh %>%
+  as.matrix %>%
+  colnames %>%
+  (function(x) x[nchar(x) < 20])
+
+length(words)
+summary(nchar(words))
+table(nchar(words))
+dist_tab(nchar(words))
+
+# Word Length Counts
+data.frame(nletters=nchar(words)) %>%
+  ggplot(aes(x=nletters)) +
+  geom_histogram(binwidth=1) +
+  geom_vline(xintercept=mean(nchar(words)),
+             colour="green", size=1, alpha=.5) +
+  labs(x="Number of Letters", y="Number of Words")
+
+# Letter Frequency
+
+library(dplyr)
+
+library(stringr)
+
+words %>%
+
+  str_split("") %>%
+
+  sapply(function(x) x[-1]) %>%
+
+  unlist %>%
+
+  dist_tab %>%
+
+  mutate(Letter=factor(toupper(interval),
+
+                       levels=toupper(interval[order(freq)]))) %>%
+
+  ggplot(aes(Letter, weight=percent)) +
+
+  geom_bar() +
+
+  coord_flip() +
+
+  labs(y="Proportion") +
+
+  scale_y_continuous(breaks=seq(0, 12, 2),
+
+                     label=function(x) paste0(x, "%"),expand=c(0,0), limits=c(0,12))
+
+# Letter and Position Heatmap
+
+words %>%
+
+  lapply(function(x) sapply(letters, gregexpr, x, fixed=TRUE)) %>%
+
+  unlist %>%
+
+  (function(x) x[x!=-1]) %>%
+
+  (function(x) setNames(x, gsub("\\d", "", names(x)))) %>%
+
+  (function(x) apply(table(data.frame(letter=toupper(names(x)),
+
+                                      position=unname(x))),
+
+                     1, function(y) y/length(x))) %>%
+
+  qheat(high="green", low="yellow", by.column=NULL,
+
+        values=TRUE, digits=3, plot=FALSE) +
+
+  labs(y="Letter", x="Position") +
+
+  theme(axis.text.x=element_text(angle=0)) +
+
+  guides(fill=guide_legend(title="Proportion"))
+
+
+
+install.packages("tmcn.word2vec", repos="http://R-Forge.R-project.org")
+
+library(tmcn.word2vec)
+
+model <- word2vec(system.file("examples", "rfaq.txt", package = "tmcn.word2vec"))
+
+distance(model$model_file, "the")
+
+
+library(lda)
+
+# From demo(lda)
+
+library("ggplot2")
+
+library("reshape2")
+
+data(cora.documents)
+
+data(cora.vocab)
+
+theme_set(theme_bw())
+
+set.seed(8675309)
+
+K <- 10 ## Num clusters
+
+result <- lda.collapsed.gibbs.sampler(cora.documents,
+
+                                      K, ## Num clusters
+
+                                      cora.vocab,
+
+                                      25, ## Num iterations
+
+                                      0.1,
+
+                                      0.1,
+
+                                      compute.log.likelihood=TRUE)
+
+
+## Get the top words in the cluster
+
+top.words <- top.topic.words(result$topics, 5, by.score=TRUE)
+
+
+## Number of documents to display
+
+N <- 10
+
+topic.proportions <- t(result$document_sums) / colSums(result$document_sums)
+
+
+topic.proportions <-
+
+  topic.proportions[sample(1:dim(topic.proportions)[1], N),]
+
+
+topic.proportions[is.na(topic.proportions)] <- 1 / K
+
+
+colnames(topic.proportions) <- apply(top.words, 2, paste, collapse=" ")
+
+
+topic.proportions.df <- melt(cbind(data.frame(topic.proportions),
+
+                                   document=factor(1:N)),
+
+                             variable.name="topic",
+
+                             id.vars = "document")
+
+
+ggplot(topic.proportions.df, aes(x=topic, y=value, fill=topic)) +
+
+  geom_bar(stat="identity") +
+
+  theme(axis.text.x = element_text(angle=45, hjust=1, size=7),
+
+        legend.position="none") +
+
+  coord_flip() +
+
+  facet_wrap(~ document, ncol=5)
+
+
+
 
 ######################################################
 

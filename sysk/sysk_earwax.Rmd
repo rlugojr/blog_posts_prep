@@ -9,23 +9,543 @@ output:
 
 # Text mining and sentiment analysis of a Stuff You Should Know Podcast
 
-For many years, I've been listening to Josh and Chuck teach me "stuff I should know". I've learned so many things I've never thought much about before and I love them!
+For many years now, I've been listening to [Josh](http://www.stuffyoushouldknow.com/about-josh.htm) and [Chuck](http://www.stuffyoushouldknow.com/about-chuck.htm) teach me "stuff I should know". I've learned so many things I've never thought much about before! Today I want to use one of their podcasts to learn a little bit about text analysis in R.
 
-Inititally, I wanted to explore all SYSK podcast. Unfortunately however, I could only find a transcript for the episode [Earwax: Live With It](http://www.stuffyoushouldknow.com/podcasts/earwax-live-with-it-2.htm), posted on March 19, 2015.
+Inititally, I wanted to explore all SYSK podcasts. Unfortunately however, I could only find a transcript for the episode [Earwax: Live With It](http://www.stuffyoushouldknow.com/podcasts/earwax-live-with-it-2.htm), posted on March 19, 2015.
 
 <br>
 
 ## Loading the transcript
 
+The episode transcript can be [downloaded from Github](https://github.com/ShirinG/blog_posts_prep/blob/master/sysk/sysk_earwax.transcript.txt).
+
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
 # read Lines of transcript
 raw <- readLines("sysk_earwax.transcript.txt")
-
-# and convert to a data frame
-df <- do.call("rbind", lapply(raw, as.data.frame))
-head(df)
+head(raw)
 ```
+
+<br>
 
 ## Separating Josh and Chuck
 
-Of course, I wouldn't actually want to separate Josh and Chuck. But for comparison's sake, I will create two separate files for lines spoken by Josh and Chuck.
+Of course, I wouldn't actually want to separate Josh and Chuck. But for comparison's sake, I will create two separate files for dialogue spoken by Josh and Chuck.
+
+I am also keeping the combined data for background information.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+names <- c("Josh", "Chuck")
+
+for (name in names){
+  # grep lines from Josh or Chuck
+  assign(paste("lines", name, sep = "_"), as.character(raw[grep(paste0("^", name, ":"), raw)]))
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+# and removing the beginning of each line telling me who's speaking
+lines_Josh <- gsub("^Josh: ", "", lines_Josh)
+lines_Chuck <- gsub("^Chuck: ", "", lines_Chuck)
+
+lines_bg <- c(lines_Josh, lines_Chuck)
+```
+
+<br>
+
+## Building a corpus
+
+In text analysis, a corpus refers to a collection of documents. Here, I am using the [tm](https://cran.r-project.org/web/packages/tm/index.html) package to create by corpus from the character vectors of Josh's and Chuck's lines. [SnowballC](https://cran.r-project.org/web/packages/SnowballC/index.html) is used for its word stemming algorithm.
+
+Before I can analyse the text data meaningfully, I have to do some pre-processing:
+
+1. Removing punctuation
+
+    Here, I am removing all punctuation marks. Before I do that, I will transform all hypens to a space, because the text includes some words which are connected by hyphens and would otherwise be connected if I simply removed the hyphen with the removePunctuation function.
+    
+2. Transforming to lower case
+
+    R character string processing is case-sensitive, so everything will be converted to lower case
+    
+3. Stripping numbers
+
+    Numbers are usually not very meaningful for text analysis (if we are not specifically interested in dates, for example), so they are removed as well.
+    
+4. Removing stopwords
+
+    Stopwords are collections of very common words which by themselves don't tell us very much about the content of a text (e.g. and, but, the, however, etc.). The tm packages includes a list of stopwords for the English language.
+    
+5. Stripping whitespace
+
+    I'm also removing all superfluous whitespace around words.
+    
+6. Stemming
+
+    Finally, I'm stemming the words in the corpus. This means that words with a common root are shortened to this root. Even though stemming algorithms are not perfect, they allow us to compare conjugated words from the same origin.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+library(tm)
+data("crude")
+library(SnowballC)
+
+transform_to_space <- content_transformer(function(x, pattern) gsub(pattern, " ", x))
+
+names <- c("Josh", "Chuck", "bg")
+
+for (name in names){
+  corpus <- Corpus(VectorSource(get(paste("lines", name, sep = "_"))))
+
+  # Removing punctuation
+  corpus <- tm_map(corpus, transform_to_space, "-")
+  corpus <- tm_map(corpus, removePunctuation)
+  
+  # Transforming to lower case
+  corpus <- tm_map(corpus, content_transformer(tolower))
+    
+  # Stripping numbers
+  corpus <- tm_map(corpus, removeNumbers)
+    
+  # Removing stopwords
+  corpus <- tm_map(corpus, removeWords, stopwords("english"))
+  
+  # Stripping whitespace
+  corpus <- tm_map(corpus, stripWhitespace)
+    
+  # Stemming
+  corpus <- tm_map(corpus, stemDocument)
+
+  # Converting said to say because this isn't included in stemDocument
+  corpus <- tm_map(corpus, gsub, pattern = "said", replacement = "say")
+  
+  # There are a couple of words not included among the stopwords that I would like to remove
+  myStopwords <- c("one", "two", "three", "just", "your", "that", "can")
+  corpus <- tm_map(corpus, removeWords, myStopwords)
+  
+  # Assigning to object and treat as text document
+  assign(paste("corpus", name, sep = "_"), tm_map(corpus, PlainTextDocument))
+}
+
+corpus_Josh
+corpus_Chuck
+corpus_bg
+```
+
+<br>
+
+## Creating the Document Term Matrix
+
+The document term matrix (DTM) lists the number of occurrences of each word per document in the corpus. Here, each *document* in the corpus represents one line of dialogue from the original transcript.
+
+By restricting the DTM to words to words with at least 3 letters and an occurence in at least 3 lines of dialogue, we can exclude less specific terms.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+for (name in names){
+  assign(paste("dtm", name, sep = "_"), DocumentTermMatrix(get(paste("corpus", name, sep = "_")), 
+         control = list(wordLengths = c(3, 100), bounds = list(global = c(3, length(get(paste("lines", name, sep = "_"))))))))
+}
+
+dtm_Josh
+dtm_Chuck
+dtm_bg
+```
+
+As the term *Sparsity* tell us that 97% of the DTM are zeros.
+
+<br>
+
+### Word frequencies
+
+By summing up the occurences of each word over all documents we get the word count frequencies.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+for (name in names){
+  assign(paste("freq_dtm", name, sep = "_"), colSums(as.matrix(get(paste("dtm", name, sep = "_")))))
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+for (name in names){
+  print(findFreqTerms(get(paste("dtm", name, sep = "_")), lowfreq=40))
+  print(findAssocs(get(paste("dtm", name, sep = "_")), "ear", 0.4))
+}
+
+length(freq_dtm_Josh)
+length(freq_dtm_Chuck)
+length(freq_dtm_bg)
+```
+
+The most frequent words with a count bigger than 40 include (not surprisingly) *"ear"* and *"earwax"*, but funnily also *"yeah"*.
+
+The terms most strongly correlated (40%) with *"ear"* (*"canal"*, *"candl"*, *"clean"*, *"want"*) already give us an idea about the most discussed aspects in the podcast.
+
+Josh and Chuck spoke roughly the same number of words, so good job on not dominating the discussion. ;-)
+
+
+<br>
+
+#### Word association heatmaps
+
+The associations of words with an association bigger than 60% were plotted in a heatmap to find words that most often co-occured.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+library(dplyr)
+
+for (name in names){
+  
+  for (i in 1:length(names(get(paste("freq_dtm", name, sep = "_"))))){
+      associations <- as.data.frame(findAssocs(get(paste("dtm", name, sep = "_")), names(get(paste("freq_dtm", name, sep = "_")))[i], 0))
+      associations$word <- rownames(associations)
+  
+  if (i == 1){
+    associations_table <- associations[, c(2, 1)]
+  } else {
+    associations_table <- full_join(associations_table, associations, by = "word")
+  }
+  
+  if (i == length(names(get(paste("freq_dtm", name, sep = "_"))))){
+    associations_table[is.na(associations_table)] <- 0
+    assign(paste("associations_table", name, sep = "_"), associations_table)
+  }
+  }
+}
+```
+
+```{r my_theme, echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+# setting my custom theme of choice
+library(ggplot2)
+
+my_theme <- function(base_size = 12, base_family = "sans"){
+  theme_grey(base_size = base_size, base_family = base_family) +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title = element_text(size = 14),
+    panel.grid.major = element_line(colour = "grey"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "aliceblue"),
+    strip.background = element_rect(fill = "lightgrey", color = "grey", size = 1),
+    strip.text = element_text(face = "bold", size = 12, colour = "navy"),
+    legend.position = "bottom",
+    legend.background = element_blank(),
+    panel.margin = unit(.5, "lines"),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)
+  )
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 8, fig.height = 8, fig.align = "center"}
+library(reshape2)
+
+cor = 0.6
+
+for (name in names){
+  top_words <- get(paste("associations_table", name, sep = "_"))
+  top_words <- top_words[apply(top_words[, -1], 1, function(x) any(x > cor)), c(TRUE, apply(top_words[, -1], 2, function(x) any(x > cor)))]
+  
+  associations_table_melt <- melt(top_words)
+
+  p <- ggplot(data = associations_table_melt, aes(x = word, y = variable, fill = value)) + 
+    geom_tile(width=.9, height=.9) +
+    scale_fill_gradient2(low = "white", high = "red",  
+                         limit = c(0,1), space = "Lab", 
+                         name="") +
+    my_theme() + 
+    theme(
+      axis.title = element_blank(),
+      legend.position = "right") +
+    coord_fixed() +
+    labs(title = paste0("Word pair associations > ", cor, " in ", name, "'s lines"))
+  
+  print(p)
+}
+```
+
+Among the most conspicuous associations were cotton and swab in Josh's lines (this was probably a hyphenated word to begin with: *cotton-swab*) and between secret and gland in Chuck's line (secretory gland?).
+
+<br>
+  
+#### Word count frequency
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+# create merged data frame for plotting
+library(dplyr)
+
+freq_df_Josh <- data.frame(words = names(freq_dtm_Josh), freq = freq_dtm_Josh)
+freq_df_Chuck <- data.frame(words = names(freq_dtm_Chuck), freq = freq_dtm_Chuck)
+
+freq_df <- full_join(freq_df_Josh, freq_df_Chuck, by = "words")
+
+freq_df_bg  <- data.frame(words = names(freq_dtm_bg), freq = freq_dtm_bg)
+freq_df <- full_join(freq_df, freq_df_bg, by = "words")
+
+freq_df[is.na(freq_df)] <- 0
+colnames(freq_df)[2:4] <- names
+colnames(freq_df)[4] <- "background"
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+freq_df_subs <- freq_df[apply(freq_df[, -1], 1, function(x) any(x > 15)), ]
+
+# gather for plotting
+library(tidyr)
+freq_df_subs_gather <- freq_df_subs %>% 
+  gather(words, count)
+colnames(freq_df_subs_gather)[2] <- "name"
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+# setting factor levels
+f = as.factor(freq_df_bg[order(freq_df_bg$freq, decreasing = TRUE), "words"])
+freq_df_subs_gather <- within(freq_df_subs_gather, words <- factor(words, levels = f))
+
+ggplot(freq_df_subs_gather, aes(x = words, y = count, fill = name)) +
+  geom_bar(data = subset(freq_df_subs_gather, name == "background"), alpha = .2, stat = "identity") + 
+  geom_bar(data = subset(freq_df_subs_gather, name != "background"), stat = "identity", position = position_dodge(width = .8), width = .7) + 
+  scale_fill_brewer(palette = "Set1", name = "") +
+  my_theme() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        legend.position=c(.9, .85)) +
+  labs(y = "Frequency of usage (count)")
+```
+
+<br>
+
+### Wordcloud
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+library(wordcloud)
+library(qdap)
+
+#setting the same seed makes the look consisten
+set.seed(42)
+
+par(mfrow = c(1, 2))
+wordcloud(names(freq_dtm_Josh), freq_dtm_Josh, min.freq = 8, colors = rev(brewer.pal(8, "Spectral")))
+wordcloud(names(freq_dtm_Chuck), freq_dtm_Chuck, min.freq = 8, colors = rev(brewer.pal(8, "Spectral")))
+```
+
+<br>
+
+#### Word length and correlation with frequency of usage
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 3, fig.align = "center"}
+freq_df$characters <- nchar(freq_df$words)
+  
+ggplot(data = freq_df, aes(x = characters)) +
+  geom_histogram(binwidth = 1, fill = "navy") +
+  geom_vline(xintercept = round(mean(freq_df$characters), digits = 0),
+             colour = "red", size = 2, alpha = .5) +
+  labs(x = "Number of letters per word", y = "Number of words") +
+  my_theme() +
+  theme(axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5))
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 8, fig.height = 5, fig.align = "center"}
+freq_df_gather <- freq_df %>% 
+  gather(words, count, Josh:background)
+colnames(freq_df_gather)[3] <- "name"
+
+ggplot(subset(freq_df_gather, name != "background"), aes(x = count, y = characters)) + 
+  geom_point(colour = "deepskyblue4", alpha = 0.3) + 
+  my_theme() +
+  geom_smooth(size = 1, color = "black") +
+  facet_grid(name ~.) +
+  theme(axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5)) +
+  labs(x = "Frequency of usage (count)", y = "Number of letters per word")
+```
+
+<br>
+
+### Frequency and position of letters in words used
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+library(stringr)
+letters <- unlist(sapply(freq_df$words, function(x) str_split(x, "")))
+
+library(qdap)
+letters_tab <- dist_tab(letters)
+
+# setting factor levels
+f = as.factor(rev(letters_tab$interval))
+letters_tab <- within(letters_tab, interval <- factor(interval, levels = f))
+
+ggplot(letters_tab, aes(x = interval, y = percent)) +
+  geom_bar(stat = "identity", fill = "navy") +
+  coord_flip() +
+  my_theme() +
+  theme(axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5)) +
+  labs(x = "Letter", y = "Percentage")
+```
+
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+letters_df <- as.data.frame(letters)
+letters_df$position <- as.factor(unlist(regmatches(rownames(letters_df), gregexpr("[0-9]+", rownames(letters_df)))))
+
+letters_df_table <- as.data.frame(table(letters_df))
+total_number_letter <- as.data.frame(table(letters_df$letters))
+
+letters_df_table <- left_join(letters_df_table, total_number_letter, by = c("letters" = "Var1"))
+letters_df_table$percent <- letters_df_table$Freq.x*100/letters_df_table$Freq.y
+letters_df_table$percent[letters_df_table$percent == 0] <- Inf
+
+letters_df_table$Freq.x[letters_df_table$Freq.x == 0] <- Inf
+
+# setting factor levels
+f = as.factor(rev(1:10))
+letters_df_table <- within(letters_df_table, position <- factor(position, levels = f))
+
+p1 <- ggplot(data = subset(letters_df_table, !is.infinite(percent)), aes(x = letters, y = position, fill = percent)) + 
+  geom_tile(width=.9, height=.9) +
+  scale_fill_gradient2(low = "white", high = "red", 
+                         space = "Lab", 
+                         name="Percent") +
+  coord_flip() +
+  my_theme() + 
+  theme(
+    axis.title = element_blank(),
+    axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5),
+    legend.position = "right") +
+  coord_fixed() +
+  labs(x = "Letter", y = "Position of letter in word")
+
+p2 <- ggplot(data = subset(letters_df_table, !is.infinite(Freq.x)), aes(x = letters, y = position, fill = Freq.x)) + 
+  geom_tile(width=.9, height=.9) +
+  scale_fill_gradient2(low = "white", high = "red", 
+                         space = "Lab", 
+                         name="Count") +
+  coord_flip() +
+  my_theme() + 
+  theme(
+    axis.title = element_blank(),
+    axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5),
+    legend.position = "right") +
+  coord_fixed() +
+  labs(x = "Letter", y = "Position of letter in word")
+
+library(gridExtra)
+library(grid)
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+<br>
+
+## Sentiment analysis
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+library(syuzhet)
+
+
+plot(
+  get_sentiment(lines_Josh, method="syuzhet"),
+  type="l",
+  main="Example Plot Trajectory",
+  xlab = "Narrative Time",
+  ylab= "Emotional Valence"
+)
+
+
+plot(
+  get_sentiment(lines_Josh, method="bing"),
+  type="l",
+  main="Example Plot Trajectory",
+  xlab = "Narrative Time",
+  ylab= "Emotional Valence"
+)
+
+
+plot(
+  get_sentiment(lines_Josh, method="afinn"),
+  type="l",
+  main="Example Plot Trajectory",
+  xlab = "Narrative Time",
+  ylab= "Emotional Valence"
+)
+
+
+plot(
+  get_sentiment(lines_Josh, method="nrc"),
+  type="l",
+  main="Example Plot Trajectory",
+  xlab = "Narrative Time",
+  ylab= "Emotional Valence"
+)
+```
+
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+s_v_sentiment <- get_sentiment(lines_Josh, method="syuzhet")
+
+percent_vals <- get_percentage_values(s_v_sentiment, bins = 10)
+
+plot(
+  percent_vals,
+  type="l",
+  main="Percentage-Based Means",
+  xlab = "Narrative Time",
+  ylab= "Emotional Valence",
+  col="red"
+)
+
+ft_values <- get_transformed_values(
+  s_v_sentiment,
+  low_pass_size = 3,
+  x_reverse_len = 100,
+  padding_factor = 2,
+  scale_vals = TRUE,
+  scale_range = FALSE
+)
+
+plot(
+  ft_values,
+  type ="l",
+  main ="Joyce's Portrait using Transformed Values",
+  xlab = "Narrative Time",
+  ylab = "Emotional Valence",
+  col = "red"
+)
+
+simple_plot(s_v_sentiment)
+
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+sentiment_Josh <- get_nrc_sentiment(lines_Josh)
+length(lines_Josh)
+dim(sentiment_Josh)
+```
+
+<br>
+
+### Hierarchical clustering
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+#convert dtm to matrix
+m <- as.matrix(subset(freq_df_Josh, freq > 10))
+
+#compute distance between document vectors
+d <- dist(m)
+
+#hierarchical clustering with Ward’s method
+groups <- hclust(d ,method = "ward.D")
+
+#plot dendogram
+plot(groups, hang = -1)
+rect.hclust(groups, 4)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+#convert dtm to matrix
+m <- as.matrix(subset(freq_df_Chuck, freq > 10))
+
+#compute distance between document vectors
+d <- dist(m)
+
+#hierarchical clustering with Ward’s method
+groups <- hclust(d ,method = "ward.D")
+
+#plot dendogram
+plot(groups, hang = -1)
+rect.hclust(groups, 4)
+```
