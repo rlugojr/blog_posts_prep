@@ -54,6 +54,8 @@ lines_bg <- c(lines_Josh, lines_Chuck)
 
 ## Building a corpus
 
+> http://onepager.togaware.com/TextMiningO.pdf
+
 In text analysis, a corpus refers to a collection of documents. Here, I am using the [tm](https://cran.r-project.org/web/packages/tm/index.html) package to create by corpus from the character vectors of Josh's and Chuck's lines. [SnowballC](https://cran.r-project.org/web/packages/SnowballC/index.html) is used for its word stemming algorithm.
 
 Before I can analyse the text data meaningfully, I have to do some pre-processing:
@@ -135,9 +137,9 @@ corpus_bg
 
 The document term matrix (DTM) lists the number of occurrences of each word per document in the corpus. Here, each *document* in the corpus represents one line of dialogue from the original transcript.
 
-By restricting the DTM to words to words with at least 3 letters and an occurence in at least 3 lines of dialogue, we can exclude less specific terms.
-
+By restricting the DTM to words to words with a minimum number of letters and an occurence in at least a minimum number lines of dialogue, we could exclude less specific terms.
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+#  but here I will keep them all to make the numbers comparable to background later
 for (name in names){
   assign(paste("dtm", name, sep = "_"), DocumentTermMatrix(get(paste("corpus", name, sep = "_")), 
          control = list(wordLengths = c(3, 100), bounds = list(global = c(3, length(get(paste("lines", name, sep = "_"))))))))
@@ -172,13 +174,65 @@ length(freq_dtm_Josh)
 length(freq_dtm_Chuck)
 length(freq_dtm_bg)
 ```
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+for (name in names){
+  words_per_doc <- data.frame(wordcount = rowSums(as.matrix(get(paste("dtm", name, sep = "_")))))
+  words_per_doc$name <- rep(name, nrow(words_per_doc))
+  
+  assign(paste("words_per_doc", name, sep = "_"), words_per_doc)
+}
 
-The most frequent words with a count bigger than 40 include (not surprisingly) *"ear"* and *"earwax"*, but funnily also *"yeah"*.
+words_per_doc <- rbind(words_per_doc_Josh, words_per_doc_Chuck)
+words_per_doc <- words_per_doc[which(words_per_doc$wordcount > 0), ]
 
-The terms most strongly correlated (40%) with *"ear"* (*"canal"*, *"candl"*, *"clean"*, *"want"*) already give us an idea about the most discussed aspects in the podcast.
+word_count <- data.frame(name = c(names[-3]), 
+                         number_all_words = c(sum(words_per_doc[which(words_per_doc$name == "Josh"), 1]), 
+                                       sum(words_per_doc[which(words_per_doc$name == "Chuck"), 1])),
+                         number_lines = c(nrow(words_per_doc[which(words_per_doc$name == "Josh"), ]), 
+                                       nrow(words_per_doc[which(words_per_doc$name == "Chuck"), ])))
+word_count$words_per_line <- word_count$number_all_words/word_count$number_lines
+word_count
+```
 
-Josh and Chuck spoke roughly the same number of words, so good job on not dominating the discussion. ;-)
+When accounting for stem words and the cutoff I set for the DTM to evaluate, Josh and Chuck spoke roughly the same number of words (Josh: 880, Chuck: 865) and had almost the same number of dialogue lines (Josh: 202, Chuck: 193). So, good job on neither one dominating the discussion. ;-)
 
+```{r my_theme, echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+# setting my custom theme of choice
+library(ggplot2)
+
+my_theme <- function(base_size = 12, base_family = "sans"){
+  theme_grey(base_size = base_size, base_family = base_family) +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title = element_text(size = 14),
+    panel.grid.major = element_line(colour = "grey"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "aliceblue"),
+    strip.background = element_rect(fill = "lightgrey", color = "grey", size = 1),
+    strip.text = element_text(face = "bold", size = 12, colour = "navy"),
+    legend.position = "bottom",
+    legend.background = element_blank(),
+    panel.margin = unit(.5, "lines"),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)
+  )
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 5, fig.height = 5, fig.align = "center"}
+ggplot(words_per_doc, aes(x = name, y = wordcount, fill = name)) +
+  geom_bar(data = word_count, aes(x = name, y = words_per_line, fill = name), stat = "identity", alpha = .5) + 
+  geom_boxplot() + 
+  scale_fill_brewer(palette = "Set1", name = "") +
+  my_theme() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5),
+        legend.position = "none") +
+  labs(y = "Number of words",
+       title = "Number of words spoken\n per line of dialogue\n(accounting for stemming and DTM cutoff)")
+```
+
+This plot shows the number of words spoken per line of dialogue. The background barplot shows the mean number of words spoken per line, the boxplot shows all individual data points (each point represents one line of dialogue and its corresponding word count). While the total number of words and of dialogue lines were basically the same, Chuck's lines had a stronger deviation around them median with few very long lines. Josh on the other hand seems to have spoken his lines with a more consistent length.
 
 <br>
 
@@ -206,29 +260,6 @@ for (name in names){
     assign(paste("associations_table", name, sep = "_"), associations_table)
   }
   }
-}
-```
-
-```{r my_theme, echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
-# setting my custom theme of choice
-library(ggplot2)
-
-my_theme <- function(base_size = 12, base_family = "sans"){
-  theme_grey(base_size = base_size, base_family = base_family) +
-  theme(
-    axis.text = element_text(size = 12),
-    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-    axis.title = element_text(size = 14),
-    panel.grid.major = element_line(colour = "grey"),
-    panel.grid.minor = element_blank(),
-    panel.background = element_rect(fill = "aliceblue"),
-    strip.background = element_rect(fill = "lightgrey", color = "grey", size = 1),
-    strip.text = element_text(face = "bold", size = 12, colour = "navy"),
-    legend.position = "bottom",
-    legend.background = element_blank(),
-    panel.margin = unit(.5, "lines"),
-    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)
-  )
 }
 ```
 
@@ -283,6 +314,7 @@ colnames(freq_df)[4] <- "background"
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+# subsetting only those words which occur at least 15 times in either Josh's, Chuck's or their combined lines
 freq_df_subs <- freq_df[apply(freq_df[, -1], 1, function(x) any(x > 15)), ]
 
 # gather for plotting
@@ -298,34 +330,89 @@ f = as.factor(freq_df_bg[order(freq_df_bg$freq, decreasing = TRUE), "words"])
 freq_df_subs_gather <- within(freq_df_subs_gather, words <- factor(words, levels = f))
 
 ggplot(freq_df_subs_gather, aes(x = words, y = count, fill = name)) +
-  geom_bar(data = subset(freq_df_subs_gather, name == "background"), alpha = .2, stat = "identity") + 
+  geom_bar(data = subset(freq_df_subs_gather, name == "background"), alpha = .3, stat = "identity") + 
   geom_bar(data = subset(freq_df_subs_gather, name != "background"), stat = "identity", position = position_dodge(width = .8), width = .7) + 
   scale_fill_brewer(palette = "Set1", name = "") +
   my_theme() +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-        legend.position=c(.9, .85)) +
-  labs(y = "Frequency of usage (count)")
+        legend.position = c(.9, .85)) +
+  labs(y = "Frequency of use (count)",
+       title = "Frequency of the most common words in Josh and Chuck's podcast")
 ```
+
+The most frequent words include (not surprisingly) *"ear"* and *"earwax"*, but funnily also *"yeah"*.
+
 
 <br>
 
 ### Wordcloud
 
+Wordclouds are another way to visualize the frequency of words. The frequency is indicated both by the size of the words (bigger words are more frequent than smaller words) and their color.
+
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
 library(wordcloud)
 
-#setting the same seed makes the look consisten
+#setting the same seed makes the look consistent
 set.seed(42)
 
-par(mfrow = c(1, 2))
+layout(matrix(c(1, 2, 3, 4), nrow = 2, byrow = TRUE), heights = c(0.1, 1))
+par(mar=rep(0, 4))
+plot.new()
+text(x=0.5, y=0.5, "Josh:", cex = 2)
+plot.new()
+text(x=0.5, y=0.5, "Chuck:", cex = 2)
 wordcloud(names(freq_dtm_Josh), freq_dtm_Josh, min.freq = 8, colors = rev(brewer.pal(8, "Spectral")))
 wordcloud(names(freq_dtm_Chuck), freq_dtm_Chuck, min.freq = 8, colors = rev(brewer.pal(8, "Spectral")))
 ```
 
+
 <br>
 
-#### Word length and correlation with frequency of usage
+### Hierarchical clustering
+
+Hierarchical clustering can be used to classify words by sorting them into clusters according to similarity of occurence (i.e. their frequency or count).
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+library(ggdendro)
+
+for (name in names){
+  #convert dtm to matrix
+  m <- as.matrix(subset(get(paste("freq_df", name, sep = "_")), freq > 10))
+  d <- dist(m, method = "maximum")
+  hc <- hclust(d, method = "average")
+  
+  assign(paste("hc", name, sep = "_"), dendro_data(as.dendrogram(hc)))
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 6, fig.align = "center"}
+ggplot() + 
+  ylim(-5, 50) +
+  geom_segment(data = segment(hc_bg), aes(x = x, y = y+40, xend = xend, yend = yend+40)) + 
+  geom_segment(data = segment(hc_Josh), aes(x = x+5, y = y, xend = xend+5, yend = yend)) + 
+  geom_segment(data = segment(hc_Chuck), aes(x = x+22, y = y, xend = xend+22, yend = yend)) + 
+  geom_text(data = label(hc_bg), aes(x = x, y = y+37, label = label, colour = label), angle = 45, lineheight = 0, vjust = 0, hjust = 0.6) +
+  geom_text(data = label(hc_Josh), aes(x = x+5, y = y-3, label = label, colour = label), angle = 45, lineheight = 0, vjust = 0, hjust = 0.6) +
+  geom_text(data = label(hc_Chuck), aes(x = x+22, y = y-3, label = label, colour = label), angle = 45, lineheight = 0, vjust = 0, hjust = 0.6) +
+  annotate("text", label = "Background:", x = 4, y = 48) +
+  annotate("text", label = "Josh:", x = 4.9, y = 26) +
+  annotate("text", label = "Chuck:", x = 21.5, y = 26) +
+  my_theme() + 
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    legend.position = "none",
+    panel.grid.major = element_blank()) +
+  labs(title = "Hierarchical clustering dendrograms of words with at least 10 occurences")
+```
+
+We already knew that the words *"earwax"*, *"ear"* and *"yeah"* were the most common, so they were clustered accordingly.
+
+<br>
+
+#### Word length and correlation with frequency of use
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 3, fig.align = "center"}
 freq_df$characters <- nchar(freq_df$words)
@@ -334,24 +421,33 @@ ggplot(data = freq_df, aes(x = characters)) +
   geom_histogram(binwidth = 1, fill = "navy") +
   geom_vline(xintercept = round(mean(freq_df$characters), digits = 0),
              colour = "red", size = 2, alpha = .5) +
-  labs(x = "Number of letters per word", y = "Number of words") +
+  labs(x = "Number of letters per word", y = "Number of words",
+       title = "Histogram of word length") +
   my_theme() +
   theme(axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5))
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 8, fig.height = 5, fig.align = "center"}
+Most words have 4 or 5 letters, only a handful are longer than 7 letters. We don't have words with fewer than 3 letters because they were excluded in the beginning when obtaining the DTM.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 5, fig.height = 5, fig.align = "center"}
 freq_df_gather <- freq_df %>% 
   gather(words, count, Josh:background)
 colnames(freq_df_gather)[3] <- "name"
 
-ggplot(subset(freq_df_gather, name != "background"), aes(x = count, y = characters)) + 
-  geom_point(colour = "deepskyblue4", alpha = 0.3) + 
+library(ggrepel)
+
+ggplot(subset(freq_df_gather, name != "background"), aes(x = characters, y = count, label = words)) + 
+  geom_point(colour = "deepskyblue4", alpha = 0.5) + 
   my_theme() +
-  geom_smooth(size = 1, color = "black") +
-  facet_grid(name ~.) +
+  geom_smooth(method = "lm", se = TRUE, size = 1, color = "black") +
+  facet_grid(~ name) +
   theme(axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5)) +
-  labs(x = "Frequency of usage (count)", y = "Number of letters per word")
+  labs(x = "Frequency of use (count)", y = "Number of letters per word",
+       title = "Correlation between word length and frequency\nof use in Josh's and Chuck's lines") +
+  geom_text_repel(data = subset(freq_df_gather, name != "background" & count > 25))
 ```
+
+As we can see above, there is only a very small correlation between the length of words and how often they are used. As expected from what we intuitively know, the most common words tend to be shorter while long words are used only occasionally because they are often more specific terms. And there is no real difference between Josh or Chuck when it comes to the length (and complexity?) of the words they use. In general the words they use are rather on the short site, which makes sense as a big part of what makes their podcast so great is that they convey information in a down-to-earth, understandable way.
 
 <br>
 
@@ -369,13 +465,17 @@ f = as.factor(rev(letters_tab$interval))
 letters_tab <- within(letters_tab, interval <- factor(interval, levels = f))
 
 ggplot(letters_tab, aes(x = interval, y = percent)) +
-  geom_bar(stat = "identity", fill = "navy") +
+  geom_bar(stat = "identity", fill = "navy", alpha = 0.8) +
   coord_flip() +
   my_theme() +
   theme(axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5)) +
-  labs(x = "Letter", y = "Percentage")
+  labs(x = "Letter", y = "Percentage",
+       title = "Frequency of letters among words spoken in the podcast")
 ```
 
+The frequency plot of all the letters in the alphabet show that vocals are more common than consonants.
+
+<br>
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
 letters_df <- as.data.frame(letters)
@@ -390,103 +490,225 @@ letters_df_table$percent[letters_df_table$percent == 0] <- Inf
 
 letters_df_table$Freq.x[letters_df_table$Freq.x == 0] <- Inf
 
+letters_df_table_gather <- letters_df_table[, -4] %>% 
+  gather(letters, position, Freq.x:percent)
+colnames(letters_df_table_gather)[3:4] <- c("measure", "value")
+
+letters_df_table_gather$measure <- ifelse(letters_df_table_gather$measure == "Freq.x", "Count", "Percent")
+
 # setting factor levels
 f = as.factor(rev(1:10))
-letters_df_table <- within(letters_df_table, position <- factor(position, levels = f))
+letters_df_table_gather <- within(letters_df_table_gather, position <- factor(position, levels = f))
+```
 
-p1 <- ggplot(data = subset(letters_df_table, !is.infinite(percent)), aes(x = letters, y = position, fill = percent)) + 
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+ggplot(data = subset(letters_df_table_gather, !is.infinite(value)), aes(x = letters, y = position, fill = value)) + 
   geom_tile(width=.9, height=.9) +
-  scale_fill_gradient2(low = "white", high = "red", 
-                         space = "Lab", 
-                         name="Percent") +
+  facet_grid(measure ~ .) +
+  scale_fill_gradient(low = "moccasin", high = "red") +
   coord_flip() +
   my_theme() + 
   theme(
-    axis.title = element_blank(),
     axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5),
     legend.position = "right") +
   coord_fixed() +
-  labs(x = "Letter", y = "Position of letter in word")
-
-p2 <- ggplot(data = subset(letters_df_table, !is.infinite(Freq.x)), aes(x = letters, y = position, fill = Freq.x)) + 
-  geom_tile(width=.9, height=.9) +
-  scale_fill_gradient2(low = "white", high = "red", 
-                         space = "Lab", 
-                         name="Count") +
-  coord_flip() +
-  my_theme() + 
-  theme(
-    axis.title = element_blank(),
-    axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5),
-    legend.position = "right") +
-  coord_fixed() +
-  labs(x = "Letter", y = "Position of letter in word")
-
-library(gridExtra)
-library(grid)
-
-grid.arrange(p1, p2, ncol = 1)
+  labs(x = "", y = "Position",
+       title = "How often does each letter occur\nat which position in a word?")
 ```
 
 <br>
 
 ## Sentiment analysis
 
+I am using the package [syuzhet](https://cran.r-project.org/web/packages/syuzhet/index.html) for sentiment analysis.
+
+> Negative values indicate negative sentiment, positive values positive sentiments.
+
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
 library(syuzhet)
 
 for (name in names){
-  sentiment <- data.frame(document_ID = 1:length(get(paste("lines", name, sep = "_"))), 
+  assign(paste("get_nrc_sentiment", name, sep = "_"), data.frame(line_number = 1:length(get(paste("lines", name, sep = "_"))), 
+                                                                 get_nrc_sentiment(get(paste("lines", name, sep = "_")))))
+  
+  get_tokens <- get_tokens(get(paste("lines", name, sep = "_")))
+  assign(paste("get_nrc_sentiments_tokens", name, sep = "_"), data.frame(word = get_tokens,
+                                                                         get_nrc_sentiment(get_tokens)))
+}
+```
+
+<br>
+
+### NRC sentiment
+
+The get_nrc_sentiment implements Saif Mohammad’s NRC Emotion lexicon. According to Mohammad, “the NRC emotion lexicon is a list of words and their associations with eight emotions (anger, fear, anticipation, trust, surprise, sadness, joy, and disgust) and two sentiments (negative and positive)” (See http://www.purl.org/net/NRCemotionlexicon). The get_nrc_sentiment function returns a data frame in which each row represents a sentence from the original file. The columns include one for each emotion type was well as the positive or negative sentiment valence. The example below calls the function using the simple twelve sentence example passage stored in the s_v object from above.
+
+<br>
+
+#### Words
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+get_nrc_sentiments_tokens_bg_gather <- get_nrc_sentiments_tokens_bg %>% 
+  gather(word, sentiment, anger:positive)
+colnames(get_nrc_sentiments_tokens_bg_gather)[2:3] <- c("sentiment", "value")
+get_nrc_sentiments_tokens_bg_gather$name <- "bg"
+get_nrc_sentiments_tokens_bg_gather <- get_nrc_sentiments_tokens_bg_gather[which(get_nrc_sentiments_tokens_bg_gather$value != 0), ]
+get_nrc_sentiments_tokens_bg_gather <- get_nrc_sentiments_tokens_bg_gather[!duplicated(get_nrc_sentiments_tokens_bg_gather$word), ]
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 8, fig.height = 15, fig.align = "center"}
+ggplot(data = get_nrc_sentiments_tokens_bg_gather, aes(x = value, y = value, colour = word, label = word)) + 
+  geom_line(size = 1) +
+  facet_wrap(~ sentiment, ncol = 2) +
+  my_theme() + 
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    legend.position = "none",
+    panel.grid.major = element_blank()) +
+  geom_text_repel(segment.color = "aliceblue", segment.alpha = 0) +
+  labs(title = "Sentiment categories of words used in podcast")
+```
+
+As can be seen by the words and the sentiment categories to which they were grouped, sentiment analysis is not perfect. Some words make sense for its category, others are really strange!
+
+<br>
+
+#### Dialogue lines
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 8, fig.height = 12, fig.align = "center"}
+get_nrc_sentiment_Josh_gather <- get_nrc_sentiment_Josh %>% 
+  gather(line_number, sentiment, anger:positive)
+colnames(get_nrc_sentiment_Josh_gather)[2:3] <- c("sentiment", "value")
+get_nrc_sentiment_Josh_gather$name <- "Josh"
+
+get_nrc_sentiment_Chuck_gather <- get_nrc_sentiment_Chuck %>% 
+  gather(line_number, sentiment, anger:positive)
+colnames(get_nrc_sentiment_Chuck_gather)[2:3] <- c("sentiment", "value")
+get_nrc_sentiment_Chuck_gather$name <- "Chuck"
+
+get_nrc_sentiment_gather <- rbind(get_nrc_sentiment_Josh_gather, get_nrc_sentiment_Chuck_gather)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 20, fig.height = 4, fig.align = "center"}
+# because the plot would get too big, I split the data into more positive and more negative sentiments
+get_nrc_sentiment_gather_pos <- get_nrc_sentiment_gather[which(get_nrc_sentiment_gather$sentiment %in% 
+                                                                 c("anticipation", "joy", "positive", "surprise", "trust")), ]
+get_nrc_sentiment_gather_neg <- get_nrc_sentiment_gather[which(get_nrc_sentiment_gather$sentiment %in% 
+                                                                 c("anger", "disgust", "fear", "negative", "sadness")), ]
+
+ggplot(data = get_nrc_sentiment_gather_pos, aes(x = line_number, y = value, colour = sentiment)) + 
+  geom_line(size = 1) +
+  facet_grid(name ~ sentiment) +
+  my_theme() + 
+  theme(
+    axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5),
+    legend.position = "none") +
+  labs(x = "Dialogue line number", y = "Sentiment score",
+       title = "Sentiment during podcast progression\npositive sentiments")
+
+ggplot(data = get_nrc_sentiment_gather_neg, aes(x = line_number, y = value, colour = sentiment)) + 
+  geom_line(size = 1) +
+  facet_grid(name ~ sentiment) +
+  my_theme() + 
+  theme(
+    axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5),
+    legend.position = "none") +
+  labs(x = "Dialogue line number", y = "Sentiment score",
+       title = "Sentiment during podcast progression\nnegitive sentiments")
+```
+
+<br>
+
+### Comparison of different sentiment analyses
+
+> each method uses a slightly different scale.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+for (name in names){
+  sentiment <- data.frame(line_number = 1:length(get(paste("lines", name, sep = "_"))), 
                               syuzhet = get_sentiment(get(paste("lines", name, sep = "_")), method = "syuzhet"),
                               bing = get_sentiment(get(paste("lines", name, sep = "_")), method = "bing"),
                               afinn = get_sentiment(get(paste("lines", name, sep = "_")), method = "afinn"),
                               nrc = get_sentiment(get(paste("lines", name, sep = "_")), method = "nrc"))
   assign(paste("sentiment", name, sep = "_"), sentiment)
 }
-
-head(sentiment_Josh)
-head(sentiment_Chuck)
 ```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 8, fig.height = 12, fig.align = "center"}
+sentiment_Josh_gather <- sentiment_Josh %>% 
+  gather(line_number, analysis, syuzhet:nrc)
+colnames(sentiment_Josh_gather)[2:3] <- c("algorithm", "value")
+sentiment_Josh_gather$name <- "Josh"
+
+sentiment_Chuck_gather <- sentiment_Chuck %>% 
+  gather(line_number, analysis, syuzhet:nrc)
+colnames(sentiment_Chuck_gather)[2:3] <- c("algorithm", "value")
+sentiment_Chuck_gather$name <- "Chuck"
+
+sentiment_gather <- rbind(sentiment_Josh_gather, sentiment_Chuck_gather)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 12, fig.height = 4, fig.align = "center"}
+ggplot(data = sentiment_gather, aes(x = line_number, y = value, colour = algorithm)) + 
+  geom_hline(aes(yintercept=0), linetype="dashed", size = 1) +
+  geom_line(size = 1) +
+  facet_grid(name ~ algorithm) +
+  my_theme() + 
+  theme(
+    axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5),
+    legend.position = "none") +
+  labs(x = "Dialogue line number", y = "Sentiment score",
+       title = "Sentiment during podcast progression\nfor different algorithms")
+```
+
+<br>
+
+> When it comes to comparing the shape of one trajectory to another, the get_percentage_values function can be useful. The get_percentage_values function divides a text into an equal number of “chunks” and then calculates the mean sentiment valence for each. In the example below, the sentiments from Portrait are binned into 10 chunks and then plotted. Using the optional bins argument, you can control how many sentences are included inside each percentage based chunk:
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
 for (name in names){
-  sentiment_percent_vals <- data.frame(
+  sentiment_percent_vals <- data.frame(bin = 1:10,
                               syuzhet = get_percentage_values(get_sentiment(get(paste("lines", name, sep = "_")), method = "syuzhet"), bins = 10),
                               bing = get_percentage_values(get_sentiment(get(paste("lines", name, sep = "_")), method = "bing"), bins = 10),
                               afinn = get_percentage_values(get_sentiment(get(paste("lines", name, sep = "_")), method = "afinn"), bins = 10),
                               nrc = get_percentage_values(get_sentiment(get(paste("lines", name, sep = "_")), method = "nrc"), bins = 10))
   assign(paste("sentiment_percent_vals", name, sep = "_"), sentiment_percent_vals)
 }
-
-head(sentiment_percent_vals_Josh)
-head(sentiment_percent_vals_Chuck)
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
-for (name in names){
-  assign(paste("get_nrc_sentiment", name, sep = "_"), get_nrc_sentiment(get(paste("lines", name, sep = "_"))))
-}
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 8, fig.height = 12, fig.align = "center"}
+sentiment_percent_vals_Josh_gather <- sentiment_percent_vals_Josh %>% 
+  gather(bin, analysis, syuzhet:nrc)
+colnames(sentiment_percent_vals_Josh_gather)[2:3] <- c("algorithm", "value")
+sentiment_percent_vals_Josh_gather$name <- "Josh"
 
-head(get_nrc_sentiment_Josh)
-head(get_nrc_sentiment_Chuck)
+sentiment_percent_vals_Chuck_gather <- sentiment_percent_vals_Chuck %>% 
+  gather(bin, analysis, syuzhet:nrc)
+colnames(sentiment_percent_vals_Chuck_gather)[2:3] <- c("algorithm", "value")
+sentiment_percent_vals_Chuck_gather$name <- "Chuck"
+
+sentiment_percent_vals_gather <- rbind(sentiment_percent_vals_Josh_gather, sentiment_percent_vals_Chuck_gather)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 4, fig.align = "center"}
+ggplot(data = sentiment_percent_vals_gather, aes(x = bin, y = value, colour = algorithm)) + 
+  geom_hline(aes(yintercept=0), linetype="dashed", size = 1) +
+  geom_line(size = 1) +
+  facet_grid(name ~ algorithm) +
+  my_theme() + 
+  theme(
+    axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5),
+    legend.position = "none") +
+  labs(x = "Bin", y = "Sentiment percent values",
+       title = "Sentiment percent values during podcast progression\nfor different algorithms")
 ```
 
 <br>
 
-### Hierarchical clustering
+## Conclusion
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
-#convert dtm to matrix
-m <- as.matrix(subset(freq_df_Josh, freq > 10))
+This little excursion into text analysis gave an interesting different look at a podcast I normally "evaluate" intuitively while listening.
 
-#compute distance between document vectors
-d <- dist(m)
-
-#hierarchical clustering with Ward’s method
-groups <- hclust(d, method = "ward.D")
-
-#plot dendogram
-plot(groups, hang = -1)
-rect.hclust(groups, 4)
-```
-
+It would be very interesting to broaden the analysis to include more transcripts, maybe by trying speech-to-text-conversion.
