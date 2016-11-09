@@ -1,5 +1,5 @@
 ---
-title: "Mapping Google location history"
+title: "A simple 'How to map your Google location history'"
 author: "Dr. Shirin Glander"
 date: '`r Sys.Date()`'
 output: html_document
@@ -10,57 +10,117 @@ The Google location history can be downloaded from your Google account under [ht
 
 It is saved as a .json file and can be loaded with the [jsonlite](https://cran.r-project.org/web/packages/jsonlite/index.html) package.
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
 library(jsonlite)
 system.time(x <- fromJSON("U:/Github_blog/Takeout/Standortverlauf/Standortverlauf.json"))
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
 # extracting the locations dataframe
 loc = x$locations
 
 # converting time column from posix milliseconds into a readable time scale
-loc$time = as.POSIXct(as.numeric(x$locations$timestampMs)/1000,
-                      origin = "1970-01-01")
+loc$time = as.POSIXct(as.numeric(x$locations$timestampMs)/1000, origin = "1970-01-01")
 
 # converting longitude and latitude from E7 to GPS coordinates
 loc$lat = loc$latitudeE7 / 1e7
 loc$lon = loc$longitudeE7 / 1e7
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
 head(loc)
 ```
 
 # How many data points did it record?
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
 nrow(loc)
+```
+
+## And how are they distributed over days, months, years?
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+library(lubridate)
+library(zoo)
+
+loc$date <- as.Date(loc$time, '%Y/%m/%d')
+loc$year <- year(loc$date)
+loc$month_year <- as.yearmon(loc$date)
+
+points_p_day <- data.frame(table(loc$date), group = "day")
+points_p_month <- data.frame(table(loc$month_year), group = "month")
+points_p_year <- data.frame(table(loc$year), group = "year")
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+library(ggplot2)
+library(ggmap)
+
+my_theme <- function(base_size = 12, base_family = "sans"){
+  theme_grey(base_size = base_size, base_family = base_family) +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title = element_text(size = 14),
+    panel.grid.major = element_line(color = "grey"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "aliceblue"),
+    strip.background = element_rect(fill = "lightgrey", color = "grey", size = 1),
+    strip.text = element_text(face = "bold", size = 12, color = "navy"),
+    legend.position = "right",
+    legend.background = element_blank(),
+    panel.margin = unit(.5, "lines"),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)
+  )
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+nrow(points_p_day)
+nrow(points_p_month)
+nrow(points_p_year)
+
+points <- rbind(points_p_day[, -1], points_p_month[, -1], points_p_year[, -1])
+
+ggplot(points, aes(x = group, y = Freq)) + 
+  geom_point(position = position_jitter(width = 0.9), alpha = 0.3) + 
+  geom_boxplot(aes(color = group), size = 1, outlier.colour = NA) + 
+  facet_grid(group ~ ., scales="free") + my_theme()
 ```
 
 # Over which period of time?
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
 summary(loc$time)
 ```
 
-# Plotting
+# Plotting data points on maps
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
-library(ggplot2)
-library(ggmap)
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+map <- get_map(location = 'London', zoom = 12)
+
+ggmap(map, darken = c(0.3, "white")) + geom_point(data = loc, aes(x = lon, y = lat), color = "red", alpha = .1) +
+  theme(legend.position="right") + labs(x="Longitude", y="Latitude", title="Location history London")
+
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
+Accuracy in meters. Most data points are quite accurate.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+accuracy <- data.frame(accuracy = loc$accuracy, group = ifelse(loc$accuracy < 800, "high", ifelse(loc$accuracy < 5000, "middle", "low")))
+ggplot(accuracy, aes(x = accuracy, fill = group)) + geom_histogram() + facet_grid(group ~ ., scales="free") + my_theme()
+```
+
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 germany <- get_map(location = 'Germany', zoom = 5)
 
-ggmap(germany) + geom_point(data = loc, aes(x = lon, y = lat, color = -accuracy), alpha = .1) + 
+ggmap(germany) + geom_point(data = loc, aes(x = lon, y = lat, color = accuracy), alpha = .1) + 
   theme(legend.position="right") + labs(x="Longitude", y="Latitude", title="Location history Europe") +
-  scale_colour_gradient(low = "blue", high = "red")
+  scale_colour_gradient(low = "red", high = "blue")
 ```
 
-
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 munster <- get_map(location = 'Munster', zoom = 12)
 
 ggmap(munster, extent = "panel", maprange=FALSE) +
@@ -69,56 +129,79 @@ ggmap(munster, extent = "panel", maprange=FALSE) +
   theme(legend.position="right") + labs(x="Longitude", y="Latitude", title="Location history Münster")
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
-map <- get_map(location = 'London', zoom = 12)
-
-ggmap(map, darken = c(0.3, "white")) + geom_point(data = loc, aes(x = lon, y = lat), color = "red", alpha = .1) +
-  theme(legend.position="right") + labs(x="Longitude", y="Latitude", title="Location history London")
-
-```
-
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 loc_2 <- loc[which(!is.na(loc$velocity)), ]
 
-munster <- get_map(location = 'Munster', zoom = 13)
+munster <- get_map(location = 'Munster', zoom = 10)
 
 ggmap(munster) + geom_point(data = loc_2, aes(x = lon, y = lat, color = velocity), alpha = .1) + 
-  theme(legend.position="right") + labs(x="Longitude", y="Latitude", title="Location history Europe") +
+  theme(legend.position="right") + labs(x="Longitude", y="Latitude", title="Location history Münster") +
   scale_colour_gradient(low = "blue", high = "red")
 ```
 
-# How much distance did I travel?
+# What distance did I travel?
+
+Because it takes a long time to calculate, I am only looking at data from the last year.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
+loc3 <- with(loc, subset(loc, loc$time > as.POSIXct('2016-01-01 0:00:01')))
+loc3 <- with(loc, subset(loc3, loc$time < as.POSIXct('2016-10-31 23:59:59')))
+
+# Shifting vectors for latitude and longitude to include end position
+shift.vec <- function (vec, shift){
+  if(length(vec) <= abs(shift)){
+    rep(NA ,length(vec))
+  } else {
+    if (shift >= 0) {
+      c(rep(NA, shift), vec[1:(length(vec)-shift)]) }
+    else {
+      c(vec[(abs(shift)+1):length(vec)], rep(NA, abs(shift)))
+    }
+  }
+}
+
+loc3$lat.p1 <- shift.vec(loc3$lat, -1)
+loc3$lon.p1 <- shift.vec(loc3$lon, -1)
+
+# Calculating distances between points (in metres) with the function pointDistance from the 'raster' package.
+
+library(raster)
+loc3$dist.to.prev <- apply(loc3, 1, FUN = function (row) {
+  pointDistance(c(as.numeric(as.character(row["lat.p1"])),
+                  as.numeric(as.character(row["lon.p1"]))),
+                c(as.numeric(as.character(row["lat"])), as.numeric(as.character(row["lon"]))),
+                lonlat = T) # Parameter 'lonlat' has to be TRUE!
+})
+```
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
+# distance in km
+round(sum(as.numeric(as.character(loc3$dist.to.prev)), na.rm = TRUE)*0.001, digits = 2)
+
+distance_p_month <- aggregate(loc3$dist.to.prev, by = list(month_year = as.factor(loc3$month_year)), FUN = sum)
+distance_p_month$x <- distance_p_month$x*0.001
+```
 
 # Activities
 
 Here, Google guesses my activity based on distance travelled per time.
 
-```{r eval = FALSE, inclue = FALSE, echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
-for(i in 1:length(loc$activitys)) {
-  print(i)
-  
-  x <- loc$activitys[i]
-  
-  if(!is.null(x[[1]])) {
-    act <- x[[1]]
-    
-    for(j in 1:nrow(act)) {
-      
-      act_ts <- as.POSIXct(as.numeric(act$timestampMs[j])/1000, origin = "1970-01-01")
-      act_data <- act$activities[j][[1]]
-      act_data$time <- act_ts
+Here again, it would take too long to look at activity from all data points.
 
-      if(j == 1) {act_df <- act_data}
-      if(j > 1) {act_df <- rbind(act_df, act_data)}
-    }
-    
-    if(!exists("activities")) {
-      activities <- act_df
-    } else {
-      activities <- rbind(activities, act_df)
-    }
-  }
-}
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE}
+activities <- loc3$activitys
+
+list.condition <- sapply(activities, function(x) !is.null(x[[1]]))
+activities  <- activities[list.condition]
+
+df <- do.call("rbind", activities)
+main_activity <- sapply(df$activities, function(x) x[[1]][1][[1]][1])
+
+activities_2 <- data.frame(main_activity = main_activity, 
+                           time = as.POSIXct(as.numeric(df$timestampMs)/1000, origin = "1970-01-01"))
+
+head(activities_2)
 ```
 
-
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+ggplot(activities_2, aes(x = main_activity, group = main_activity, fill = main_activity)) + geom_bar()  + my_theme()
+```
