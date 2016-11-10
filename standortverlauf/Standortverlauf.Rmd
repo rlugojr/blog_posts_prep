@@ -205,3 +205,4 @@ head(activities_2)
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 ggplot(activities_2, aes(x = main_activity, group = main_activity, fill = main_activity)) + geom_bar()  + my_theme()
 ```
+
