@@ -1,0 +1,237 @@
+---
+title: "Gilmore Girls"
+author: "Dr. Shirin Glander"
+date: '`r Sys.Date()`'
+output: html_document
+---
+
+
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, eval=FALSE}
+for(i in 1:7){ # there are 7 seasons
+
+  if(i == 1){
+
+    for(j in 1:21){ # all seasons except the first have 22 episodes (the first has 21)
+
+      cat("\nSeason", i, ", Episode", j, "\n")
+
+      thepage <- readLines(paste0("http://www.crazy-internet-people.com/site/gilmoregirls/pages/s", i, "/s", i, "s/", j, ".html"))
+
+      thepage <- thepage[grep("[[:upper:]]+:", thepage)]
+      thepage <- gsub("\t", "", thepage)
+      thepage <- gsub("<.*>", "", thepage)
+
+      thepage <- as.data.frame(thepage)
+      thepage$season <- i
+      thepage$episode <- paste(i, j, sep = "_")
+      thepage$episode_running_nr <- j
+
+      if(i == 1 & j == 1){
+        transcripts <- thepage
+      } else {
+        transcripts <- rbind(transcripts, thepage)
+      }
+    }
+
+    } else {
+
+      for(j in 1:22){ # all seasons except the first have 22 episodes (the first has 21)
+
+        cat("\nSeason", i, ", Episode", j, "\n")
+
+        if(i == 2){
+          n <- j+21
+        }
+
+        if(i == 3){
+          n <- j+21+22
+        }
+
+        if(i == 4){
+          n <- j+21+22+22
+        }
+
+        if(i == 5){
+          n <- j+21+22+22+22
+        }
+
+        if(i == 6){
+          n <- j+21+22+22+22+22
+        }
+
+        if(i == 7){
+          n <- j+21+22+22+22+22+22
+        }
+
+        thepage <- readLines(paste0("http://www.crazy-internet-people.com/site/gilmoregirls/pages/s", i, "/s", i, "s/", n, ".html"))
+
+        thepage <- thepage[grep("[[:upper:]]{2,}:", thepage)]
+        thepage <- gsub("\t", "", thepage)
+        thepage <- gsub("<.*>", "", thepage)
+
+        thepage <- as.data.frame(thepage)
+        thepage$season <- i
+        thepage$episode <- paste(i, j, sep = "_")
+        thepage$episode_running_nr <- n
+
+        if(i == 1 & j == 1){
+          transcripts <- thepage
+        } else {
+          transcripts <- rbind(transcripts, thepage)
+        }
+        }
+  }
+}
+```
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE}
+transcripts <- read.table("gilmore_girls_transcripts.txt", header = TRUE)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+transcripts$thepage <- as.character(transcripts$thepage)
+
+transcripts <- transcripts[!transcripts$thepage == "", ]
+
+head(transcripts)
+nrow(transcripts)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+library(tidyr)
+transcripts_2 <- separate(transcripts, "thepage", into = c("character", "dialogue"), sep = ":", extra = "merge", fill = "right")
+
+# remove leading and trailing whitespace
+transcripts_2$character <- gsub("^\\s+|\\s+$", "", transcripts_2$character)
+
+length(unique(transcripts_2$character))
+
+transcripts_2[which(transcripts_2$character == "ZACK"), "character"] <- "ZACH"
+transcripts_2[which(transcripts_2$character == "LORLEAI"), "character"] <- "LORELAI"
+transcripts_2[which(transcripts_2$character == "LOREALI"), "character"] <- "LORELAI"
+transcripts_2[which(transcripts_2$character == "LORELI"), "character"] <- "LORELAI"
+transcripts_2[which(transcripts_2$character == "LORLAI"), "character"] <- "LORELAI"
+transcripts_2[which(transcripts_2$character == "LORELA"), "character"] <- "LORELAI"
+transcripts_2[which(transcripts_2$character == "LORLELAI"), "character"] <- "LORELAI"
+transcripts_2[which(transcripts_2$character == "ORELAI"), "character"] <- "LORELAI"
+transcripts_2[which(transcripts_2$character == "LOREAI"), "character"] <- "LORELAI"
+transcripts_2[which(transcripts_2$character == "LUK"), "character"] <- "LUKE"
+transcripts_2[which(transcripts_2$character == "BABETE"), "character"] <- "BABETTE"
+transcripts_2[which(transcripts_2$character == "TAYOR"), "character"] <- "TAYLOR"
+transcripts_2[which(transcripts_2$character == "TRISTIN"), "character"] <- "TRISTAN"
+transcripts_2[which(transcripts_2$character == "MICHE"), "character"] <- "MICHEL"
+transcripts_2[which(transcripts_2$character == "MICHELL"), "character"] <- "MICHEL"
+transcripts_2[which(transcripts_2$character == "SOOKI"), "character"] <- "SOOKIE"
+transcripts_2[which(transcripts_2$character == "SOOKEI"), "character"] <- "SOOKIE"
+transcripts_2[which(transcripts_2$character == "SOOKIES"), "character"] <- "SOOKIE"
+transcripts_2[which(transcripts_2$character == "Mrs.KIM"), "character"] <- "MRS KIM"
+transcripts_2[which(transcripts_2$character == "RICHRAD"), "character"] <- "RICHARD"
+transcripts_2[which(transcripts_2$character == "RMILY"), "character"] <- "EMILY"
+transcripts_2[which(transcripts_2$character == "CHRISTOHPER"), "character"] <- "CHRISTOPHER"
+transcripts_2[which(transcripts_2$character == "CHRISTOPER"), "character"] <- "CHRISTOPHER"
+transcripts_2[which(transcripts_2$character == "CHRSTOPHER"), "character"] <- "CHRISTOPHER"
+transcripts_2[which(transcripts_2$character == "KIRK&#146;S MOM"), "character"] <- "KIRK'S MOM"
+transcripts_2[which(transcripts_2$character == "SOOKIE &amp; LORELAI"), "character"] <- "SOOKIE and LORELAI"
+transcripts_2[which(transcripts_2$character == "LORELAI &amp; RORY"), "character"] <- "LORELAI and RORY"
+
+transcripts_2 <- transcripts_2[-which(transcripts_2$character == "DISCLAIMER"), ] 
+head(transcripts_2)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+characters <- as.data.frame(table(transcripts_2$character))
+
+characters_with_most_lines <- characters[order(characters$Freq, decreasing = TRUE), ]
+head(characters_with_most_lines)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+transcripts_3 <- transcripts_2[which(transcripts_2$character %in% as.character(characters_with_most_lines$Var1[1:20])), ]
+
+head(transcripts_3)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+library(ggplot2)
+
+my_theme <- function(base_size = 12, base_family = "sans"){
+  theme_grey(base_size = base_size, base_family = base_family) +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title = element_text(size = 14),
+    panel.grid.major = element_line(color = "grey"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "aliceblue"),
+    strip.background = element_rect(fill = "lightgrey", color = "grey", size = 1),
+    strip.text = element_text(face = "bold", size = 12, color = "black"),
+    legend.position = "none",
+    legend.background = element_blank(),
+    panel.margin = unit(.5, "lines"),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)
+  )
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 15, fig.height = 15, fig.align = "center"}
+transcripts_3$season_name <- paste("Season", transcripts_3$season, sep = " ")
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+ggplot(transcripts_3, aes(x = episode_running_nr, y = character, color = season_name)) +
+  geom_point(size = 2) +
+  geom_path(aes(group = episode_running_nr)) +
+  my_theme() +
+  facet_wrap(~ season_name, ncol = 2, scales = "free") +
+  scale_color_hue(l=50) +
+  labs(y = "",
+       x = "Episode running number",
+       title = "Gilmore Girls major characters occurence in episodes")
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+library(reshape2)
+speaker_scene_matrix <- transcripts_3 %>%
+  acast(character ~ episode, fun.aggregate = length)
+
+speaker_scene_matrix[1:5, 1:5]
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 4, fig.align = "center"}
+norm <- speaker_scene_matrix / rowSums(speaker_scene_matrix)
+
+h <- hclust(dist(norm, method = "manhattan"))
+
+plot(h)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+data_matrix <- as.matrix(t(speaker_scene_matrix))
+total_occurrences <- colSums(t(speaker_scene_matrix))
+
+co_occurrence <- t(data_matrix) %*% data_matrix
+
+library(igraph)
+g <- graph.adjacency(co_occurrence,
+                         weighted=TRUE,
+                         #mode="undirected",
+                         diag=FALSE,
+                         mode="upper")
+
+g <- simplify(g, remove.multiple = F, remove.loops = T, edge.attr.comb=c(weight="sum", type="ignore"))
+
+V(g)$gender <- c("female", "male", "female", "male", "female", "male", "female", "male", "female", "female")
+
+plot(g,
+     vertex.label.family = "Helvetica",
+     vertex.label.font = 1,
+     vertex.shape = "sphere",
+     vertex.size=total_occurrences/800,
+     vertex.label.cex=0.8,
+     vertex.color=c( "pink", "skyblue")[1+(V(g)$gender=="male")],
+     vertex.label.color="black",
+     vertex.frame.color = NA,
+     edge.width=E(g)$weight/100000,
+     edge.curved=.1,
+     layout=layout_in_circle)
+```

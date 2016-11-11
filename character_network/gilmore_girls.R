@@ -17,6 +17,7 @@ for(i in 1:7){ # there are 7 seasons
       thepage <- as.data.frame(thepage)
       thepage$season <- i
       thepage$episode <- paste(i, j, sep = "_")
+      thepage$episode_running_nr <- j
 
       if(i == 1 & j == 1){
         transcripts <- thepage
@@ -64,6 +65,7 @@ for(i in 1:7){ # there are 7 seasons
         thepage <- as.data.frame(thepage)
         thepage$season <- i
         thepage$episode <- paste(i, j, sep = "_")
+        thepage$episode_running_nr <- n
 
         if(i == 1 & j == 1){
           transcripts <- thepage
@@ -156,21 +158,11 @@ a <- adjacency(t(speaker_scene_matrix), type="distance")
 head(a)
 
 
-library(igraph)
-g <- graph.adjacency(a, weighted = TRUE, mode = "undirected", diag = FALSE)
-plot(g, edge.width = E(g)$weight)
-
 
 library('network')
 library('sna')
 library('ndtv')
 library('visNetwork')
-
-net <- simplify(g, remove.multiple = F, remove.loops = T)
-
-plot(net, edge.arrow.size=.4,, edge.color="orange",
-     vertex.color="orange", vertex.frame.color="#ffffff",
-     vertex.label=V(net)$media, vertex.label.color="black", edge.curved=.1)
 
 
 data_matrix <- as.matrix(t(speaker_scene_matrix))
