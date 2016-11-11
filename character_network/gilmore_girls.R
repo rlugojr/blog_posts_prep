@@ -74,16 +74,136 @@ for(i in 1:7){ # there are 7 seasons
   }
 }
 
-# strip whitespace
+setwd("U:/Github_blog/blog_posts_prep/character_network")
+write.table(transcripts, "gilmore_girls_transcripts.txt", row.names = F, col.names = T, sep = "\t")
 
-library(tidyr)
-transcripts <- separate(transcripts, "thepage", into = c("character", "dialogue"), sep = ":")
+
+transcripts$thepage <- as.character(transcripts$thepage)
+
+transcripts <- transcripts[!transcripts$thepage == "", ]
 
 head(transcripts)
 nrow(transcripts)
 
-characters <- as.data.frame(table(transcripts$character))
+
+library(tidyr)
+transcripts_2 <- separate(transcripts, "thepage", into = c("character", "dialogue"), sep = ":", extra = "merge", fill = "right")
+
+transcripts[650, ]
+transcripts[92582, ]
+
+transcripts_2[650, ]
+transcripts_2[92582, ]
+
+# remove leading and trailing whitespace
+transcripts_2$character <- gsub("^\\s+|\\s+$", "", transcripts_2$character)
+
+head(transcripts_2)
+nrow(transcripts_2)
+
+characters <- as.data.frame(table(transcripts_2$character))
 head(characters)
 
-head(count(transcripts, season, character))
-head(count(transcripts, episode, character))
+characters_with_most_lines <- characters[order(characters$Freq, decreasing = TRUE), ]
+head(characters_with_most_lines)
+
+transcripts_3 <- transcripts_2[which(transcripts_2$character %in% as.character(characters_with_most_lines$Var1[1:10])), ]
+
+head(transcripts_3)
+nrow(transcripts_3)
+
+characters <- as.data.frame(table(transcripts_3$character))
+head(characters)
+
+characters_by_season <- as.data.frame(with(transcripts_3, table(character, season)))
+head(characters_by_season)
+
+characters_by_episode <- as.data.frame(with(transcripts_3, table(character, episode)))
+head(characters_by_episode)
+
+
+library(reshape2)
+speaker_scene_matrix <- transcripts_3 %>%
+  acast(character ~ episode, fun.aggregate = length)
+
+tail(speaker_scene_matrix)
+
+
+norm <- speaker_scene_matrix / rowSums(speaker_scene_matrix)
+
+h <- hclust(dist(norm, method = "manhattan"))
+
+plot(h)
+
+ordering <- h$labels[h$order]
+ordering
+
+library(ggplot2)
+ggplot(transcripts_3, aes(episode, character)) +
+  geom_point() +
+  geom_path(aes(group = episode))
+
+head(transcripts_3)
+head(characters_by_episode)
+head(speaker_scene_matrix)
+
+heatmap(speaker_scene_matrix)
+
+library(WGCNA)
+#speaker_scene_matrix_2 <- ifelse(speaker_scene_matrix > 0, 1, 0)
+
+a <- adjacency(t(speaker_scene_matrix), type="distance")
+head(a)
+
+
+library(igraph)
+g <- graph.adjacency(a, weighted = TRUE, mode = "undirected", diag = FALSE)
+plot(g, edge.width = E(g)$weight)
+
+
+library('network')
+library('sna')
+library('ndtv')
+library('visNetwork')
+
+net <- simplify(g, remove.multiple = F, remove.loops = T)
+
+plot(net, edge.arrow.size=.4,, edge.color="orange",
+     vertex.color="orange", vertex.frame.color="#ffffff",
+     vertex.label=V(net)$media, vertex.label.color="black", edge.curved=.1)
+
+
+data_matrix <- as.matrix(t(speaker_scene_matrix))
+total_occurrences <- colSums(t(speaker_scene_matrix))
+
+co_occurrence <- t(data_matrix) %*% data_matrix
+
+library(igraph)
+g <- graph.adjacency(co_occurrence,
+                         weighted=TRUE,
+                         #mode="undirected",
+                         diag=FALSE,
+                         mode="upper")
+
+g <- simplify(g, remove.multiple = F, remove.loops = T, edge.attr.comb=c(weight="sum", type="ignore"))
+
+V(g)$name
+V(g)$gender <- c("female", "male", "female", "male", "female", "male", "female", "male", "female", "female")
+
+plot(g,
+     vertex.label=colnames(t(speaker_scene_matrix)),
+     vertex.label.family = "Helvetica",
+     vertex.label.font = 1,
+     vertex.shape = "sphere",
+     vertex.size=total_occurrences/500,
+     vertex.label.cex=0.8,
+     vertex.color=c( "pink", "skyblue")[1+(V(g)$gender=="male")],
+     vertex.label.color="black",
+     vertex.frame.color = NA,
+     edge.width=E(graph)$weight/500000,
+     edge.curved=.1,
+     layout=layout_in_circle)
+
+cfg <- cluster_fast_greedy(as.undirected(g))
+
+plot(cfg, as.undirected(g))
