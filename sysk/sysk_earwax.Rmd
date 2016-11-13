@@ -148,7 +148,7 @@ ggplot(data = get_nrc_sentiments_tokens_bg_gather, aes(x = value, y = value, col
     legend.position = "none",
     panel.grid.major = element_blank()) +
   geom_text_repel(segment.color = "aliceblue", segment.alpha = 0) +
-  labs(title = "Sentiment categories of words used in podcast")
+  labs(title = "Sentiment categories of words used in the podcast")
 ```
 
 As can be seen by the words and their associated emotions/ sentiments, sentiment analysis is not perfect. Most words make a lot of intuitive sense with their category (e.g. gross, fungus and spider in disgust), but a few I find to be really strange (like, why would waffle be associated with anger?). Still, the majority of categorisations make sense, so let's go ahead with the sentiment analysis.
@@ -668,7 +668,7 @@ p2 <- ggplot(subset(freq_df_gather, name != "background"), aes(x = characters, y
   geom_smooth(method = "lm", se = TRUE, size = 1, color = "black") +
   facet_grid(~ name) +
   theme(axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5)) +
-  labs(x = "Frequency of use (count)", y = "Word length",
+  labs(y = "Frequency of use (count)", x = "Word length",
        title = "Correlation between word length and frequency\nof use in Josh's and Chuck's lines") +
   geom_text_repel(data = subset(freq_df_gather, name != "background" & count > 25))
 ```

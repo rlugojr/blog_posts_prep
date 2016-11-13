@@ -1,208 +1,3 @@
----
-layout: post
-title: "Is "Yeah" Josh and Chuck's favorite word? - Text mining and sentiment analysis of a Stuff You Should Know Podcast"
-date: 2016-11-06
-categories: text_analysis
-tags: SYSK sentiment_analysis text_mining
----
-
-Is "Yeah" Josh and Chuck's favorite word?
-=========================================
-
-### Text mining and sentiment analysis of a Stuff You Should Know Podcast
-
-<br>
-
-[Stuff You Should Know](http://www.stuffyoushouldknow.com/) (or SYSK) is one of the many great podcasts from [How Stuff Works](http://www.howstuffworks.com/). The two SYSK hosts [Josh](http://www.stuffyoushouldknow.com/about-josh.htm) and [Chuck](http://www.stuffyoushouldknow.com/about-chuck.htm) have taught me so many fascinating things over the years, and today I want to use one of their podcasts to learn a little bit about text analysis in R.
-
-Inititally, I wanted to explore all SYSK podcasts. Unfortunately however, I could only find a transcript for the episode [Earwax: Live With It](http://www.stuffyoushouldknow.com/podcasts/earwax-live-with-it-2.htm), posted on March 19, 2015.
-
-<br>
-
-The complete R code can be found at the end of this post or as an R-Markdown on [Github](https://github.com/ShirinG/blog_posts_prep/blob/master/sysk/sysk_earwax.Rmd).
-
-<br>
-
-The podcast transcript
-----------------------
-
-I copied the episode transcript from its [web page](http://www.stuffyoushouldknow.com/podcasts/earwax-live-with-it-2.htm) and save it as a tab delimited text file. The file can be [downloaded from Github](https://github.com/ShirinG/blog_posts_prep/blob/master/sysk/sysk_earwax.transcript.txt).
-
-<br>
-
-Separating Josh and Chuck
--------------------------
-
-Of course, I wouldn't actually want to separate Josh and Chuck. But for comparison's sake in this analysis, I am creating two separate files for lines of dialogue spoken by Josh or Chuck. I am also keeping the combination of both for background information.
-
-<br>
-
-How emotional are Josh and Chuck?
----------------------------------
-
-### Sentiment analysis
-
-The first thing I want to explore is a sentiment analysis of the lines spoken by Josh and Chuck. Sentiment analysis categorizes text data into positive and negative sentiments and gives information about the emotional state or attitude of the speaker/ contents of a text.
-
-I am using the package [syuzhet](https://cran.r-project.org/web/packages/syuzhet/index.html) for sentiment analysis.
-
-<br>
-
-### NRC sentiments
-
-[Saif Mohammad’s NRC Emotion Lexicon](http://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm) is a collection of words that were manually categorized based on their association with the emotions anger, anticipation, disgust, fear, joy, sadness, surprise, and trust, and with positive and negative sentiments.
-
-<br>
-
-#### What sentiment did the podcast have?
-
-Before I go ahead with the sentiment analysis I want to get an idea of the podcast's words' association with the NRC categories.
-
-<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-6-1.png" style="display: block; margin: auto;" />
-
-As can be seen by the words and their associated emotions/ sentiments, sentiment analysis is not perfect. Most words make a lot of intuitive sense with their category (e.g. gross, fungus and spider in disgust), but a few I find to be really strange (like, why would waffle be associated with anger?). Still, the majority of categorisations make sense, so let's go ahead with the sentiment analysis.
-
-<br>
-
-#### Does the podcast's sentiment change over time?
-
-Sentiment analysis for each line of dialogue produces a matrix with one column per sentiment/ emotion and one row per line. If any of the words in a line of dialogue could be associated with a given category, this category would get a value of *1* in the matrix. If there was no association with a category, its value would be *0*. The lines of dialogue are sorted according to the original input text, in this case this means that they represent the order in which they were spoken in the podcast.
-Because the plot would get too big with all categories, I split the data into positive and negative sentiments and emotions.
-
-For analysing positive and negative sentiments, syuzhet implements four different methods, each of which uses a slightly different scale. But all of them assign negative values to indicate negative sentiment and positive values to indicate positive sentiments.
-
-All of the methods rely on a precomputed lexicon of word-sentiment score associations. The emotional or sentiment valence is then computed based on the scores of the words from each line of dialogue.
-
-<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-14-1.png" style="display: block; margin: auto;" />
-
-The upper two plots show on the x-axis the progression of dialogue over time with each point being a line of dialogue. The sentiment score on the y-axis shows the intensity of the sentiment/ emotions in the respective line of dialogue, i.e. the more words in a line were associated with the given category, the higher the line's sentiment score.
-
-From a first glance at these emotions and sentiments, it seems to me that the podcast is more positive than negative but we can get a better overview of positive and negative sentiments by comparing scoring only the sentiments.
-
-In the third graph we can see quite well that the trend goes towards positive scores, meaning the podcast is overall upbeat. While there are different peaks in both positive and negative directions in Chuck's and Josh's lines, there is no overall bias for one being more positive (or negative) than the other.
-
-Finally, I am looking at the sentiment percentage values to get an idea about the percentage of positive versus negative scores along the podcast's trajectory. Here, the podcast was divided into 20 bins and the mean sentiment valence calculated for each. This last plot shows a clear trend of increasing positivity towards the end of the podcast in Chuck's lines. Josh on the other hand doesn't change very much over the progression of the podcast. Interesting...
-
-<br>
-
-Quantitative text analysis
---------------------------
-
-### Building a corpus
-
-In text analysis, a corpus refers to a collection of documents. Here, I am using the [tm](https://cran.r-project.org/web/packages/tm/index.html) package to create my corpus from the character vectors of Josh's and Chuck's lines. [SnowballC](https://cran.r-project.org/web/packages/SnowballC/index.html) is used for word stemming.
-
-Before I can analyse the text data meaningfully, however, I have to do some pre-processing:
-
-1.  Removing punctuation
-
-    Here, I am removing all punctuation marks. Before I do that, I will transform all hypens to a space, because the text includes some words which are connected by hyphens and would otherwise be connected if I simply removed the hyphen with the removePunctuation function.
-
-2.  Transforming to lower case
-
-    R character string processing is case-sensitive, so everything will be converted to lower case
-
-3.  Stripping numbers
-
-    Numbers are usually not very meaningful for text analysis (if we are not specifically interested in dates, for example), so they are removed as well.
-
-4.  Removing stopwords
-
-    Stopwords are collections of very common words which by themselves don't tell us very much about the content of a text (e.g. and, but, the, however, etc.). The tm packages includes a list of stopwords for the English language.
-
-5.  Stripping whitespace
-
-    I'm also removing all superfluous whitespace around words.
-
-6.  Stemming
-
-    Finally, I'm stemming the words in the corpus. This means that words with a common root are shortened to this root. Even though stemming algorithms are not perfect, they allow us to compare conjugated words from the same origin.
-
-<br>
-
-### Creating the Document Term Matrix
-
-The document term matrix (DTM) lists the number of occurrences of each word per document in the corpus. Here, each *document* in the corpus represents one line of dialogue from the original transcript.
-
-By restricting the DTM to words to words with a minimum number of letters and an occurence in at least a minimum number lines of dialogue, we could exclude less specific terms.
-The term *Sparsity* tell us that 97% of the DTM are zeros.
-
-<br>
-
-### Is "Yeah" Josh and Chucks favorite word?
-
-#### Most frequent words
-
-By summing up the occurences of each word over all documents we get the word count frequencies.
-
-When accounting for stem words and the cutoff I set for the DTM to evaluate, Josh and Chuck spoke roughly the same number of words (Josh: 880, Chuck: 865) and had almost the same number of dialogue lines (Josh: 202, Chuck: 193). So, good job on neither one dominating the discussion. ;-)
-
-<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-24-1.png" style="display: block; margin: auto;" />
-
-The lefthand plot shows the number of words spoken per line of dialogue. The background barplot shows the mean number of words spoken per line, the boxplot shows all individual data points (each point represents one line of dialogue and its corresponding word count). While the total number of words and of dialogue lines were basically the same, Chuck's lines had a stronger deviation around them median with few very long lines. Josh on the other hand seems to have spoken lines with a more consistent length.
-
-The righthand plot shows the most common words and how often they were used overall (red) and by Josh and Chuck separately (green and blue). The most frequent words include (not surprisingly) *"ear"* and *"earwax"*, but funnily also *"yeah"*. To be honest, while listening to the podcast I never noticed *yeah* being said exceptionally frequent but I guess the data doesn't lie...
-
-<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-25-1.png" style="display: block; margin: auto;" />
-
-Wordclouds are another way to visualize the frequency of words. The frequency is indicated both by the size of the words (bigger words are more frequent than smaller words) and their color.
-
-<br>
-
-#### Word association
-
-Associations among words bigger than 60% were plotted in a heatmap to find words that most often co-occured.
-
-<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-27-1.png" style="display: block; margin: auto;" /><img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-27-2.png" style="display: block; margin: auto;" /><img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-27-3.png" style="display: block; margin: auto;" />
-
-Among the most conspicuous associations were cotton and swab in Josh's lines (this was probably a hyphenated word to begin with: *cotton-swab*) and between secret and gland in Chuck's line (probably secretory gland).
-
-<br>
-
-### Hierarchical clustering
-
-Hierarchical clustering can be used to classify words by sorting them into clusters according to similarity of occurence (i.e. their frequency or count).
-
-<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-29-1.png" style="display: block; margin: auto;" />
-
-We already knew that the words *"earwax"*, *"ear"* and *"yeah"* were the most common, so they were clustered accordingly.
-
-<br>
-
-### Knowledge for the masses
-
-#### Shorter words are more frequent than longer words
-
-<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-33-1.png" style="display: block; margin: auto;" />
-
-Most words have 4 or 5 letters, only a handful are longer than 7 letters. We don't have words with fewer than 3 letters because they were excluded in the beginning when obtaining the DTM.
-
-As we can see above, there is only a very small correlation between the length of words and how often they are used. As expected from what we intuitively know, the most common words tend to be shorter while long words are used only occasionally because they are often more specific terms. And there is no real difference between Josh or Chuck when it comes to the length (and complexity?) of the words they use. In general the words they use are rather on the short site, which makes sense as a big part of what makes their podcast so great is that they convey information in a down-to-earth, understandable way.
-
-The frequency plot of all the letters in the alphabet show that vocals are more common than consonants.
-
-<br>
-
-<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-35-1.png" style="display: block; margin: auto;" />
-
-The plot above shows how often each letter occurs at which position in a word in all the words used by Josh and Chuck. For example, the letter *j* occured only once and at position one (so 100% of *js* are at this position). The other letters are more equally distributed but according to the fact that fewer words were longer than 6 letters, there are fewer letters at positions 7 to 10.
-
-<br>
-
-Conclusion
-----------
-
-This little excursion into text analysis gave an interesting different look at a podcast one would normally "evaluate" intuitively while listening. This hard cold look through the data lens can highlight aspects that probably would be overlooked otherwise; for example, I never noticed that Josh and Chuck used the word *yeah* that much!
-
-It would be very interesting to broaden the analysis to more podcasts to see if the yeah-thing was just a fluke of this episode or whether it's a recurrent thing, maybe by trying speech-to-text-conversion tools.
-
-<br>
-
-------------------------------------------------------------------------
-
-R code
-======
-
 ``` r
 # setting my custom theme of choice
 library(ggplot2)
@@ -227,6 +22,30 @@ my_theme <- function(base_size = 12, base_family = "sans"){
 }
 ```
 
+<br>
+
+Is "Yeah" Josh and Chuck's favorite word?
+=========================================
+
+### Text mining and sentiment analysis of a Stuff You Should Know Podcast
+
+<br>
+
+[Stuff You Should Know](http://www.stuffyoushouldknow.com/) (or SYSK) is one of the many great podcasts from [How Stuff Works](http://www.howstuffworks.com/). The two SYSK hosts [Josh](http://www.stuffyoushouldknow.com/about-josh.htm) and [Chuck](http://www.stuffyoushouldknow.com/about-chuck.htm) have taught me so many fascinating things over the years, and today I want to use one of their podcasts to learn a little bit about text analysis in R.
+
+Inititally, I wanted to explore all SYSK podcasts. Unfortunately however, I could only find a transcript for the episode [Earwax: Live With It](http://www.stuffyoushouldknow.com/podcasts/earwax-live-with-it-2.htm), posted on March 19, 2015.
+
+<br>
+
+The complete R code can be found at the end of this post or as an R-Markdown on [Github](https://github.com/ShirinG/blog_posts_prep/blob/master/sysk/sysk_earwax.Rmd).
+
+<br>
+
+The podcast transcript
+----------------------
+
+I copied the episode transcript from its [web page](http://www.stuffyoushouldknow.com/podcasts/earwax-live-with-it-2.htm) and save it as a tab delimited text file. The file can be [downloaded from Github](https://github.com/ShirinG/blog_posts_prep/blob/master/sysk/sysk_earwax.transcript.txt).
+
 ``` r
 # reading lines of transcript
 raw <- readLines("sysk_earwax.transcript.txt")
@@ -239,6 +58,13 @@ head(raw)
     ## [4] ""                                                                                                                                             
     ## [5] "Josh: Yeah, like \"eh, what are we going to do? That's what we are.\""                                                                        
     ## [6] ""
+
+<br>
+
+Separating Josh and Chuck
+-------------------------
+
+Of course, I wouldn't actually want to separate Josh and Chuck. But for comparison's sake in this analysis, I am creating two separate files for lines of dialogue spoken by Josh or Chuck. I am also keeping the combination of both for background information.
 
 ``` r
 # extracting lines beginning with Josh:/ Chuck: from transcript by looping over the names
@@ -261,6 +87,23 @@ lines_bg <- c(lines_Josh, lines_Chuck)
 names <- c("Josh", "Chuck", "bg")
 ```
 
+<br>
+
+How emotional are Josh and Chuck?
+---------------------------------
+
+### Sentiment analysis
+
+The first thing I want to explore is a sentiment analysis of the lines spoken by Josh and Chuck. Sentiment analysis categorizes text data into positive and negative sentiments and gives information about the emotional state or attitude of the speaker/ contents of a text.
+
+I am using the package [syuzhet](https://cran.r-project.org/web/packages/syuzhet/index.html) for sentiment analysis.
+
+<br>
+
+### NRC sentiments
+
+[Saif Mohammad’s NRC Emotion Lexicon](http://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm) is a collection of words that were manually categorized based on their association with the emotions anger, anticipation, disgust, fear, joy, sadness, surprise, and trust, and with positive and negative sentiments.
+
 ``` r
 # get NRC sentiments for 
 # a) each line of dialogue and
@@ -276,6 +119,12 @@ for (name in names){
                                                                          get_nrc_sentiment(get_tokens)))
 }
 ```
+
+<br>
+
+#### What sentiment did the podcast have?
+
+Before I go ahead with the sentiment analysis I want to get an idea of the podcast's words' association with the NRC categories.
 
 ``` r
 # gather word sentiments for plotting
@@ -301,8 +150,20 @@ ggplot(data = get_nrc_sentiments_tokens_bg_gather, aes(x = value, y = value, col
     legend.position = "none",
     panel.grid.major = element_blank()) +
   geom_text_repel(segment.color = "aliceblue", segment.alpha = 0) +
-  labs(title = "Sentiment categories of words used in podcast")
+  labs(title = "Sentiment categories of words used in the podcast")
 ```
+
+<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-6-1.png" style="display: block; margin: auto;" />
+
+As can be seen by the words and their associated emotions/ sentiments, sentiment analysis is not perfect. Most words make a lot of intuitive sense with their category (e.g. gross, fungus and spider in disgust), but a few I find to be really strange (like, why would waffle be associated with anger?). Still, the majority of categorisations make sense, so let's go ahead with the sentiment analysis.
+
+<br>
+
+#### Does the podcast's sentiment change over time?
+
+Sentiment analysis for each line of dialogue produces a matrix with one column per sentiment/ emotion and one row per line. If any of the words in a line of dialogue could be associated with a given category, this category would get a value of *1* in the matrix. If there was no association with a category, its value would be *0*. The lines of dialogue are sorted according to the original input text, in this case this means that they represent the order in which they were spoken in the podcast.
+
+Because the plot would get too big with all categories, I split the data into positive and negative sentiments and emotions.
 
 ``` r
 get_nrc_sentiment_Josh_gather <- get_nrc_sentiment_Josh %>% 
@@ -347,6 +208,12 @@ p2 <- ggplot(data = get_nrc_sentiment_gather_neg, aes(x = line_number, y = value
   labs(x = "Dialogue line number", y = "Sentiment valence",
        title = "Sentiments during podcast progression (negative sentiments)")
 ```
+
+<br>
+
+For analysing positive and negative sentiments, syuzhet implements four different methods, each of which uses a slightly different scale. But all of them assign negative values to indicate negative sentiment and positive values to indicate positive sentiments.
+
+All of the methods rely on a precomputed lexicon of word-sentiment score associations. The emotional or sentiment valence is then computed based on the scores of the words from each line of dialogue.
 
 ``` r
 # get sentiment scores
@@ -433,6 +300,51 @@ library(grid)
 grid.arrange(p1, p2, p3, p4, ncol = 1)
 ```
 
+<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-14-1.png" style="display: block; margin: auto;" />
+
+The upper two plots show on the x-axis the progression of dialogue over time with each point being a line of dialogue. The sentiment score on the y-axis shows the intensity of the sentiment/ emotions in the respective line of dialogue, i.e. the more words in a line were associated with the given category, the higher the line's sentiment score.
+
+From a first glance at these emotions and sentiments, it seems to me that the podcast is more positive than negative but we can get a better overview of positive and negative sentiments by comparing scoring only the sentiments.
+
+In the third graph we can see quite well that the trend goes towards positive scores, meaning the podcast is overall upbeat. While there are different peaks in both positive and negative directions in Chuck's and Josh's lines, there is no overall bias for one being more positive (or negative) than the other.
+
+Finally, I am looking at the sentiment percentage values to get an idea about the percentage of positive versus negative scores along the podcast's trajectory. Here, the podcast was divided into 20 bins and the mean sentiment valence calculated for each. This last plot shows a clear trend of increasing positivity towards the end of the podcast in Chuck's lines. Josh on the other hand doesn't change very much over the progression of the podcast. Interesting...
+
+<br>
+
+Quantitative text analysis
+--------------------------
+
+### Building a corpus
+
+In text analysis, a corpus refers to a collection of documents. Here, I am using the [tm](https://cran.r-project.org/web/packages/tm/index.html) package to create my corpus from the character vectors of Josh's and Chuck's lines. [SnowballC](https://cran.r-project.org/web/packages/SnowballC/index.html) is used for word stemming.
+
+Before I can analyse the text data meaningfully, however, I have to do some pre-processing:
+
+1.  Removing punctuation
+
+    Here, I am removing all punctuation marks. Before I do that, I will transform all hypens to a space, because the text includes some words which are connected by hyphens and would otherwise be connected if I simply removed the hyphen with the removePunctuation function.
+
+2.  Transforming to lower case
+
+    R character string processing is case-sensitive, so everything will be converted to lower case
+
+3.  Stripping numbers
+
+    Numbers are usually not very meaningful for text analysis (if we are not specifically interested in dates, for example), so they are removed as well.
+
+4.  Removing stopwords
+
+    Stopwords are collections of very common words which by themselves don't tell us very much about the content of a text (e.g. and, but, the, however, etc.). The tm packages includes a list of stopwords for the English language.
+
+5.  Stripping whitespace
+
+    I'm also removing all superfluous whitespace around words.
+
+6.  Stemming
+
+    Finally, I'm stemming the words in the corpus. This means that words with a common root are shortened to this root. Even though stemming algorithms are not perfect, they allow us to compare conjugated words from the same origin.
+
 ``` r
 library(tm)
 data("crude")
@@ -496,6 +408,14 @@ corpus_bg
     ## Metadata:  corpus specific: 0, document level (indexed): 0
     ## Content:  documents: 453
 
+<br>
+
+### Creating the Document Term Matrix
+
+The document term matrix (DTM) lists the number of occurrences of each word per document in the corpus. Here, each *document* in the corpus represents one line of dialogue from the original transcript.
+
+By restricting the DTM to words to words with a minimum number of letters and an occurence in at least a minimum number lines of dialogue, we could exclude less specific terms.
+
 ``` r
 #  but here I will keep them all to make the numbers comparable to background later
 for (name in names){
@@ -531,6 +451,16 @@ dtm_bg
     ## Sparsity           : 98%
     ## Maximal term length: 10
     ## Weighting          : term frequency (tf)
+
+The term *Sparsity* tell us that 97% of the DTM are zeros.
+
+<br>
+
+### Is "Yeah" Josh and Chucks favorite word?
+
+#### Most frequent words
+
+By summing up the occurences of each word over all documents we get the word count frequencies.
 
 ``` r
 # get word frequencies from DTM
@@ -605,6 +535,8 @@ word_count
     ## 1  Josh              880          202       4.356436
     ## 2 Chuck              865          193       4.481865
 
+When accounting for stem words and the cutoff I set for the DTM to evaluate, Josh and Chuck spoke roughly the same number of words (Josh: 880, Chuck: 865) and had almost the same number of dialogue lines (Josh: 202, Chuck: 193). So, good job on neither one dominating the discussion. ;-)
+
 ``` r
 p1 <- ggplot(words_per_doc, aes(x = name, y = wordcount, fill = name)) +
   geom_bar(data = word_count, aes(x = name, y = words_per_line, fill = name), stat = "identity", alpha = .5) + 
@@ -666,6 +598,12 @@ p2 <- ggplot(freq_df_subs_gather, aes(x = words, y = count, fill = name)) +
 grid.arrange(p1, p2, widths = c(0.3, 0.7), ncol = 2)
 ```
 
+<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-24-1.png" style="display: block; margin: auto;" />
+
+The lefthand plot shows the number of words spoken per line of dialogue. The background barplot shows the mean number of words spoken per line, the boxplot shows all individual data points (each point represents one line of dialogue and its corresponding word count). While the total number of words and of dialogue lines were basically the same, Chuck's lines had a stronger deviation around them median with few very long lines. Josh on the other hand seems to have spoken lines with a more consistent length.
+
+The righthand plot shows the most common words and how often they were used overall (red) and by Josh and Chuck separately (green and blue). The most frequent words include (not surprisingly) *"ear"* and *"earwax"*, but funnily also *"yeah"*. To be honest, while listening to the podcast I never noticed *yeah* being said exceptionally frequent but I guess the data doesn't lie...
+
 ``` r
 library(wordcloud)
 
@@ -681,6 +619,16 @@ text(x=0.5, y=0.5, "Chuck:", cex = 2)
 wordcloud(names(freq_dtm_Josh), freq_dtm_Josh, min.freq = 8, colors = rev(brewer.pal(8, "Spectral")))
 wordcloud(names(freq_dtm_Chuck), freq_dtm_Chuck, min.freq = 8, colors = rev(brewer.pal(8, "Spectral")))
 ```
+
+<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-25-1.png" style="display: block; margin: auto;" />
+
+Wordclouds are another way to visualize the frequency of words. The frequency is indicated both by the size of the words (bigger words are more frequent than smaller words) and their color.
+
+<br>
+
+#### Word association
+
+Associations among words bigger than 60% were plotted in a heatmap to find words that most often co-occured.
 
 ``` r
 library(dplyr)
@@ -732,6 +680,16 @@ for (name in names){
 }
 ```
 
+<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-27-1.png" style="display: block; margin: auto;" /><img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-27-2.png" style="display: block; margin: auto;" /><img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-27-3.png" style="display: block; margin: auto;" />
+
+Among the most conspicuous associations were cotton and swab in Josh's lines (this was probably a hyphenated word to begin with: *cotton-swab*) and between secret and gland in Chuck's line (probably secretory gland).
+
+<br>
+
+### Hierarchical clustering
+
+Hierarchical clustering can be used to classify words by sorting them into clusters according to similarity of occurence (i.e. their frequency or count).
+
 ``` r
 library(ggdendro)
 
@@ -767,6 +725,16 @@ ggplot() +
   labs(title = "Hierarchical clustering dendrograms of words with at least 10 occurences")
 ```
 
+<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-29-1.png" style="display: block; margin: auto;" />
+
+We already knew that the words *"earwax"*, *"ear"* and *"yeah"* were the most common, so they were clustered accordingly.
+
+<br>
+
+### Knowledge for the masses
+
+#### Shorter words are more frequent than longer words
+
 ``` r
 freq_df$characters <- nchar(freq_df$words)
   
@@ -791,7 +759,7 @@ p2 <- ggplot(subset(freq_df_gather, name != "background"), aes(x = characters, y
   geom_smooth(method = "lm", se = TRUE, size = 1, color = "black") +
   facet_grid(~ name) +
   theme(axis.text.x = element_text(angle = 0, vjust = 0, hjust = 0.5)) +
-  labs(x = "Frequency of use (count)", y = "Word length",
+  labs(y = "Frequency of use (count)", x = "Word length",
        title = "Correlation between word length and frequency\nof use in Josh's and Chuck's lines") +
   geom_text_repel(data = subset(freq_df_gather, name != "background" & count > 25))
 ```
@@ -819,6 +787,16 @@ p3 <- ggplot(letters_tab, aes(x = interval, y = percent)) +
 ``` r
 grid.arrange(p1, p2, p3, widths = c(0.2, 0.5, 0.3), ncol = 3)
 ```
+
+<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-33-1.png" style="display: block; margin: auto;" />
+
+Most words have 4 or 5 letters, only a handful are longer than 7 letters. We don't have words with fewer than 3 letters because they were excluded in the beginning when obtaining the DTM.
+
+As we can see above, there is only a very small correlation between the length of words and how often they are used. As expected from what we intuitively know, the most common words tend to be shorter while long words are used only occasionally because they are often more specific terms. And there is no real difference between Josh or Chuck when it comes to the length (and complexity?) of the words they use. In general the words they use are rather on the short site, which makes sense as a big part of what makes their podcast so great is that they convey information in a down-to-earth, understandable way.
+
+The frequency plot of all the letters in the alphabet show that vocals are more common than consonants.
+
+<br>
 
 ``` r
 letters_df <- as.data.frame(letters)
@@ -858,6 +836,28 @@ ggplot(data = subset(letters_df_table_gather, !is.infinite(value)), aes(x = lett
   labs(x = "", y = "Position",
        title = "How often does each letter occur\nat which position in a word?")
 ```
+
+<img src="sysk_earwax_files/figure-markdown_github/unnamed-chunk-35-1.png" style="display: block; margin: auto;" />
+
+The plot above shows how often each letter occurs at which position in a word in all the words used by Josh and Chuck. For example, the letter *j* occured only once and at position one (so 100% of *js* are at this position). The other letters are more equally distributed but according to the fact that fewer words were longer than 6 letters, there are fewer letters at positions 7 to 10.
+
+<br>
+
+Conclusion
+----------
+
+This little excursion into text analysis gave an interesting different look at a podcast I normally "evaluate" intuitively while listening.
+
+It would be very interesting to broaden the analysis to include more transcripts, maybe by trying speech-to-text-conversion.
+
+<br>
+
+------------------------------------------------------------------------
+
+R code
+======
+
+------------------------------------------------------------------------
 
 ``` r
 sessionInfo()

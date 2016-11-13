@@ -1,0 +1,90 @@
+---
+title: "Gilmore Girls transcript analysis with R - Part 2"
+author: "Dr. Shirin Glander"
+date: '`r Sys.Date()`'
+output: html_document
+---
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE}
+transcripts <- read.table("gilmore_girls_transcripts.txt", header = TRUE)
+
+transcripts$thepage <- as.character(transcripts$thepage)  # convert to character vector
+transcripts <- transcripts[!transcripts$thepage == "", ]  # remove empty lines
+
+# separate first column after first colon
+library(tidyr)
+transcripts_2 <- separate(transcripts, "thepage", into = c("character", "dialogue"), sep = ":", extra = "merge", fill = "right")
+
+# remove leading and trailing whitespace
+transcripts_2$character <- gsub("^\\s+|\\s+$", "", transcripts_2$character)
+
+# convert all character names to all upper case
+transcripts_2$character <- toupper(transcripts_2$character)
+
+# fix misspelled character names
+transcripts_2$character <- gsub("ZACK", "ZACH", transcripts_2$character)
+transcripts_2$character <- gsub("LORLEAI", "LORELAI", transcripts_2$character)
+transcripts_2$character <- gsub("LOREALI", "LORELAI", transcripts_2$character)
+transcripts_2$character <- gsub("LORELI", "LORELAI", transcripts_2$character)
+transcripts_2$character <- gsub("LORLAI", "LORELAI", transcripts_2$character)
+transcripts_2$character <- gsub("LORELA$", "LORELAI", transcripts_2$character)
+transcripts_2$character <- gsub("LORLELAI", "LORELAI", transcripts_2$character)
+transcripts_2$character <- gsub("^ORELAI", "LORELAI", transcripts_2$character)
+transcripts_2$character <- gsub("LOREAI", "LORELAI", transcripts_2$character)
+transcripts_2$character <- gsub("LUK$", "LUKE", transcripts_2$character)
+transcripts_2$character <- gsub("BABETE", "BABETTE", transcripts_2$character)
+transcripts_2$character <- gsub("BABETTER", "BABETTE", transcripts_2$character)
+transcripts_2$character <- gsub("BARBETTE", "BABETTE", transcripts_2$character)
+transcripts_2$character <- gsub("BABETTE/MISS PATTY", "BABETTE AND MISS PATTY", transcripts_2$character)
+transcripts_2$character <- gsub("TAYOR", "TAYLOR", transcripts_2$character)
+transcripts_2$character <- gsub("TRISTIN", "TRISTAN", transcripts_2$character)
+transcripts_2$character <- gsub("MICHE$", "MICHEL", transcripts_2$character)
+transcripts_2$character <- gsub("MICHELL", "MICHEL", transcripts_2$character)
+transcripts_2$character <- gsub("SOOKI$", "SOOKIE", transcripts_2$character)
+transcripts_2$character <- gsub("SOOKEI", "SOOKIE", transcripts_2$character)
+transcripts_2$character <- gsub("SOOKIES", "SOOKIE", transcripts_2$character)
+transcripts_2$character <- gsub("Mrs.KIM", "MRS KIM", transcripts_2$character)
+transcripts_2$character <- gsub("RICHRAD", "RICHARD", transcripts_2$character)
+transcripts_2$character <- gsub("RMILY", "EMILY", transcripts_2$character)
+transcripts_2$character <- gsub("CHRISTOHPER", "CHRISTOPHER", transcripts_2$character)
+transcripts_2$character <- gsub("CHRISTOPER", "CHRISTOPHER", transcripts_2$character)
+transcripts_2$character <- gsub("CHRSTOPHER", "CHRISTOPHER", transcripts_2$character)
+transcripts_2$character <- gsub("CHRIS$", "CHRISTOPHER", transcripts_2$character)
+
+# substitute &#146; with apostrophe
+transcripts_2$character <- gsub("&#146;", "'", transcripts_2$character)
+
+# some ANDs are written as &AMP; so they will be changed as well
+transcripts_2$character <- gsub("&AMP;", "AND", transcripts_2$character)
+
+# and finally I want ANDs to be written as semicolons
+transcripts_2$character <- gsub(" AND ", ";", transcripts_2$character)
+
+#  and remove disclaimer lines
+transcripts_2 <- transcripts_2[-which(transcripts_2$character == "DISCLAIMER"), ] 
+
+library(splitstackshape)
+transcripts_2 <- cSplit(transcripts_2, splitCols = "character", sep = ";", direction = "long")
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+head(transcripts_2)
+```
+
+
+<br>
+
+## How often do they talk about coffee? And who?
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+coffee <- transcripts_2[grep("coffee", transcripts_2$dialogue), ]
+nrow(coffee)
+```
+
+<br>
+
+-----------------
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+sessionInfo()
+```

@@ -12,7 +12,8 @@ It is saved as a .json file and can be loaded with the [jsonlite](https://cran.r
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
 library(jsonlite)
-system.time(x <- fromJSON("U:/Github_blog/Takeout/Standortverlauf/Standortverlauf.json"))
+#system.time(x <- fromJSON("U:/Github_blog/Takeout/Standortverlauf/Standortverlauf.json"))
+system.time(x <- fromJSON("~/Documents/Github/Standortverlauf.json"))
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
@@ -206,3 +207,10 @@ head(activities_2)
 ggplot(activities_2, aes(x = main_activity, group = main_activity, fill = main_activity)) + geom_bar()  + my_theme()
 ```
 
+<br>
+
+-----------------
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+sessionInfo()
+```
