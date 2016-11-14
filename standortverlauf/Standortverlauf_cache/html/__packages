@@ -2,3 +2,7 @@ base
 jsonlite
 ggplot2
 ggmap
+lubridate
+zoo
+sp
+raster
