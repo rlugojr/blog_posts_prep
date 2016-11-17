@@ -50,6 +50,7 @@ transcripts_2$character <- gsub("CHRISTOHPER", "CHRISTOPHER", transcripts_2$char
 transcripts_2$character <- gsub("CHRISTOPER", "CHRISTOPHER", transcripts_2$character)
 transcripts_2$character <- gsub("CHRSTOPHER", "CHRISTOPHER", transcripts_2$character)
 transcripts_2$character <- gsub("CHRIS$", "CHRISTOPHER", transcripts_2$character)
+transcripts_2$character <- gsub("MR. MEDINA", "MAX", transcripts_2$character)
 
 # substitute &#146; with apostrophe
 transcripts_2$character <- gsub("&#146;", "'", transcripts_2$character)
@@ -65,26 +66,232 @@ transcripts_2 <- transcripts_2[-which(transcripts_2$character == "DISCLAIMER"), 
 
 library(splitstackshape)
 transcripts_2 <- cSplit(transcripts_2, splitCols = "character", sep = ";", direction = "long")
-```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
-head(transcripts_2)
+# separating all rows where multiple characters spoke into one line per character with duplicate line text
+library(splitstackshape)
+transcripts_2 <- cSplit(transcripts_2, splitCols = "character", sep = ";", direction = "long")
 ```
-
 
 <br>
 
 ## How often do they talk about coffee? And who?
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
-coffee <- transcripts_2[grep("coffee", transcripts_2$dialogue), ]
-nrow(coffee)
+names <- c("LORELAI", "RORY", "LUKE", "SOOKIE", "LANE", "PARIS")
+transcripts_2$dialogue <- gsub("&#146;", "'", transcripts_2$dialogue)
+
+for (name in names){
+  assign(paste("lines", name, sep = "_"), transcripts_2[grep(paste0(name), transcripts_2$character), ])
+}
+
+lines_OTHER <- transcripts_2[!grepl("LORELAI|RORY|LUKE|SOOKIE|LANE|PARIS", transcripts_2$character), ]
+
+names <- c(names, "OTHER")
 ```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+for (name in names){
+  df <- get(paste("lines", name, sep = "_"))
+  assign(paste("coffee", name, sep = "_"), df[grep("coffee", df$dialogue), ])
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+nrow(lines_LORELAI)
+nrow(lines_RORY)
+nrow(lines_LUKE)
+nrow(lines_SOOKIE)
+nrow(lines_LANE)
+nrow(lines_PARIS)
+nrow(lines_OTHER)
+
+nrow(coffee_LORELAI)
+nrow(coffee_RORY)
+nrow(coffee_LUKE)
+nrow(coffee_SOOKIE)
+nrow(coffee_LANE)
+nrow(coffee_PARIS)
+nrow(coffee_OTHER)
+
+
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+library(dplyr)
+
+for (name in names){
+  lines_p_ep <- get(paste("lines", name, sep = "_"))
+  lines_p_ep <- as.data.frame(table(lines_p_ep$episode))
+  
+  df <- get(paste("coffee", name, sep = "_"))
+  df_2 <- as.data.frame(table(df$episode))
+  
+  coffee_lines_p_ep <- full_join(lines_p_ep, df_2, by = "Var1")
+  coffee_lines_p_ep$coffee_p_ep <- coffee_lines_p_ep$Freq.y/coffee_lines_p_ep$Freq.x
+  
+  coffee_lines_p_ep$Season <- gsub("_.*", "", lines_p_ep$Var1)
+  coffee_lines_p_ep$character <- paste(name)
+  
+  assign(paste("coffee_lines_p_ep", name, sep = "_"), coffee_lines_p_ep)
+}
+
+coffee_df <- rbind(coffee_lines_p_ep_LORELAI, coffee_lines_p_ep_RORY, coffee_lines_p_ep_LUKE, coffee_lines_p_ep_SOOKIE, 
+                   coffee_lines_p_ep_LANE, coffee_lines_p_ep_PARIS)
+
+library(tidyr)
+
+coffee_df_gather <- coffee_df[, -2] %>% 
+  gather(group, value, Freq.y:coffee_p_ep)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+library(ggplot2)
+
+my_theme <- function(base_size = 12, base_family = "sans"){
+  theme_grey(base_size = base_size, base_family = base_family) +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5),
+    axis.title = element_text(size = 14),
+    panel.grid.major = element_line(color = "grey"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "aliceblue"),
+    strip.background = element_rect(fill = "lightgrey", color = "grey", size = 1),
+    strip.text = element_text(face = "bold", size = 12, color = "black"),
+    legend.position = "bottom",
+    legend.justification = "top", 
+    legend.box = "horizontal",
+    legend.box.margin = margin(3, 3, 3, 3, "mm"), 
+    legend.margin = margin(),
+    legend.box.background = element_rect(colour = "grey50"),
+    legend.background = element_blank(),
+    panel.margin = unit(.5, "lines"),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5)
+  )
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 8, fig.height = 8, fig.align = "center"}
+coffee_df_gather[which(coffee_df_gather$group == "Freq.y"), "group"] <- "Counts per episode"
+coffee_df_gather[which(coffee_df_gather$group == "coffee_p_ep"), "group"] <- "Ratio per episode"
+
+ggplot(data = coffee_df_gather, aes(x = character, y = value, fill = Season)) +
+  geom_boxplot(alpha = 0.4) +
+  labs(
+    x = "",
+    y = "Number of lines",
+    title = "Boxplot of coffee mentions per episode and character",
+    subtitle = "Boxplot of coffee mentions per episode and character",
+    caption = "Boxplot of coffee mentions per episode and character"
+  ) +
+  my_theme() +
+  facet_wrap(~ group, ncol = 1, scales = "free") +
+  guides(fill = guide_legend(nrow = 1, byrow = TRUE))
+```
+
+
+
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+library(tm)
+data("crude")
+library(SnowballC)
+
+transform_to_space <- content_transformer(function(x, pattern) gsub(pattern, " ", x))
+
+for (name in names){
+  lines <- get(paste("lines", name, sep = "_"))$dialogue
+  
+  corpus <- Corpus(VectorSource(lines))
+
+  # Removing punctuation
+  corpus <- tm_map(corpus, transform_to_space, "-")
+  corpus <- tm_map(corpus, removePunctuation)
+  
+  # Transforming to lower case
+  corpus <- tm_map(corpus, content_transformer(tolower))
+    
+  # Stripping numbers
+  corpus <- tm_map(corpus, removeNumbers)
+    
+  # Removing stopwords
+  corpus <- tm_map(corpus, removeWords, stopwords("english"))
+  
+  # Stripping whitespace
+  corpus <- tm_map(corpus, stripWhitespace)
+  
+  # Assigning to object and treat as text document
+  assign(paste("corpus", name, sep = "_"), tm_map(corpus, PlainTextDocument))
+}
+
+corpus_LORELAI
+corpus_RORY
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+for (name in names){
+  assign(paste("dtm", name, sep = "_"), DocumentTermMatrix(get(paste("corpus", name, sep = "_"))))
+}
+
+dtm_LORELAI
+dtm_RORY
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+# get word frequencies from DTM
+for (name in names){
+  assign(paste("freq_dtm", name, sep = "_"), colSums(as.matrix(get(paste("dtm", name, sep = "_")))))
+}
+
+head(sort(freq_dtm_LORELAI, decreasing = TRUE))
+head(sort(freq_dtm_RORY, decreasing = TRUE))
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+# find strongest associations with "coffee"
+for (name in names){
+  assign(paste("coffee_assoc", name, sep = "_"), findAssocs(get(paste("dtm", name, sep = "_")), "coffee", 0))
+}
+
+head(sort(coffee_assoc_LORELAI$coffee, decreasing = TRUE))
+head(sort(coffee_assoc_RORY$coffee, decreasing = TRUE))
+```
+
+<br>
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+dtm_LORELAI_df<- as.data.frame(as.matrix(dtm_LORELAI))
+dtm_RORY_df <- as.data.frame(as.matrix(dtm_RORY))
+
+area1 = length(unique(colnames(dtm_LORELAI_df)))
+area2 = length(unique(colnames(dtm_RORY_df)))
+cross.area = length(unique(which(colnames(dtm_LORELAI_df) %in% colnames(dtm_RORY_df))))
+
+library(VennDiagram)
+venn.plot <- draw.pairwise.venn(area1, area2, cross.area,
+                   category = c("LORELAI", "RORY"),
+                   euler.d = TRUE, 
+                   scaled = TRUE, 
+                   inverted = FALSE,
+                   lwd = rep(2, 2),
+                   lty = rep(2, 2), 
+                   col = rep("black", 2),
+                   fill = c("red", "lightblue"), 
+                   alpha = c(0.25, 0.5), 
+                   label.col = rep("black", 3), 
+                   cex = rep(1, 3), 
+                   fontface = rep("plain", 3), 
+                   fontfamily = rep("serif", 3),
+                   cat.cex = rep(0.8, 2))
+grid.draw(venn.plot);
+grid.newpage();
+```
+
 
 <br>
 
 -----------------
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
 sessionInfo()
 ```
