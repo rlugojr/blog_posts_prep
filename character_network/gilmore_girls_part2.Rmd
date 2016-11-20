@@ -1,13 +1,13 @@
 ---
-title: "Gilmore Girls coffee addiction analysis with R"
+title: "A Gilmore Girls coffee addiction analysis with R"
 author: "Dr. Shirin Glander"
 date: '`r Sys.Date()`'
 output: html_document
 ---
 
-Last week's showed how to create a [character network with Gilmore Girls transcripts](https://shiring.github.io/text_analysis/2016/11/13/gilmore_girls_part1_post).
+Last week's post showed how to create a [Gilmore Girls character network](https://shiring.github.io/text_analysis/2016/11/13/gilmore_girls_part1_post).
 
-This week I want to explore the Gilmore Girls famous coffee addiction by analysing the same transcripts.
+This week I want to explore the Gilmore Girls' famous coffee addiction by analysing the same episode transcripts that were also used last week.
 
 I am also showcasing how to use the [recently updated ggplot2 2.2.0](https://blog.rstudio.org/2016/11/14/ggplot2-2-2-0/).
 
@@ -93,7 +93,7 @@ transcripts_2$dialogue <- gsub("&#146;", "'", transcripts_2$dialogue)
 
 ## How often do they talk about coffee?
 
-The first question I want to explore is how often Lorelai, Rory, Luke, Sookie, Lane and Paris talk about coffee. For this, I am subsetting the lines of these characters to those, in which they talk about coffee (i.e. that include the word "coffee" at least once). I then created a plot showing how often they talk about coffee per episode and season.
+The first question I want to explore is how often Lorelai, Rory, Luke, Sookie, Lane and Paris talked about coffee. For this, I subsetted the lines of these characters to where they talk about coffee (i.e. lines that include the word "coffee" at least once). I then created a plot showing how often they talk about coffee per episode and season.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
 # set names
@@ -186,7 +186,7 @@ ggplot(data = coffee_df_gather, aes(x = character, y = value, color = Season, fi
   labs(
     x = "",
     y = "Number or ratio of lines",
-    title = "Lorelai - the coffee queen",
+    title = "Lorelai & Luke are the coffee queen and king",
     subtitle = "Coffee mentions per episode and season",
     caption = "\nThese boxplots show the number of total lines per episode and season, lines with coffee mentions per epsiode and season,
      as well as the ratio between the two for the main characters Lorelai, Rory, Luke, Sookie, Lane and Paris. Lorelai consistently had
@@ -208,41 +208,99 @@ ggplot(data = coffee_df_gather, aes(x = character, y = value, color = Season, fi
 
 <br>
 
-The differences we seen in coffee mentions between characters are of course somewhat biased by differences in the total number of lines of each character in the respective episodes, as well by the length of the episodes.
+The differences in coffee mention between characters are of course somewhat biased by differences in the total number of lines of each character in the respective episodes, as well by the length of the episodes.
+
+This led me to wonder what proportion of each episode was occupied by which character.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
 # calculate number of lines in total
 for (name in names){
   lines_p_ep <- get(paste("lines", name, sep = "_"))
-  lines_p_ep <- as.data.frame(table(lines_p_ep_pre$episode))
+  lines_p_ep <- as.data.frame(table(lines_p_ep$episode))
 
   lines_p_ep$character <- paste(name)
   
   assign(paste("lines_p_ep", name, sep = "_"), lines_p_ep)
 }
 
+# combine and convert to wide format to make calculating proportions easier
 lines_df_wide <- spread(rbind(lines_p_ep_LORELAI, lines_p_ep_RORY, lines_p_ep_LUKE, lines_p_ep_SOOKIE, 
                               lines_p_ep_LANE, lines_p_ep_PARIS, lines_p_ep_OTHER), Var1, Freq)
 rownames(lines_df_wide) <- lines_df_wide[, 1]
 lines_df_wide <- as.data.frame(t(lines_df_wide[, -1]))
 
-prop_lines_df_wide <- sweep(lines_df_wide, 1, rowSums(lines_df_wide), FUN="/")
+# calculate proportions and percentage
+prop_lines_df_wide <- sweep(lines_df_wide, 1, rowSums(lines_df_wide), FUN = "/")
 percent_lines_df_wide <- prop_lines_df_wide * 100
 percent_lines_df_wide$Episode <- rownames(percent_lines_df_wide)
 percent_lines_df_wide$Season <- gsub("_.*", "", percent_lines_df_wide$Episode)
-                      
+
+# gather for plotting
 percent_lines_df_gather <- percent_lines_df_wide %>% 
   gather(Character, Percent, LANE:SOOKIE)
-```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 14, fig.height = 23, fig.align = "center"}
 percent_lines_df_gather$Character <- factor(percent_lines_df_gather$Character, levels = names)
 percent_lines_df_gather <- merge(percent_lines_df_gather, subset(lines_LORELAI, select = c(episode, episode_running_nr)), by.x = "Episode", by.y = "episode")
+```
 
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 23, fig.align = "center"}
+percent_lines_df_gather$Episode <- factor(percent_lines_df_gather$Episode, levels = percent_lines_df_gather[order(percent_lines_df_gather$episode_running_nr, decreasing = TRUE), "Episode"])
+percent_lines_df_gather <- percent_lines_df_gather[!duplicated(percent_lines_df_gather), ]
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 7, fig.align = "center"}
+ggplot(data = percent_lines_df_gather, aes(x = Character, y = Percent, fill = Season)) +
+  geom_boxplot(alpha = 0.5) +
+  labs(
+    x = "",
+    y = "Percent",
+    title = "Who's the biggest talker? (a)",
+    subtitle = "Percentage of lines per episode spoken by main characters",
+    caption = "\nThe boxplot shows the percentages of lines spoken by the main characters per episode and season.
+    In the first three seasons the majority of lines are clearly spoken by Lorelai and Rory, followed with some distance by Luke.
+    During the later seasons, the gap between Lorelai, Rory and the rest is not as pronounced any more."
+  ) +
+  my_theme() +
+  facet_wrap(~ Season, ncol = 4, scales = "free") +
+  guides(fill = guide_legend(nrow = 1, byrow = TRUE)) +
+  scale_fill_brewer(palette = "Dark2") +
+  scale_color_brewer(palette = "Dark2")
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
+# calculate number of lines in total
+for (name in names){
+  lines_p_season <- get(paste("lines", name, sep = "_"))
+  lines_p_season <- as.data.frame(table(lines_p_season$season))
+
+  lines_p_season$character <- paste(name)
+  
+  assign(paste("lines_p_season", name, sep = "_"), lines_p_season)
+}
+
+# combine and convert to wide format to make calculating proportions easier
+lines_df_wide <- spread(rbind(lines_p_season_LORELAI, lines_p_season_RORY, lines_p_season_LUKE, lines_p_season_SOOKIE, 
+                              lines_p_season_LANE, lines_p_season_PARIS, lines_p_season_OTHER), Var1, Freq)
+rownames(lines_df_wide) <- lines_df_wide[, 1]
+lines_df_wide <- as.data.frame(t(lines_df_wide[, -1]))
+
+# calculate proportions and percentage
+prop_lines_df_wide <- sweep(lines_df_wide, 1, rowSums(lines_df_wide), FUN = "/")
+percent_lines_df_wide <- prop_lines_df_wide * 100
+percent_lines_df_wide$Season <- rownames(percent_lines_df_wide)
+
+# gather for plotting
+percent_lines_df_gather <- percent_lines_df_wide %>%
+  gather(Character, Percent, LANE:SOOKIE)
+
+percent_lines_df_gather$Character <- factor(percent_lines_df_gather$Character, levels = names)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
 # plot
 bp <- ggplot(percent_lines_df_gather, aes(x = "", y = Percent, fill = Character)) + 
   geom_bar(width = 1, stat = "identity") + theme_minimal() +
-  scale_fill_brewer(palette="Spectral")
+  scale_fill_brewer(palette = "Spectral")
 
 pie <- bp + coord_polar("y", start = 0) +
   theme(
@@ -253,118 +311,19 @@ pie <- bp + coord_polar("y", start = 0) +
   axis.ticks = element_blank(),
   plot.title = element_text(size = 14, face = "bold"),
   legend.title = element_blank(),
-  legend.position = "top",
+  legend.position = "bottom",
   legend.text = element_text(size = 8),
   legend.justification = "top", 
     legend.box = "horizontal",
     legend.box.background = element_rect(colour = "grey50"),
     legend.background = element_blank(),
   ) + guides(fill = guide_legend(nrow = 1, byrow = TRUE))
-pie + facet_wrap( ~ Episode, ncol = 11) +
+
+pie + facet_wrap( ~ Season, ncol = 4) +
   labs(
-    title = "Who's the biggest talker?",
-    subtitle = "Proportion of lines per episode for main characters")
+    title = "Who's the biggest talker? (b)",
+    subtitle = "Percent of lines per season spoken by main characters")
 ```
-
----
-
-<br>
-
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
-library(tm)
-data("crude")
-library(SnowballC)
-
-transform_to_space <- content_transformer(function(x, pattern) gsub(pattern, " ", x))
-
-for (name in names){
-  lines <- get(paste("lines", name, sep = "_"))$dialogue
-  
-  corpus <- Corpus(VectorSource(lines))
-
-  # Removing punctuation
-  corpus <- tm_map(corpus, transform_to_space, "-")
-  corpus <- tm_map(corpus, removePunctuation)
-  
-  # Transforming to lower case
-  corpus <- tm_map(corpus, content_transformer(tolower))
-    
-  # Stripping numbers
-  corpus <- tm_map(corpus, removeNumbers)
-    
-  # Removing stopwords
-  corpus <- tm_map(corpus, removeWords, stopwords("english"))
-  
-  # Stripping whitespace
-  corpus <- tm_map(corpus, stripWhitespace)
-  
-  # Assigning to object and treat as text document
-  assign(paste("corpus", name, sep = "_"), tm_map(corpus, PlainTextDocument))
-}
-
-corpus_LORELAI
-corpus_RORY
-```
-
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
-for (name in names){
-  assign(paste("dtm", name, sep = "_"), DocumentTermMatrix(get(paste("corpus", name, sep = "_"))))
-}
-
-dtm_LORELAI
-dtm_RORY
-```
-
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
-# get word frequencies from DTM
-for (name in names){
-  assign(paste("freq_dtm", name, sep = "_"), colSums(as.matrix(get(paste("dtm", name, sep = "_")))))
-}
-
-head(sort(freq_dtm_LORELAI, decreasing = TRUE))
-head(sort(freq_dtm_RORY, decreasing = TRUE))
-```
-
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
-# find strongest associations with "coffee"
-for (name in names){
-  assign(paste("coffee_assoc", name, sep = "_"), findAssocs(get(paste("dtm", name, sep = "_")), "coffee", 0))
-}
-
-head(sort(coffee_assoc_LORELAI$coffee, decreasing = TRUE))
-head(sort(coffee_assoc_RORY$coffee, decreasing = TRUE))
-```
-
-<br>
-
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
-dtm_LORELAI_df<- as.data.frame(as.matrix(dtm_LORELAI))
-dtm_RORY_df <- as.data.frame(as.matrix(dtm_RORY))
-
-area1 = length(unique(colnames(dtm_LORELAI_df)))
-area2 = length(unique(colnames(dtm_RORY_df)))
-cross.area = length(unique(which(colnames(dtm_LORELAI_df) %in% colnames(dtm_RORY_df))))
-
-library(VennDiagram)
-venn.plot <- draw.pairwise.venn(area1, area2, cross.area,
-                   category = c("LORELAI", "RORY"),
-                   euler.d = TRUE, 
-                   scaled = TRUE, 
-                   inverted = FALSE,
-                   lwd = rep(2, 2),
-                   lty = rep(2, 2), 
-                   col = rep("black", 2),
-                   fill = c("red", "lightblue"), 
-                   alpha = c(0.25, 0.5), 
-                   label.col = rep("black", 3), 
-                   cex = rep(1, 3), 
-                   fontface = rep("plain", 3), 
-                   fontfamily = rep("serif", 3),
-                   cat.cex = rep(0.8, 2))
-grid.draw(venn.plot);
-grid.newpage();
-```
-
 
 <br>
 
