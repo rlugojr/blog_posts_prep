@@ -192,7 +192,7 @@ plot(g,
      vertex.color=c( "pink", "skyblue")[1+(V(g)$gender=="male")],
      vertex.label.color="black",
      vertex.frame.color = NA,
-     edge.width=E(graph)$weight/500000,
+     edge.width=E(g)$weight/500000,
      edge.curved=.1,
      layout=layout_in_circle)
 
