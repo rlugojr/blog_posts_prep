@@ -49,7 +49,7 @@ dataset <- fluH7N9.china.2013 %>%
          province_Zhejiang = ifelse(province == "Zhejiang", 1, 0),
          province_other = ifelse(province == "Zhejiang" | province == "Jiangsu" | province == "Shanghai", 0, 1),
          days_onset_to_outcome = as.numeric(as.character(gsub(" days", "",
-                                      as.Date(as.character(date.of.outcome), format="%Y-%m-%d") - as.Date(as.character(date.of.onset), format="%Y-%m-%d")))),
+                                      as.Date(as.character(date.of.outcome), format = "%Y-%m-%d") - as.Date(as.character(date.of.onset), format = "%Y-%m-%d")))),
          age = as.numeric(as.character(age))) %>%
   subset(select = -c(2:4, 6, 8))
 
@@ -61,7 +61,6 @@ nrow(dataset)
 
 dataset <- dataset[!apply(dataset, 1, function(x) any(is.na(x))), ]
 
-library(dplyr)
 library(caret)
 
 
@@ -94,8 +93,6 @@ fit <- rpart(outcome ~ .,
 
 fancyRpartPlot(fit)
 
-
-library(caret)
 
 # prepare training scheme
 control <- trainControl(method="repeatedcv", number=10, repeats=10)

@@ -1,0 +1,82 @@
+---
+title: "Ca we predict flu outcome with Machine Learning in R?"
+author: "Dr. Shirin Glander"
+date: '`r Sys.Date()`'
+output: html_document
+---
+
+Among the many nice R packages containing data collections is the [outbreaks](https://mran.microsoft.com/web/packages/outbreaks/outbreaks.pdf
+) package. It contains data on a couple of epidemics, among them data from the 2013 outbreak of influenza A H7N9 in China as analysed by Kucharski et al. (2014): 
+
+> A. Kucharski, H. Mills, A. Pinsent, C. Fraser, M. Van Kerkhove, C. A. Donnelly, and S. Riley. 2014. Distinguishing between reservoir exposure and human-to-human transmission for emerging pathogens using case onset data. PLOS Currents Outbreaks. Mar 7, edition 1. doi: 10.1371/currents.outbreaks.e1473d9bfc99d080ca242139a06c455f.
+
+> A. Kucharski, H. Mills, A. Pinsent, C. Fraser, M. Van Kerkhove, C. A. Donnelly, and S. Riley. 2014. Data from: Distinguishing between reservoir exposure and human-to-human transmission for emerging pathogens using case onset data. Dryad Digital Repository. http://dx.doi.org/10.5061/dryad.2g43n.
+
+I will be using their data as an example to showcase how to use Machine Learning algorithms for predicting disease outcome.
+
+<br>
+
+# The data
+
+The dataset contains case ID, date of onset, date of hospitalisation, date of outcome, gender, age, province and of course outcome: Death or Recovery.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+if (!require("outbreaks")) install.packages("outbreaks")
+library(outbreaks)
+
+head(fluH7N9.china.2013)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+library(ggplot2)
+
+ggplot() +
+  geom_point(data = fluH7N9.china.2013, aes(x = date.of.onset, y = as.numeric(age), color = outcome))
+```
+
+<br>
+
+# Features
+
+In Machine Learning-speak features are what we call the variables used for model training. Using the right features dramatically influences the accuracy and success of your model.
+
+For this example, I am keeping age, but I am also generating new features from the date information and converting gender and province into numerical values.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+library(dplyr)
+
+dataset <- fluH7N9.china.2013 %>%
+  mutate(hospital = ifelse(is.na(date.of.hospitalisation), 0, 1),
+         gender_f = ifelse(gender == "f", 1, 0),
+         province_Jiangsu = ifelse(province == "Jiangsu", 1, 0),
+         province_Shanghai = ifelse(province == "Shanghai", 1, 0),
+         province_Zhejiang = ifelse(province == "Zhejiang", 1, 0),
+         province_other = ifelse(province == "Zhejiang" | province == "Jiangsu" | province == "Shanghai", 0, 1),
+         days_onset_to_outcome = as.numeric(as.character(gsub(" days", "",
+                                      as.Date(as.character(date.of.outcome), format = "%Y-%m-%d") - 
+                                        as.Date(as.character(date.of.onset), format = "%Y-%m-%d")))),
+         age = as.numeric(as.character(age))) %>%
+  subset(select = -c(1:4, 6, 8))
+
+head(dataset)
+
+quartile <- summary(fluH7N9.china.2013$date.of.onset)
+quartile[[1]]
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+summary(dataset$outcome)
+```
+
+<br>
+
+## Imputing missing values
+
+
+<br>
+
+-----------------
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+sessionInfo()
+```
