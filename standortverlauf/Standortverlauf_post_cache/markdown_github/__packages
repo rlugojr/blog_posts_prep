@@ -1,0 +1,8 @@
+base
+jsonlite
+lubridate
+zoo
+ggplot2
+ggmap
+sp
+raster

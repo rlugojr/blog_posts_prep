@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Can we predict flu deaths with Machine Learning in R?"
-date: 2016-11-20
+date: 2016-11-27
 categories: Machine_Learning
 tags: Machine_Learning ggplot2 Random_Forest
 ---
@@ -206,7 +206,7 @@ And lastly, I want to plot how many days passed between onset, hospitalisation a
 
 ``` r
 ggplot(data = fluH7N9.china.2013_gather, aes(x = Date, y = as.numeric(age), color = outcome)) +
-  geom_point(aes(color = outcome, shape = gender), size = 1.5, alpha = 0.6) +
+  geom_point(aes(shape = gender), size = 1.5, alpha = 0.6) +
   geom_path(aes(group = case.ID)) +
   facet_wrap( ~ province, ncol = 2) +
   my_theme() +

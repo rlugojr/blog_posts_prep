@@ -15,8 +15,8 @@ The data Google provides you for download is a .json file and can be loaded with
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
 library(jsonlite)
-#system.time(x <- fromJSON("U:/Github_blog/Takeout/Standortverlauf/Standortverlauf.json"))
-system.time(x <- fromJSON("~/Documents/Github/Standortverlauf.json"))
+system.time(x <- fromJSON("U:/Github_blog/Takeout/Standortverlauf/Standortverlauf.json"))
+#system.time(x <- fromJSON("~/Documents/Github/Standortverlauf.json"))
 ```
 
 <br>
@@ -266,6 +266,8 @@ round(sum(as.numeric(as.character(loc3$dist.to.prev)), na.rm = TRUE)*0.001, digi
 
 distance_p_month <- aggregate(loc3$dist.to.prev, by = list(month_year = as.factor(loc3$month_year)), FUN = sum)
 distance_p_month$x <- distance_p_month$x*0.001
+
+distance_p_month[-1, ]
 ```
 
 <br>
@@ -292,7 +294,14 @@ head(activities_2)
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
-ggplot(activities_2, aes(x = main_activity, group = main_activity, fill = main_activity)) + geom_bar()  + my_theme()
+ggplot(activities_2, aes(x = main_activity, group = main_activity, fill = main_activity)) + 
+  geom_bar()  + 
+  my_theme() +
+  labs(
+    x = "",
+    y = "Count",
+    fill = "Main activity"
+  )
 ```
 
 <br>
