@@ -1,0 +1,160 @@
+---
+title: "DIY your own R blog with Github pages and Jekyll Boostrap"
+author: "Shirin Glander"
+date: '`r Sys.Date()`'
+output: html_document
+---
+
+### This post is in reply to a request: How did I set up this R blog?
+
+I have wanted to have my own R blog for a while before I went ahead and realised this page. I had seen all the cool things people did (and still do) with R by following [R-bloggers](https://www.r-bloggers.com/) and reading their newsletter every day! And while I am using R every day at work, the thematic scope there is very bioinformatics-centric (with a little bit of Machine Learning and lots of visualization and statistics), I wanted to have an incentive for me to regularly explore other types of analyses and other types of data that I don't normally work with.
+
+I decided to host my blog on Github pages because I was already used to working with Github (it's where I store my [exprAnalysis R package](https://shiring.github.io/rna-seq/microarray/2016/09/28/exprAnalysis)).
+
+<br>
+
+# Setting up Github pages
+
+Setting up your own Github page is free and very easy! All you need is a Github account. There, you have to create a new repository called "*username*.github.io"" (substitute *username* for your Github user name, in my case: ShirinG.github.io). I set up the rest via the terminal interface:
+
+- Go to the folder where your repository should live (in this example called "*Test*")
+- Clone the repository and change to its directory
+
+```{r, engine = 'bash', eval = FALSE}
+cd Home/Documents/Test
+git clone https://github.com/username/username.github.io
+cd username.github.io
+git pull origin master
+```
+
+<br>
+
+# JekyllBoostrap
+
+Github pages also supports [Jekyll](https://jekyllrb.com/docs/home/), an easy to use static site generator perfect for blogging. I set up my blog with [JekyllBoostrap](http://jekyllbootstrap.com/), a full blog scaffold for Jekyll based blogs. Follow their [Quick Start Guide](http://jekyllbootstrap.com/usage/jekyll-quick-start.html) for instructions on how to install it.
+
+It also gives detailed instructions on how to set up comments, analytics and permalinks.
+
+<br>
+
+## Customizing your page
+
+Most of the heavy-lifting has already been done for you with JekyllBootstrap but of course there are many options for customizing and adapting your blog's layout to your liking.
+
+The main file for customizing your page is Jekyll's "*_config.yml*" file (check back with [JekyllBoostrap](http://jekyllbootstrap.com/) for details). If you know a little bit about JavaScript, CSS and HTML, you can also directly modify the style sheets in the directory "*_includes*".
+
+<br>
+
+# Preparing R blog posts with RMarkdown
+
+I am preparing all my blog posts in RStudio as RMarkdowns to easily test my code and see its output.
+
+[This is how an example Rmarkdown document could look like](https://github.com/ShirinG/blog_posts_prep/blob/master/character_network/gilmore_girls.Rmd).
+
+Your Rmarkdown will need a header:
+
+```{r, eval = FALSE}
+---
+title: "This is a test post for my R blog"
+author: "Dr. Shirin Glander"
+date: '`r Sys.Date()`'
+output: html_document
+---
+```
+
+Below the header you can [write text, insert pictures, create tables and much more](https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf).
+Code chunks will go in between brackets.
+
+```{r echo = FALSE, comment=NA}
+cat("```{r, echo=TRUE}\nsummary(cars)\n```")
+```
+
+The final code chunk will look something like [this](https://blog.rstudio.org/2016/11/14/ggplot2-2-2-0/):
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+library(ggplot2)
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = class)) +
+  geom_smooth(se = FALSE, method = "loess") +
+  labs(
+    title = "Fuel efficiency generally decreases with engine size",
+    subtitle = "Two seaters (sports cars) are an exception because of their light weight",
+    caption = "Data from fueleconomy.gov"
+  )
+```
+
+
+Once I'm happy with my finished blog post (which up to this point is set to produce an html output), I am changing the output in the YAML header to 
+
+```{r, eval = FALSE}
+output: 
+  md_document:
+    variant: markdown_github
+```
+
+and knit again.
+This will produce a markdown document (ending in .md).
+
+JekyllBootstrap will need a header in the markdown document, so I am adding this manually to the top of my finished markdown. An example markdown header looks like this:
+
+```{r, eval = FALSE}
+---
+layout: post
+title: "This is a test post for my R blog"
+date: 2016-12-01
+categories: rblogging
+tags: test ggplot2
+---
+```
+
+It needs to contain the layout definition for post, the title and date. Categories and tags are optional but I like using them to get a nice thematic categorization of the posts I have written.
+
+<br>
+
+# Publishing a blog post via the terminal window
+
+I am working in a different directory to produce my posts and test out things (in this example called "*blog_prep*"), so once I have my markdown file ready (in this example called "*example_post.md*"), I am going back to the terminal window and copy it to my blog repository's folder "*_post*" and rename it so that it has the following format: Date-name.md.
+
+```{r, engine = 'bash', eval = FALSE}
+cp ../blog_prep/example_post.md _posts
+mv _posts/example_post.md _posts/2016-11-20-example_post.md
+```
+
+If you also had figures or graphs in your blog post, there will be a folder generated along with your markdown with the name "*example_post_files*". You need to copy this folder to your repository as well. If you gave your post a category, it will look for the files in a folder with the same name as your category with subfolders for the date:
+
+```{r, engine = 'bash', eval = FALSE}
+mkdir -p rblogging/2016/12/01
+cp ../blog_prep/example_post_files rblogging/2016/12/01
+```
+
+<br>
+
+## Testing your blog page locally
+
+Before I push my updated blog to Github where it will go live, I am testing the output locally:
+
+```{r, engine = 'bash', eval = FALSE}
+bundle exec jekyll serve
+```
+
+In order to be able to run Jekyll locally, you need to follow [these excellent guidelines](http://jekyllrb.com/docs/installation/).
+
+<br>
+
+If my new blog post looks okay and I don't want to change anything any more, I can finally stage, commit and push the updated blog to Github.
+
+```{r, engine = 'bash', eval = FALSE}
+git add *
+git commit -m "name"
+git push origin master
+```
+
+<br>
+
+# Publishing a blog post via RStudio
+
+Alternatively, if you'd rather use RStudio for pushing changes to Github, you can also [connect your blog repository to RStudio](https://www.r-bloggers.com/rstudio-and-github/) and stage, commit and push from there.
+
+<br>
+
+And voilà, your new R blog post is out there for the world to see!

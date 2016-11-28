@@ -1,5 +1,5 @@
 ---
-title: "Ca we predict flu outcome with Machine Learning in R?"
+title: "Can we predict flu outcome with Machine Learning in R?"
 author: "Dr. Shirin Glander"
 date: '`r Sys.Date()`'
 output: html_document
