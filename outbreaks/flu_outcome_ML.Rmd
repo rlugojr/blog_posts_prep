@@ -636,6 +636,7 @@ results$sum_Recover <- rowSums(results[, grep("Recover", colnames(results))])
 results$log2_ratio <- log2(results$sum_Recover/results$sum_Death)
 results$predicted_outcome <- ifelse(results$log2_ratio > 1.5, "Recover", ifelse(results$log2_ratio < -1.5, "Death", "uncertain"))
 results[, -c(1:16)]
+write.table(results, "results_prediction_unknown_outcome_ML_part1.txt", col.names = T, sep = "\t")
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
