@@ -1,9 +1,9 @@
 ---
 layout: post
 title: "Extreme Gradient Boosting and Preprocessing in Machine Learning - Addendum to predicting flu outcome with R"
-date: 2016-12-02
+date: 2016-11-27
 categories: machine_learning
-tags: Machine_Learning ggplot2 xgboost
+tags: Machine_Learning ggplot2 Random_Forest
 ---
 
 In [last week's post](https://shiring.github.io/machine_learning/2016/11/27/flu_outcome_ML_post) I explored whether machine learning models can be applied to predict flu deaths from the 2013 outbreak of influenza A H7N9 in China. There, I compared random forests, elastic-net regularized generalized linear models, k-nearest neighbors, penalized discriminant analysis, stabilized linear discriminant analysis, nearest shrunken centroids, single C5.0 tree and partial least squares.
@@ -13,7 +13,7 @@ In [last week's post](https://shiring.github.io/machine_learning/2016/11/27/flu_
 Extreme gradient boosting
 =========================
 
-[Extreme gradient boosting (XGBoost)](http://xgboost.readthedocs.io/en/latest/model.html) is a faster and improved implementation of [gradient boosting](https://en.wikipedia.org/wiki/Gradient_boosting) for supervised learning and has recently been very successfully applied in Kaggle competitions. Because I've heard XGBoost's praise being sung all over the webs recently, I wanted to get my feet wet with it too so this week I want to compare the prediction success of gradient boosting with the same dataset. Additionally, I want to test the influence of different preprocessing methods on the outcome.
+[Extreme gradient boosting (XGBoost)](http://xgboost.readthedocs.io/en/latest/model.html) is a faster and improved implementation of [gradient boosting](https://en.wikipedia.org/wiki/Gradient_boosting) for supervised learning and has recently been very successfully applied in Kaggle competitions. Because I've heard XGBoost's praise being sung everywhere lately, I wanted to get my feet wet with it too. So this week I want to compare the prediction success of gradient boosting with the same dataset. Additionally, I want to test the influence of different preprocessing methods on the outcome.
 
 <br>
 
@@ -37,9 +37,15 @@ xgboost
 Extreme gradient boosting is implemented in the xgboost package.
 
 ``` r
-install.packages("drat", repos = "https://cran.rstudio.com")
+# install the stable/pre-compiled version from CRAN
+
+install.packages('xgboost')
+
+# or install from weekly updated drat repo
+
+install.packages("drat", repos="https://cran.rstudio.com")
 drat:::addRepo("dmlc")
-install.packages("xgboost", repos = "http://dmlc.ml/drat/", type = "source")
+install.packages("xgboost", repos="http://dmlc.ml/drat/", type="source")
 ```
 
 XGBoost supports only numbers, so the outcome classes have to be converted into integers and both training and test data have to be in numeric matrix format.
@@ -62,22 +68,20 @@ label <- getinfo(xgb_test_matrix, "label")
 I am using cross validation to evaluate the error rate.
 
 ``` r
-param <- list("objective" = "multi:softprob",
-              "eval_metric" = "mlogloss",
-              "num_class" = max(label) + 1)
+param <- list("objective" = "binary:logistic")
 
 xgb.cv(param = param, 
        data = xgb_train_matrix, 
-       label = label, 
        nfold = 3,
+       label = getinfo(xgb_train_matrix, "label"),
        nrounds = 5)
 ```
 
-    ## [1]  train-mlogloss:0.535758+0.021084    test-mlogloss:0.661586+0.027437 
-    ## [2]  train-mlogloss:0.439331+0.035176    test-mlogloss:0.630627+0.082373 
-    ## [3]  train-mlogloss:0.354200+0.029472    test-mlogloss:0.617911+0.142707 
-    ## [4]  train-mlogloss:0.295908+0.027783    test-mlogloss:0.629048+0.186042 
-    ## [5]  train-mlogloss:0.250870+0.022289    test-mlogloss:0.633813+0.191678
+    ## [1]  train-error:0.124941+0.011991   test-error:0.268031+0.129105 
+    ## [2]  train-error:0.124941+0.011991   test-error:0.268031+0.129105 
+    ## [3]  train-error:0.098388+0.025999   test-error:0.340156+0.092598 
+    ## [4]  train-error:0.089379+0.013272   test-error:0.357700+0.109674 
+    ## [5]  train-error:0.098388+0.013747   test-error:0.341130+0.097427
 
 <br>
 
@@ -87,134 +91,67 @@ gbtree is the default booster for xgb.train.
 
 ``` r
 bst_1 <- xgb.train(data = xgb_train_matrix, 
+                   label = getinfo(xgb_train_matrix, "label"),
                    max.depth = 2, 
                    eta = 1, 
                    nthread = 4, 
                    nround = 50, # number of trees used for model building
                    watchlist = watchlist, 
-                   objective = "multi:softprob",
-                   eval_metric = "mlogloss",
-                   num_class = max(label) + 1)
+                   objective = "binary:logistic")
 ```
 
-    ## [1]  train-mlogloss:0.490294 test-mlogloss:0.649457 
-    ## [2]  train-mlogloss:0.391275 test-mlogloss:0.592098 
-    ## [3]  train-mlogloss:0.309628 test-mlogloss:0.585372 
-    ## [4]  train-mlogloss:0.240290 test-mlogloss:0.650654 
-    ## [5]  train-mlogloss:0.203293 test-mlogloss:0.729111 
-    ## [6]  train-mlogloss:0.172326 test-mlogloss:0.824518 
-    ## [7]  train-mlogloss:0.157606 test-mlogloss:0.843775 
-    ## [8]  train-mlogloss:0.140777 test-mlogloss:0.888461 
-    ## [9]  train-mlogloss:0.127178 test-mlogloss:0.882017 
-    ## [10] train-mlogloss:0.111399 test-mlogloss:0.840032 
-    ## [11] train-mlogloss:0.099434 test-mlogloss:0.858670 
-    ## [12] train-mlogloss:0.082355 test-mlogloss:0.930674 
-    ## [13] train-mlogloss:0.076430 test-mlogloss:0.994619 
-    ## [14] train-mlogloss:0.070627 test-mlogloss:1.016008 
-    ## [15] train-mlogloss:0.067678 test-mlogloss:1.032572 
-    ## [16] train-mlogloss:0.063111 test-mlogloss:1.064730 
-    ## [17] train-mlogloss:0.059368 test-mlogloss:1.123941 
-    ## [18] train-mlogloss:0.056032 test-mlogloss:1.144884 
-    ## [19] train-mlogloss:0.053680 test-mlogloss:1.100259 
-    ## [20] train-mlogloss:0.051653 test-mlogloss:1.116891 
-    ## [21] train-mlogloss:0.049721 test-mlogloss:1.123875 
-    ## [22] train-mlogloss:0.047645 test-mlogloss:1.153877 
-    ## [23] train-mlogloss:0.045584 test-mlogloss:1.171002 
-    ## [24] train-mlogloss:0.043884 test-mlogloss:1.180613 
-    ## [25] train-mlogloss:0.041997 test-mlogloss:1.179499 
-    ## [26] train-mlogloss:0.040394 test-mlogloss:1.203822 
-    ## [27] train-mlogloss:0.039403 test-mlogloss:1.183822 
-    ## [28] train-mlogloss:0.038483 test-mlogloss:1.196224 
-    ## [29] train-mlogloss:0.037769 test-mlogloss:1.203163 
-    ## [30] train-mlogloss:0.037451 test-mlogloss:1.211294 
-    ## [31] train-mlogloss:0.036598 test-mlogloss:1.253284 
-    ## [32] train-mlogloss:0.036199 test-mlogloss:1.263149 
-    ## [33] train-mlogloss:0.035837 test-mlogloss:1.253878 
-    ## [34] train-mlogloss:0.035423 test-mlogloss:1.253795 
-    ## [35] train-mlogloss:0.035056 test-mlogloss:1.259794 
-    ## [36] train-mlogloss:0.034709 test-mlogloss:1.262273 
-    ## [37] train-mlogloss:0.034467 test-mlogloss:1.267382 
-    ## [38] train-mlogloss:0.033093 test-mlogloss:1.299689 
-    ## [39] train-mlogloss:0.032458 test-mlogloss:1.290860 
-    ## [40] train-mlogloss:0.032179 test-mlogloss:1.276332 
-    ## [41] train-mlogloss:0.031977 test-mlogloss:1.284037 
-    ## [42] train-mlogloss:0.031726 test-mlogloss:1.291976 
-    ## [43] train-mlogloss:0.031602 test-mlogloss:1.295921 
-    ## [44] train-mlogloss:0.031391 test-mlogloss:1.303706 
-    ## [45] train-mlogloss:0.031250 test-mlogloss:1.298208 
-    ## [46] train-mlogloss:0.031006 test-mlogloss:1.286831 
-    ## [47] train-mlogloss:0.030882 test-mlogloss:1.291637 
-    ## [48] train-mlogloss:0.030737 test-mlogloss:1.298317 
-    ## [49] train-mlogloss:0.030571 test-mlogloss:1.302848 
-    ## [50] train-mlogloss:0.030447 test-mlogloss:1.293513
+    ## [1]  train-error:0.232143    test-error:0.304348 
+    ## [2]  train-error:0.125000    test-error:0.260870 
+    ## [3]  train-error:0.125000    test-error:0.260870 
+    ## [4]  train-error:0.071429    test-error:0.304348 
+    ## [5]  train-error:0.071429    test-error:0.391304 
+    ## [6]  train-error:0.035714    test-error:0.304348 
+    ## [7]  train-error:0.035714    test-error:0.304348 
+    ## [8]  train-error:0.053571    test-error:0.304348 
+    ## [9]  train-error:0.035714    test-error:0.347826 
+    ## [10] train-error:0.035714    test-error:0.347826 
+    ## [11] train-error:0.035714    test-error:0.260870 
+    ## [12] train-error:0.017857    test-error:0.260870 
+    ## [13] train-error:0.017857    test-error:0.260870 
+    ## [14] train-error:0.017857    test-error:0.304348 
+    ## [15] train-error:0.000000    test-error:0.260870 
+    ## [16] train-error:0.000000    test-error:0.260870 
+    ## [17] train-error:0.000000    test-error:0.304348 
+    ## [18] train-error:0.000000    test-error:0.260870 
+    ## [19] train-error:0.000000    test-error:0.347826 
+    ## [20] train-error:0.000000    test-error:0.347826 
+    ## [21] train-error:0.000000    test-error:0.304348 
+    ## [22] train-error:0.000000    test-error:0.304348 
+    ## [23] train-error:0.000000    test-error:0.347826 
+    ## [24] train-error:0.000000    test-error:0.304348 
+    ## [25] train-error:0.000000    test-error:0.347826 
+    ## [26] train-error:0.000000    test-error:0.347826 
+    ## [27] train-error:0.000000    test-error:0.347826 
+    ## [28] train-error:0.000000    test-error:0.347826 
+    ## [29] train-error:0.000000    test-error:0.347826 
+    ## [30] train-error:0.000000    test-error:0.347826 
+    ## [31] train-error:0.000000    test-error:0.347826 
+    ## [32] train-error:0.000000    test-error:0.347826 
+    ## [33] train-error:0.000000    test-error:0.304348 
+    ## [34] train-error:0.000000    test-error:0.347826 
+    ## [35] train-error:0.000000    test-error:0.304348 
+    ## [36] train-error:0.000000    test-error:0.304348 
+    ## [37] train-error:0.000000    test-error:0.304348 
+    ## [38] train-error:0.000000    test-error:0.304348 
+    ## [39] train-error:0.000000    test-error:0.304348 
+    ## [40] train-error:0.000000    test-error:0.304348 
+    ## [41] train-error:0.000000    test-error:0.304348 
+    ## [42] train-error:0.000000    test-error:0.304348 
+    ## [43] train-error:0.000000    test-error:0.304348 
+    ## [44] train-error:0.000000    test-error:0.304348 
+    ## [45] train-error:0.000000    test-error:0.304348 
+    ## [46] train-error:0.000000    test-error:0.304348 
+    ## [47] train-error:0.000000    test-error:0.347826 
+    ## [48] train-error:0.000000    test-error:0.304348 
+    ## [49] train-error:0.000000    test-error:0.304348 
+    ## [50] train-error:0.000000    test-error:0.304348
 
-``` r
-pred_1 <- predict(bst_1, xgb_test_matrix)
-result_1 <- data.frame(case_ID = rownames(val_test_data),
-                       outcome = val_test_data$outcome, 
-                       label = label, 
-                       prediction = as.integer(pred_1 > 0.5),
-                       prediction_p_death = round(pred_1, digits = 2),
-                       prediction_eval = ifelse(as.integer(pred_1 > 0.5) != label, "wrong", "correct"))
-result_1
-```
-
-    ##     case_ID outcome label prediction prediction_p_death prediction_eval
-    ## 1  case_123   Death     1          1               0.99         correct
-    ## 2  case_127 Recover     0          0               0.01         correct
-    ## 3  case_128 Recover     0          1               1.00           wrong
-    ## 4   case_14 Recover     0          0               0.00         correct
-    ## 5   case_19   Death     1          0               0.12           wrong
-    ## 6    case_2   Death     1          1               0.88         correct
-    ## 7   case_20 Recover     0          0               0.14         correct
-    ## 8   case_21 Recover     0          1               0.86           wrong
-    ## 9   case_34   Death     1          0               0.24           wrong
-    ## 10  case_37 Recover     0          1               0.76           wrong
-    ## 11   case_5 Recover     0          0               0.10         correct
-    ## 12  case_51 Recover     0          1               0.90           wrong
-    ## 13  case_55 Recover     0          0               0.00         correct
-    ## 14   case_6   Death     1          1               1.00         correct
-    ## 15  case_61   Death     1          1               0.91         correct
-    ## 16  case_65 Recover     0          0               0.09         correct
-    ## 17  case_74 Recover     0          0               0.02         correct
-    ## 18  case_78   Death     1          1               0.98         correct
-    ## 19  case_79 Recover     0          1               1.00           wrong
-    ## 20   case_8   Death     1          0               0.00           wrong
-    ## 21  case_87   Death     1          1               0.94         correct
-    ## 22  case_91 Recover     0          0               0.06         correct
-    ## 23  case_94 Recover     0          0               0.36         correct
-    ## 24 case_123   Death     1          1               0.64         correct
-    ## 25 case_127 Recover     0          1               0.97           wrong
-    ## 26 case_128 Recover     0          0               0.03         correct
-    ## 27  case_14 Recover     0          1               0.89           wrong
-    ## 28  case_19   Death     1          0               0.11           wrong
-    ## 29   case_2   Death     1          0               0.00           wrong
-    ## 30  case_20 Recover     0          1               1.00           wrong
-    ## 31  case_21 Recover     0          1               1.00           wrong
-    ## 32  case_34   Death     1          0               0.00           wrong
-    ## 33  case_37 Recover     0          0               0.00         correct
-    ## 34   case_5 Recover     0          1               1.00           wrong
-    ## 35  case_51 Recover     0          1               0.69           wrong
-    ## 36  case_55 Recover     0          0               0.31         correct
-    ## 37   case_6   Death     1          1               1.00         correct
-    ## 38  case_61   Death     1          0               0.00           wrong
-    ## 39  case_65 Recover     0          1               0.54           wrong
-    ## 40  case_74 Recover     0          0               0.46         correct
-    ## 41  case_78   Death     1          1               0.88         correct
-    ## 42  case_79 Recover     0          0               0.12         correct
-    ## 43   case_8   Death     1          1               1.00         correct
-    ## 44  case_87   Death     1          0               0.00           wrong
-    ## 45  case_91 Recover     0          1               0.99           wrong
-    ## 46  case_94 Recover     0          0               0.01         correct
-
-``` r
-err <- as.numeric(sum(as.integer(pred_1 > 0.5) != label))/length(label)
-print(paste("test-error =", round(err, digits = 2)))
-```
-
-    ## [1] "test-error = 0.91"
-
-Each feature is grouped by importance with k-means clustering.
+Each feature is grouped by importance with k-means clustering. Gain is the improvement in accuracy that the addition of a feature brings to the branches it is on.
 
 ``` r
 features = colnames(matrix_train)
@@ -222,203 +159,214 @@ importance_matrix_1 <- xgb.importance(features, model = bst_1)
 print(importance_matrix_1)
 ```
 
-    ##                    Feature         Gain       Cover  Frequency
-    ##  1:                    age 0.5288741343 0.443675708 0.39795918
-    ##  2:  days_onset_to_outcome 0.1784147196 0.225714456 0.26530612
-    ##  3:            early_onset 0.1081616931 0.102420302 0.09183673
-    ##  4:          early_outcome 0.0605444230 0.056097619 0.04081633
-    ##  5: days_onset_to_hospital 0.0429871121 0.058280773 0.07142857
-    ##  6:               gender_f 0.0345594066 0.040062780 0.04081633
-    ##  7:         province_other 0.0322835583 0.031236389 0.03061224
-    ##  8:      province_Zhejiang 0.0112662099 0.013176717 0.01020408
-    ##  9:               hospital 0.0021173253 0.020703659 0.03061224
-    ## 10:      province_Shanghai 0.0007914179 0.008631598 0.02040816
+    ##                   Feature       Gain      Cover  Frequency
+    ## 1:                    age 0.56681596 0.49444626 0.44791667
+    ## 2:  days_onset_to_outcome 0.20371450 0.17327928 0.17708333
+    ## 3:          early_outcome 0.06148973 0.08256710 0.07291667
+    ## 4:               gender_f 0.04043685 0.04056103 0.03125000
+    ## 5:         province_other 0.03788142 0.04884498 0.06250000
+    ## 6:            early_onset 0.03654052 0.04615314 0.05208333
+    ## 7:      province_Shanghai 0.02756780 0.04503021 0.05208333
+    ## 8: days_onset_to_hospital 0.01713995 0.03548939 0.05208333
+    ## 9:               hospital 0.00841327 0.03362861 0.05208333
 
 ``` r
 xgb.ggplot.importance(importance_matrix_1) +
   theme_minimal()
 ```
 
-<img src="flu_outcome_ML_2_post_files/figure-markdown_github/unnamed-chunk-8-1.png" style="display: block; margin: auto;" />
+<img src="flu_outcome_ML_2_post_files/figure-markdown_github/unnamed-chunk-6-1.png" style="display: block; margin: auto;" />
 
 ``` r
-xgb.plot.tree(feature_names = features, model = bst_1, n_first_tree = 2) # just displaying the first trees
+xgb.plot.multi.trees(feature_names = features, model = bst_1)
 ```
 
 <!--html_preserve-->
 
-<script type="application/json" data-for="htmlwidget-547edc1c9486bc5dd565">{"x":{"diagram":"digraph {\n\ngraph [rankdir = LR]\n\n\n  \"2-4\" [label = \"Leaf\nCover: 7.34349\nGain: 0.556307\", style = \"filled\", color = \"DimGray\", fillcolor = \"Khaki\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"2-3\" [label = \"Leaf\nCover: 12.4031\nGain: -0.0614887\", style = \"filled\", color = \"DimGray\", fillcolor = \"Khaki\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"2-2\" [label = \"Leaf\nCover: 2.61212\nGain: -0.730705\", style = \"filled\", color = \"DimGray\", fillcolor = \"Khaki\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"2-1\" [label = \"age\nCover: 19.7466\nGain: 1.93038\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"rectangle\", fontname = \"Helvetica\"] \n  \"2-0\" [label = \"age\nCover: 22.3587\nGain: 2.57162\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"rectangle\", fontname = \"Helvetica\"] \n  \"1-6\" [label = \"Leaf\nCover: 11.5\nGain: -0.12\", style = \"filled\", color = \"DimGray\", fillcolor = \"Khaki\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"1-5\" [label = \"Leaf\nCover: 5.5\nGain: 0.692308\", style = \"filled\", color = \"DimGray\", fillcolor = \"Khaki\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"1-4\" [label = \"Leaf\nCover: 4.5\nGain: -0.272727\", style = \"filled\", color = \"DimGray\", fillcolor = \"Khaki\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"1-3\" [label = \"Leaf\nCover: 6.5\nGain: -0.866667\", style = \"filled\", color = \"DimGray\", fillcolor = \"Khaki\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"1-2\" [label = \"days_onset_to_outcome\nCover: 17\nGain: 2.79538\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"rectangle\", fontname = \"Helvetica\"] \n  \"1-1\" [label = \"early_onset\nCover: 11\nGain: 0.709091\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"rectangle\", fontname = \"Helvetica\"] \n  \"1-0\" [label = \"age\nCover: 28\nGain: 4.97126\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"rectangle\", fontname = \"Helvetica\"] \n  \"0-6\" [label = \"Leaf\nCover: 11.5\nGain: 0.12\", style = \"filled\", color = \"DimGray\", fillcolor = \"Khaki\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"0-5\" [label = \"Leaf\nCover: 5.5\nGain: -0.692308\", style = \"filled\", color = \"DimGray\", fillcolor = \"Khaki\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"0-4\" [label = \"Leaf\nCover: 4.5\nGain: 0.272727\", style = \"filled\", color = \"DimGray\", fillcolor = \"Khaki\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"0-3\" [label = \"Leaf\nCover: 6.5\nGain: 0.866667\", style = \"filled\", color = \"DimGray\", fillcolor = \"Khaki\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"0-2\" [label = \"days_onset_to_outcome\nCover: 17\nGain: 2.79538\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"rectangle\", fontname = \"Helvetica\"] \n  \"0-1\" [label = \"early_onset\nCover: 11\nGain: 0.709091\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"rectangle\", fontname = \"Helvetica\"] \n  \"0-0\" [label = \"age\nCover: 28\nGain: 4.97126\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"rectangle\", fontname = \"Helvetica\"] \n\"0-0\"->\"0-1\" [label = \"< 54.5\", color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"0-1\"->\"0-3\" [label = \"< 0.5\", color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"0-2\"->\"0-5\" [label = \"< 15.5\", color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"1-0\"->\"1-1\" [label = \"< 54.5\", color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"1-1\"->\"1-3\" [label = \"< 0.5\", color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"1-2\"->\"1-5\" [label = \"< 15.5\", color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"2-0\"->\"2-1\" [label = \"< 82\", color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"2-1\"->\"2-3\" [label = \"< 64.5\", color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"0-0\"->\"0-2\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"0-1\"->\"0-4\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"0-2\"->\"0-6\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"1-0\"->\"1-2\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"1-1\"->\"1-4\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"1-2\"->\"1-6\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"2-0\"->\"2-2\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"2-1\"->\"2-4\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n}","config":{"engine":null,"options":null}},"evals":[],"jsHooks":[]}</script>
+<script type="application/json" data-for="htmlwidget-ee376c894b5f506fcc00">{"x":{"diagram":"digraph {\n\ngraph [rankdir = LR]\n\n\n  \"0\" [label = \"age (19.7863824)\nearly_outcome (3.08749)\ngender_f (1.94825)\ndays_onset_to_outcome (0.924685)\nprovince_Shanghai (0.231791)\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"0_0\" [label = \"province_Shanghai (1.15678513)\ndays_onset_to_outcome (3.143222)\nLeaf (-1.276642)\nearly_onset (1.39857)\nprovince_other (1.189677)\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"0_1\" [label = \"days_onset_to_outcome (6.1930878)\nLeaf (2.4565501)\nage (5.6765435)\nhospital (0.3559275)\ndays_onset_to_hospital (0.7592356)\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"0_0_0\" [label = \"Leaf (-5.2055725)\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"0_0_1\" [label = \"Leaf (0.28391263)\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"0_1_0\" [label = \"Leaf (2.8583972)\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"oval\", fontname = \"Helvetica\"] \n  \"0_1_1\" [label = \"Leaf (3.08271514)\", style = \"filled\", color = \"DimGray\", fillcolor = \"Beige\", shape = \"oval\", fontname = \"Helvetica\"] \n\"0\"->\"0_0\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"0_0\"->\"0_0_0\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"0_1\"->\"0_1_0\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"0\"->\"0_1\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"0_0\"->\"0_0_1\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n\"0_1\"->\"0_1_1\" [color = \"DimGray\", arrowsize = \"1.5\", arrowhead = \"vee\", fontname = \"Helvetica\"] \n}","config":{"engine":null,"options":null}},"evals":[],"jsHooks":[]}</script>
 <!--/html_preserve-->
+``` r
+pred_1 <- predict(bst_1, xgb_test_matrix)
+
+result_1 <- data.frame(case_ID = rownames(val_test_data),
+                       outcome = val_test_data$outcome, 
+                       label = label, 
+                       prediction_p_death = round(pred_1, digits = 2),
+                       prediction = as.integer(pred_1 > 0.5),
+                       prediction_eval = ifelse(as.integer(pred_1 > 0.5) != label, "wrong", "correct"))
+result_1
+```
+
+    ##     case_ID outcome label prediction_p_death prediction prediction_eval
+    ## 1  case_123   Death     1               0.02          0           wrong
+    ## 2  case_127 Recover     0               0.01          0         correct
+    ## 3  case_128 Recover     0               0.96          1           wrong
+    ## 4   case_14 Recover     0               0.48          0         correct
+    ## 5   case_19   Death     1               0.80          1         correct
+    ## 6    case_2   Death     1               0.56          1         correct
+    ## 7   case_20 Recover     0               0.99          1           wrong
+    ## 8   case_21 Recover     0               0.02          0         correct
+    ## 9   case_34   Death     1               0.99          1         correct
+    ## 10  case_37 Recover     0               0.00          0         correct
+    ## 11   case_5 Recover     0               0.06          0         correct
+    ## 12  case_51 Recover     0               0.20          0         correct
+    ## 13  case_55 Recover     0               0.02          0         correct
+    ## 14   case_6   Death     1               0.08          0           wrong
+    ## 15  case_61   Death     1               0.99          1         correct
+    ## 16  case_65 Recover     0               0.00          0         correct
+    ## 17  case_74 Recover     0               0.06          0         correct
+    ## 18  case_78   Death     1               0.42          0           wrong
+    ## 19  case_79 Recover     0               0.01          0         correct
+    ## 20   case_8   Death     1               0.04          0           wrong
+    ## 21  case_87   Death     1               0.23          0           wrong
+    ## 22  case_91 Recover     0               0.00          0         correct
+    ## 23  case_94 Recover     0               0.01          0         correct
+
+``` r
+err <- as.numeric(sum(as.integer(pred_1 > 0.5) != label))/length(label)
+print(paste("test-error =", round(err, digits = 2)))
+```
+
+    ## [1] "test-error = 0.3"
+
 <br>
 
 ### Training with gblinear
 
 ``` r
-bst_2 <- bst_2 <- xgb.train(data = xgb_train_matrix, 
-                            booster = "gblinear", 
-                            max.depth = 2, 
-                            eta = 1, 
-                            nthread = 4, 
-                            nround = 50, # number of trees used for model building
-                            watchlist = watchlist, 
-                            objective = "multi:softprob",
-                            eval_metric = "mlogloss",
-                            num_class = max(label) + 1)
+bst_2 <- xgb.train(data = xgb_train_matrix, 
+                   booster = "gblinear", 
+                   label = getinfo(xgb_train_matrix, "label"),
+                   max.depth = 2, 
+                   eta = 1, 
+                   nthread = 4, 
+                   nround = 50, # number of trees used for model building
+                   watchlist = watchlist, 
+                   objective = "binary:logistic")
 ```
 
-    ## [1]  train-mlogloss:0.597309 test-mlogloss:0.693899 
-    ## [2]  train-mlogloss:0.562716 test-mlogloss:0.705258 
-    ## [3]  train-mlogloss:0.544544 test-mlogloss:0.730797 
-    ## [4]  train-mlogloss:0.522435 test-mlogloss:0.742736 
-    ## [5]  train-mlogloss:0.501873 test-mlogloss:0.751855 
-    ## [6]  train-mlogloss:0.492144 test-mlogloss:0.755301 
-    ## [7]  train-mlogloss:0.478745 test-mlogloss:0.757858 
-    ## [8]  train-mlogloss:0.467209 test-mlogloss:0.759175 
-    ## [9]  train-mlogloss:0.457140 test-mlogloss:0.761757 
-    ## [10] train-mlogloss:0.451230 test-mlogloss:0.763961 
-    ## [11] train-mlogloss:0.445495 test-mlogloss:0.771513 
-    ## [12] train-mlogloss:0.440177 test-mlogloss:0.779732 
-    ## [13] train-mlogloss:0.433641 test-mlogloss:0.786588 
-    ## [14] train-mlogloss:0.428509 test-mlogloss:0.792179 
-    ## [15] train-mlogloss:0.422986 test-mlogloss:0.800005 
-    ## [16] train-mlogloss:0.418170 test-mlogloss:0.806738 
-    ## [17] train-mlogloss:0.414058 test-mlogloss:0.811903 
-    ## [18] train-mlogloss:0.411171 test-mlogloss:0.815192 
-    ## [19] train-mlogloss:0.407251 test-mlogloss:0.826231 
-    ## [20] train-mlogloss:0.404719 test-mlogloss:0.829868 
-    ## [21] train-mlogloss:0.402311 test-mlogloss:0.839067 
-    ## [22] train-mlogloss:0.399746 test-mlogloss:0.844498 
-    ## [23] train-mlogloss:0.397400 test-mlogloss:0.855674 
-    ## [24] train-mlogloss:0.395389 test-mlogloss:0.859400 
-    ## [25] train-mlogloss:0.393528 test-mlogloss:0.869503 
-    ## [26] train-mlogloss:0.392364 test-mlogloss:0.868393 
-    ## [27] train-mlogloss:0.390755 test-mlogloss:0.878133 
-    ## [28] train-mlogloss:0.389352 test-mlogloss:0.882742 
-    ## [29] train-mlogloss:0.387888 test-mlogloss:0.891406 
-    ## [30] train-mlogloss:0.386989 test-mlogloss:0.892769 
-    ## [31] train-mlogloss:0.385991 test-mlogloss:0.895822 
-    ## [32] train-mlogloss:0.384809 test-mlogloss:0.908575 
-    ## [33] train-mlogloss:0.384171 test-mlogloss:0.909692 
-    ## [34] train-mlogloss:0.383333 test-mlogloss:0.911262 
-    ## [35] train-mlogloss:0.382673 test-mlogloss:0.914546 
-    ## [36] train-mlogloss:0.382055 test-mlogloss:0.918211 
-    ## [37] train-mlogloss:0.381343 test-mlogloss:0.923108 
-    ## [38] train-mlogloss:0.380674 test-mlogloss:0.927364 
-    ## [39] train-mlogloss:0.380173 test-mlogloss:0.930552 
-    ## [40] train-mlogloss:0.379728 test-mlogloss:0.934076 
-    ## [41] train-mlogloss:0.379124 test-mlogloss:0.941703 
-    ## [42] train-mlogloss:0.378652 test-mlogloss:0.945598 
-    ## [43] train-mlogloss:0.378194 test-mlogloss:0.949588 
-    ## [44] train-mlogloss:0.377771 test-mlogloss:0.956906 
-    ## [45] train-mlogloss:0.377467 test-mlogloss:0.959507 
-    ## [46] train-mlogloss:0.377177 test-mlogloss:0.962833 
-    ## [47] train-mlogloss:0.376877 test-mlogloss:0.964679 
-    ## [48] train-mlogloss:0.376560 test-mlogloss:0.969608 
-    ## [49] train-mlogloss:0.376350 test-mlogloss:0.971660 
-    ## [50] train-mlogloss:0.376104 test-mlogloss:0.974721
+    ## [1]  train-error:0.303571    test-error:0.434783 
+    ## [2]  train-error:0.285714    test-error:0.347826 
+    ## [3]  train-error:0.285714    test-error:0.434783 
+    ## [4]  train-error:0.267857    test-error:0.434783 
+    ## [5]  train-error:0.267857    test-error:0.434783 
+    ## [6]  train-error:0.267857    test-error:0.434783 
+    ## [7]  train-error:0.285714    test-error:0.478261 
+    ## [8]  train-error:0.285714    test-error:0.478261 
+    ## [9]  train-error:0.267857    test-error:0.478261 
+    ## [10] train-error:0.250000    test-error:0.434783 
+    ## [11] train-error:0.232143    test-error:0.434783 
+    ## [12] train-error:0.232143    test-error:0.434783 
+    ## [13] train-error:0.232143    test-error:0.434783 
+    ## [14] train-error:0.214286    test-error:0.434783 
+    ## [15] train-error:0.214286    test-error:0.434783 
+    ## [16] train-error:0.214286    test-error:0.434783 
+    ## [17] train-error:0.214286    test-error:0.434783 
+    ## [18] train-error:0.214286    test-error:0.434783 
+    ## [19] train-error:0.214286    test-error:0.434783 
+    ## [20] train-error:0.214286    test-error:0.434783 
+    ## [21] train-error:0.196429    test-error:0.434783 
+    ## [22] train-error:0.196429    test-error:0.434783 
+    ## [23] train-error:0.196429    test-error:0.434783 
+    ## [24] train-error:0.196429    test-error:0.434783 
+    ## [25] train-error:0.196429    test-error:0.434783 
+    ## [26] train-error:0.196429    test-error:0.434783 
+    ## [27] train-error:0.196429    test-error:0.434783 
+    ## [28] train-error:0.196429    test-error:0.434783 
+    ## [29] train-error:0.196429    test-error:0.434783 
+    ## [30] train-error:0.196429    test-error:0.434783 
+    ## [31] train-error:0.178571    test-error:0.434783 
+    ## [32] train-error:0.178571    test-error:0.434783 
+    ## [33] train-error:0.178571    test-error:0.434783 
+    ## [34] train-error:0.196429    test-error:0.434783 
+    ## [35] train-error:0.196429    test-error:0.434783 
+    ## [36] train-error:0.196429    test-error:0.434783 
+    ## [37] train-error:0.196429    test-error:0.434783 
+    ## [38] train-error:0.196429    test-error:0.434783 
+    ## [39] train-error:0.196429    test-error:0.434783 
+    ## [40] train-error:0.196429    test-error:0.434783 
+    ## [41] train-error:0.196429    test-error:0.434783 
+    ## [42] train-error:0.196429    test-error:0.434783 
+    ## [43] train-error:0.160714    test-error:0.434783 
+    ## [44] train-error:0.160714    test-error:0.434783 
+    ## [45] train-error:0.160714    test-error:0.434783 
+    ## [46] train-error:0.160714    test-error:0.434783 
+    ## [47] train-error:0.142857    test-error:0.434783 
+    ## [48] train-error:0.142857    test-error:0.434783 
+    ## [49] train-error:0.142857    test-error:0.434783 
+    ## [50] train-error:0.142857    test-error:0.434783
+
+Each feature is grouped by importance with k-means clustering. Gain is the improvement in accuracy that the addition of a feature brings to the branches it is on.
 
 ``` r
-pred_2 <- predict(bst_2, xgb_test_matrix)
-result_2 <- data.frame(case_ID = rownames(val_test_data),
-                       outcome = val_test_data$outcome, 
-                       label = label, 
-                       prediction = as.integer(pred_2 > 0.5),
-                       prediction_p_death = round(pred_2, digits = 2),
-                       prediction_eval = ifelse(as.integer(pred_2 > 0.5) != label, "wrong", "correct"))
-result_2
-```
-
-    ##     case_ID outcome label prediction prediction_p_death prediction_eval
-    ## 1  case_123   Death     1          1               0.98         correct
-    ## 2  case_127 Recover     0          0               0.02         correct
-    ## 3  case_128 Recover     0          1               1.00           wrong
-    ## 4   case_14 Recover     0          0               0.00         correct
-    ## 5   case_19   Death     1          1               0.96         correct
-    ## 6    case_2   Death     1          0               0.04           wrong
-    ## 7   case_20 Recover     0          1               0.94           wrong
-    ## 8   case_21 Recover     0          0               0.06         correct
-    ## 9   case_34   Death     1          1               0.76         correct
-    ## 10  case_37 Recover     0          0               0.24         correct
-    ## 11   case_5 Recover     0          1               0.86           wrong
-    ## 12  case_51 Recover     0          0               0.14         correct
-    ## 13  case_55 Recover     0          0               0.05         correct
-    ## 14   case_6   Death     1          1               0.95         correct
-    ## 15  case_61   Death     1          0               0.10           wrong
-    ## 16  case_65 Recover     0          1               0.90           wrong
-    ## 17  case_74 Recover     0          0               0.22         correct
-    ## 18  case_78   Death     1          1               0.78         correct
-    ## 19  case_79 Recover     0          1               0.94           wrong
-    ## 20   case_8   Death     1          0               0.06           wrong
-    ## 21  case_87   Death     1          1               0.90         correct
-    ## 22  case_91 Recover     0          0               0.10         correct
-    ## 23  case_94 Recover     0          0               0.15         correct
-    ## 24 case_123   Death     1          1               0.85         correct
-    ## 25 case_127 Recover     0          1               0.96           wrong
-    ## 26 case_128 Recover     0          0               0.04         correct
-    ## 27  case_14 Recover     0          0               0.42         correct
-    ## 28  case_19   Death     1          1               0.58         correct
-    ## 29   case_2   Death     1          1               0.62         correct
-    ## 30  case_20 Recover     0          0               0.38         correct
-    ## 31  case_21 Recover     0          1               0.99           wrong
-    ## 32  case_34   Death     1          0               0.01           wrong
-    ## 33  case_37 Recover     0          1               0.53           wrong
-    ## 34   case_5 Recover     0          0               0.47         correct
-    ## 35  case_51 Recover     0          1               0.94           wrong
-    ## 36  case_55 Recover     0          0               0.06         correct
-    ## 37   case_6   Death     1          1               0.98         correct
-    ## 38  case_61   Death     1          0               0.02           wrong
-    ## 39  case_65 Recover     0          1               0.80           wrong
-    ## 40  case_74 Recover     0          0               0.20         correct
-    ## 41  case_78   Death     1          1               0.59         correct
-    ## 42  case_79 Recover     0          0               0.41         correct
-    ## 43   case_8   Death     1          1               1.00         correct
-    ## 44  case_87   Death     1          0               0.00           wrong
-    ## 45  case_91 Recover     0          1               0.97           wrong
-    ## 46  case_94 Recover     0          0               0.03         correct
-
-``` r
-err <- as.numeric(sum(as.integer(pred_2 > 0.5) != label))/length(label)
-print(paste("test-error =", round(err, digits = 2)))
-```
-
-    ## [1] "test-error = 0.74"
-
-``` r
+features = colnames(matrix_train)
 importance_matrix_2 <- xgb.importance(features, model = bst_2)
 print(importance_matrix_2)
 ```
 
     ##                    Feature     Weight
-    ##  1:                    age -0.0350827
-    ##  2:               hospital  0.0353802
-    ##  3:               gender_f  0.0871125
-    ##  4:       province_Jiangsu -0.1117280
-    ##  5:      province_Shanghai -0.7258700
-    ##  6:      province_Zhejiang  0.7504000
-    ##  7:         province_other  1.1208500
-    ##  8:  days_onset_to_outcome -1.1453600
-    ##  9: days_onset_to_hospital  1.1089100
-    ## 10:            early_onset -1.1395500
-    ## 11:          early_outcome  0.6495900
-    ## 12:                    age  0.0871125
-    ## 13:               hospital -0.1117280
-    ## 14:               gender_f -0.7258700
-    ## 15:       province_Jiangsu  0.7504000
-    ## 16:      province_Shanghai  1.1208500
-    ## 17:      province_Zhejiang -1.1453600
-    ## 18:         province_other  1.1089100
-    ## 19:  days_onset_to_outcome -1.1395500
-    ## 20: days_onset_to_hospital  0.6495900
-    ## 21:            early_onset -0.7262900
-    ## 22:          early_outcome -0.0364441
-    ##                    Feature     Weight
+    ##  1:                    age  0.0618175
+    ##  2:               hospital -0.3547940
+    ##  3:               gender_f  1.0499000
+    ##  4:       province_Jiangsu -0.9738920
+    ##  5:      province_Shanghai -0.6303700
+    ##  6:      province_Zhejiang -0.4705460
+    ##  7:         province_other  0.3615920
+    ##  8:  days_onset_to_outcome  0.0397079
+    ##  9: days_onset_to_hospital -0.1215700
+    ## 10:            early_onset  0.0662544
+    ## 11:          early_outcome  2.9233000
 
 ``` r
 xgb.ggplot.importance(importance_matrix_2) +
   theme_minimal()
 ```
 
-<img src="flu_outcome_ML_2_post_files/figure-markdown_github/unnamed-chunk-13-1.png" style="display: block; margin: auto;" />
+<img src="flu_outcome_ML_2_post_files/figure-markdown_github/unnamed-chunk-11-1.png" style="display: block; margin: auto;" />
+
+``` r
+pred_2 <- predict(bst_2, xgb_test_matrix)
+
+result_2 <- data.frame(case_ID = rownames(val_test_data),
+                       outcome = val_test_data$outcome, 
+                       label = label, 
+                       prediction_p_death = round(pred_2, digits = 2),
+                       prediction = as.integer(pred_2 > 0.5),
+                       prediction_eval = ifelse(as.integer(pred_2 > 0.5) != label, "wrong", "correct"))
+result_2
+```
+
+    ##     case_ID outcome label prediction_p_death prediction prediction_eval
+    ## 1  case_123   Death     1               0.08          0           wrong
+    ## 2  case_127 Recover     0               0.00          0         correct
+    ## 3  case_128 Recover     0               0.12          0         correct
+    ## 4   case_14 Recover     0               0.04          0         correct
+    ## 5   case_19   Death     1               0.31          0           wrong
+    ## 6    case_2   Death     1               0.12          0           wrong
+    ## 7   case_20 Recover     0               0.77          1           wrong
+    ## 8   case_21 Recover     0               0.80          1           wrong
+    ## 9   case_34   Death     1               0.70          1         correct
+    ## 10  case_37 Recover     0               0.04          0         correct
+    ## 11   case_5 Recover     0               0.13          0         correct
+    ## 12  case_51 Recover     0               0.85          1           wrong
+    ## 13  case_55 Recover     0               0.28          0         correct
+    ## 14   case_6   Death     1               0.42          0           wrong
+    ## 15  case_61   Death     1               0.63          1         correct
+    ## 16  case_65 Recover     0               0.04          0         correct
+    ## 17  case_74 Recover     0               0.89          1           wrong
+    ## 18  case_78   Death     1               0.29          0           wrong
+    ## 19  case_79 Recover     0               0.06          0         correct
+    ## 20   case_8   Death     1               0.17          0           wrong
+    ## 21  case_87   Death     1               0.81          1         correct
+    ## 22  case_91 Recover     0               0.03          0         correct
+    ## 23  case_94 Recover     0               0.03          0         correct
+
+``` r
+err <- as.numeric(sum(as.integer(pred_2 > 0.5) != label))/length(label)
+print(paste("test-error =", round(err, digits = 2)))
+```
+
+    ## [1] "test-error = 0.43"
 
 <br>
 
@@ -439,7 +387,7 @@ model_xgb_null <-train(outcome ~ .,
                  data=val_train_data,
                  method="xgbTree",
                  preProcess = NULL,
-                 trControl = trainControl(method = "repeatedcv", number = 3, repeats = 10, verboseIter = FALSE))
+                 trControl = trainControl(method = "repeatedcv", number = 5, repeats = 10, verboseIter = FALSE))
 ```
 
 ``` r
@@ -450,25 +398,25 @@ confusionMatrix(predict(model_xgb_null, val_test_data[, -1]), val_test_data$outc
     ## 
     ##           Reference
     ## Prediction Death Recover
-    ##    Death       3       5
-    ##    Recover     6       9
+    ##    Death       5       3
+    ##    Recover     4      11
     ##                                           
-    ##                Accuracy : 0.5217          
-    ##                  95% CI : (0.3059, 0.7318)
+    ##                Accuracy : 0.6957          
+    ##                  95% CI : (0.4708, 0.8679)
     ##     No Information Rate : 0.6087          
-    ##     P-Value [Acc > NIR] : 0.857           
+    ##     P-Value [Acc > NIR] : 0.2644          
     ##                                           
-    ##                   Kappa : -0.0243         
-    ##  Mcnemar's Test P-Value : 1.000           
+    ##                   Kappa : 0.3482          
+    ##  Mcnemar's Test P-Value : 1.0000          
     ##                                           
-    ##             Sensitivity : 0.3333          
-    ##             Specificity : 0.6429          
-    ##          Pos Pred Value : 0.3750          
-    ##          Neg Pred Value : 0.6000          
+    ##             Sensitivity : 0.5556          
+    ##             Specificity : 0.7857          
+    ##          Pos Pred Value : 0.6250          
+    ##          Neg Pred Value : 0.7333          
     ##              Prevalence : 0.3913          
-    ##          Detection Rate : 0.1304          
+    ##          Detection Rate : 0.2174          
     ##    Detection Prevalence : 0.3478          
-    ##       Balanced Accuracy : 0.4881          
+    ##       Balanced Accuracy : 0.6706          
     ##                                           
     ##        'Positive' Class : Death           
     ## 
@@ -485,7 +433,7 @@ model_xgb_sc_cen <-train(outcome ~ .,
                  data=val_train_data,
                  method="xgbTree",
                  preProcess = c("scale", "center"),
-                 trControl = trainControl(method = "repeatedcv", number = 3, repeats = 10, verboseIter = FALSE))
+                 trControl = trainControl(method = "repeatedcv", number = 5, repeats = 10, verboseIter = FALSE))
 ```
 
 ``` r
@@ -496,30 +444,66 @@ confusionMatrix(predict(model_xgb_sc_cen, val_test_data[, -1]), val_test_data$ou
     ## 
     ##           Reference
     ## Prediction Death Recover
-    ##    Death       4       4
-    ##    Recover     5      10
+    ##    Death       5       3
+    ##    Recover     4      11
     ##                                           
-    ##                Accuracy : 0.6087          
-    ##                  95% CI : (0.3854, 0.8029)
+    ##                Accuracy : 0.6957          
+    ##                  95% CI : (0.4708, 0.8679)
     ##     No Information Rate : 0.6087          
-    ##     P-Value [Acc > NIR] : 0.5901          
+    ##     P-Value [Acc > NIR] : 0.2644          
     ##                                           
-    ##                   Kappa : 0.1619          
+    ##                   Kappa : 0.3482          
     ##  Mcnemar's Test P-Value : 1.0000          
     ##                                           
-    ##             Sensitivity : 0.4444          
-    ##             Specificity : 0.7143          
-    ##          Pos Pred Value : 0.5000          
-    ##          Neg Pred Value : 0.6667          
+    ##             Sensitivity : 0.5556          
+    ##             Specificity : 0.7857          
+    ##          Pos Pred Value : 0.6250          
+    ##          Neg Pred Value : 0.7333          
     ##              Prevalence : 0.3913          
-    ##          Detection Rate : 0.1739          
+    ##          Detection Rate : 0.2174          
     ##    Detection Prevalence : 0.3478          
-    ##       Balanced Accuracy : 0.5794          
+    ##       Balanced Accuracy : 0.6706          
     ##                                           
     ##        'Positive' Class : Death           
     ## 
 
-Scaling and centering does not improve the rate of accurate predictions.
+``` r
+pred_3 <- predict(model_xgb_sc_cen, val_test_data[, -1])
+pred_3b <- round(predict(model_xgb_sc_cen, val_test_data[, -1], type="prob"), digits = 2)
+
+result_3 <- data.frame(case_ID = rownames(val_test_data),
+                       outcome = val_test_data$outcome, 
+                       label = label, 
+                       prediction = pred_3,
+                       pred_3b)
+result_3$prediction_eval <- ifelse(result_3$prediction != result_3$outcome, "wrong", "correct")
+result_3
+```
+
+    ##     case_ID outcome label prediction Death Recover prediction_eval
+    ## 1  case_123   Death     1    Recover  0.08    0.92           wrong
+    ## 2  case_127 Recover     0    Recover  0.05    0.95         correct
+    ## 3  case_128 Recover     0      Death  0.92    0.08           wrong
+    ## 4   case_14 Recover     0      Death  0.50    0.50           wrong
+    ## 5   case_19   Death     1      Death  0.79    0.21         correct
+    ## 6    case_2   Death     1      Death  0.53    0.47         correct
+    ## 7   case_20 Recover     0      Death  0.92    0.08           wrong
+    ## 8   case_21 Recover     0    Recover  0.01    0.99         correct
+    ## 9   case_34   Death     1      Death  0.98    0.02         correct
+    ## 10  case_37 Recover     0    Recover  0.00    1.00         correct
+    ## 11   case_5 Recover     0    Recover  0.08    0.92         correct
+    ## 12  case_51 Recover     0    Recover  0.45    0.55         correct
+    ## 13  case_55 Recover     0    Recover  0.06    0.94         correct
+    ## 14   case_6   Death     1    Recover  0.18    0.82           wrong
+    ## 15  case_61   Death     1      Death  0.96    0.04         correct
+    ## 16  case_65 Recover     0    Recover  0.01    0.99         correct
+    ## 17  case_74 Recover     0    Recover  0.04    0.96         correct
+    ## 18  case_78   Death     1      Death  0.57    0.43         correct
+    ## 19  case_79 Recover     0    Recover  0.03    0.97         correct
+    ## 20   case_8   Death     1    Recover  0.05    0.95           wrong
+    ## 21  case_87   Death     1    Recover  0.31    0.69           wrong
+    ## 22  case_91 Recover     0    Recover  0.03    0.97         correct
+    ## 23  case_94 Recover     0    Recover  0.04    0.96         correct
 
 <br>
 
@@ -533,11 +517,95 @@ model_xgb_BoxCox <-train(outcome ~ .,
                  data=val_train_data,
                  method="xgbTree",
                  preProcess = "BoxCox",
-                 trControl = trainControl(method = "repeatedcv", number = 3, repeats = 10, verboseIter = FALSE))
+                 trControl = trainControl(method = "repeatedcv", number = 5, repeats = 10, verboseIter = FALSE))
 ```
 
 ``` r
 confusionMatrix(predict(model_xgb_BoxCox, val_test_data[, -1]), val_test_data$outcome)
+```
+
+    ## Confusion Matrix and Statistics
+    ## 
+    ##           Reference
+    ## Prediction Death Recover
+    ##    Death       5       3
+    ##    Recover     4      11
+    ##                                           
+    ##                Accuracy : 0.6957          
+    ##                  95% CI : (0.4708, 0.8679)
+    ##     No Information Rate : 0.6087          
+    ##     P-Value [Acc > NIR] : 0.2644          
+    ##                                           
+    ##                   Kappa : 0.3482          
+    ##  Mcnemar's Test P-Value : 1.0000          
+    ##                                           
+    ##             Sensitivity : 0.5556          
+    ##             Specificity : 0.7857          
+    ##          Pos Pred Value : 0.6250          
+    ##          Neg Pred Value : 0.7333          
+    ##              Prevalence : 0.3913          
+    ##          Detection Rate : 0.2174          
+    ##    Detection Prevalence : 0.3478          
+    ##       Balanced Accuracy : 0.6706          
+    ##                                           
+    ##        'Positive' Class : Death           
+    ## 
+
+``` r
+pred_4 <- predict(model_xgb_BoxCox, val_test_data[, -1])
+pred_4b <- round(predict(model_xgb_BoxCox, val_test_data[, -1], type="prob"), digits = 2)
+
+result_4 <- data.frame(case_ID = rownames(val_test_data),
+                       outcome = val_test_data$outcome, 
+                       label = label, 
+                       prediction = pred_4,
+                       pred_4b)
+result_4$prediction_eval <- ifelse(result_4$prediction != result_4$outcome, "wrong", "correct")
+result_4
+```
+
+    ##     case_ID outcome label prediction Death Recover prediction_eval
+    ## 1  case_123   Death     1    Recover  0.08    0.92           wrong
+    ## 2  case_127 Recover     0    Recover  0.05    0.95         correct
+    ## 3  case_128 Recover     0      Death  0.92    0.08           wrong
+    ## 4   case_14 Recover     0      Death  0.50    0.50           wrong
+    ## 5   case_19   Death     1      Death  0.79    0.21         correct
+    ## 6    case_2   Death     1      Death  0.53    0.47         correct
+    ## 7   case_20 Recover     0      Death  0.90    0.10           wrong
+    ## 8   case_21 Recover     0    Recover  0.01    0.99         correct
+    ## 9   case_34   Death     1      Death  0.98    0.02         correct
+    ## 10  case_37 Recover     0    Recover  0.00    1.00         correct
+    ## 11   case_5 Recover     0    Recover  0.08    0.92         correct
+    ## 12  case_51 Recover     0    Recover  0.45    0.55         correct
+    ## 13  case_55 Recover     0    Recover  0.04    0.96         correct
+    ## 14   case_6   Death     1    Recover  0.18    0.82           wrong
+    ## 15  case_61   Death     1      Death  0.96    0.04         correct
+    ## 16  case_65 Recover     0    Recover  0.01    0.99         correct
+    ## 17  case_74 Recover     0    Recover  0.04    0.96         correct
+    ## 18  case_78   Death     1      Death  0.57    0.43         correct
+    ## 19  case_79 Recover     0    Recover  0.03    0.97         correct
+    ## 20   case_8   Death     1    Recover  0.05    0.95           wrong
+    ## 21  case_87   Death     1    Recover  0.31    0.69           wrong
+    ## 22  case_91 Recover     0    Recover  0.03    0.97         correct
+    ## 23  case_94 Recover     0    Recover  0.04    0.96         correct
+
+<br>
+
+#### Principal Component Analysis (PCA)
+
+PCA is used for dimensionality reduction. When applied as a preprocessing method the number of features are reduced by using the eigenvectors of the covariance matrix.
+
+``` r
+set.seed(27)
+model_xgb_pca <-train(outcome ~ .,
+                 data=val_train_data,
+                 method="xgbTree",
+                 preProcess = "pca",
+                 trControl = trainControl(method = "repeatedcv", number = 5, repeats = 10, verboseIter = FALSE))
+```
+
+``` r
+confusionMatrix(predict(model_xgb_pca, val_test_data[, -1]), val_test_data$outcome)
 ```
 
     ## Confusion Matrix and Statistics
@@ -567,55 +635,43 @@ confusionMatrix(predict(model_xgb_BoxCox, val_test_data[, -1]), val_test_data$ou
     ##        'Positive' Class : Death           
     ## 
 
-Boxcox transformation adds one more correctly classified outcome.
-
-<br>
-
-#### Principal Component Analysis (PCA)
-
-PCA is used for dimensionality reduction. When applied as a preprocessing method the number of features are reduced by using the eigenvectors of the covariance matrix.
-
 ``` r
-set.seed(27)
-model_xgb_pca <-train(outcome ~ .,
-                 data=val_train_data,
-                 method="xgbTree",
-                 preProcess = "pca",
-                 trControl = trainControl(method = "repeatedcv", number = 3, repeats = 10, verboseIter = FALSE))
+pred_5 <- predict(model_xgb_pca, val_test_data[, -1])
+pred_5b <- round(predict(model_xgb_pca, val_test_data[, -1], type="prob"), digits = 2)
+
+result_5 <- data.frame(case_ID = rownames(val_test_data),
+                       outcome = val_test_data$outcome, 
+                       label = label, 
+                       prediction = pred_5,
+                       pred_5b)
+result_5$prediction_eval <- ifelse(result_5$prediction != result_5$outcome, "wrong", "correct")
+result_5
 ```
 
-``` r
-confusionMatrix(predict(model_xgb_pca, val_test_data[, -1]), val_test_data$outcome)
-```
-
-    ## Confusion Matrix and Statistics
-    ## 
-    ##           Reference
-    ## Prediction Death Recover
-    ##    Death       3       2
-    ##    Recover     6      12
-    ##                                           
-    ##                Accuracy : 0.6522          
-    ##                  95% CI : (0.4273, 0.8362)
-    ##     No Information Rate : 0.6087          
-    ##     P-Value [Acc > NIR] : 0.4216          
-    ##                                           
-    ##                   Kappa : 0.2069          
-    ##  Mcnemar's Test P-Value : 0.2888          
-    ##                                           
-    ##             Sensitivity : 0.3333          
-    ##             Specificity : 0.8571          
-    ##          Pos Pred Value : 0.6000          
-    ##          Neg Pred Value : 0.6667          
-    ##              Prevalence : 0.3913          
-    ##          Detection Rate : 0.1304          
-    ##    Detection Prevalence : 0.2174          
-    ##       Balanced Accuracy : 0.5952          
-    ##                                           
-    ##        'Positive' Class : Death           
-    ## 
-
-Preprocessing by PCA does increase the rate of accurate prediction.
+    ##     case_ID outcome label prediction Death Recover prediction_eval
+    ## 1  case_123   Death     1    Recover  0.13    0.87           wrong
+    ## 2  case_127 Recover     0    Recover  0.11    0.89         correct
+    ## 3  case_128 Recover     0    Recover  0.21    0.79         correct
+    ## 4   case_14 Recover     0    Recover  0.21    0.79         correct
+    ## 5   case_19   Death     1    Recover  0.32    0.68           wrong
+    ## 6    case_2   Death     1      Death  0.59    0.41         correct
+    ## 7   case_20 Recover     0    Recover  0.19    0.81         correct
+    ## 8   case_21 Recover     0      Death  0.64    0.36           wrong
+    ## 9   case_34   Death     1      Death  0.69    0.31         correct
+    ## 10  case_37 Recover     0    Recover  0.07    0.93         correct
+    ## 11   case_5 Recover     0    Recover  0.18    0.82         correct
+    ## 12  case_51 Recover     0      Death  0.55    0.45           wrong
+    ## 13  case_55 Recover     0    Recover  0.14    0.86         correct
+    ## 14   case_6   Death     1    Recover  0.35    0.65           wrong
+    ## 15  case_61   Death     1      Death  0.76    0.24         correct
+    ## 16  case_65 Recover     0      Death  0.62    0.38           wrong
+    ## 17  case_74 Recover     0      Death  0.69    0.31           wrong
+    ## 18  case_78   Death     1    Recover  0.39    0.61           wrong
+    ## 19  case_79 Recover     0    Recover  0.19    0.81         correct
+    ## 20   case_8   Death     1    Recover  0.45    0.55           wrong
+    ## 21  case_87   Death     1      Death  0.58    0.42         correct
+    ## 22  case_91 Recover     0    Recover  0.03    0.97         correct
+    ## 23  case_94 Recover     0    Recover  0.19    0.81         correct
 
 <br>
 
@@ -627,7 +683,7 @@ model_xgb_medianImpute <-train(outcome ~ .,
                  data=val_train_data,
                  method="xgbTree",
                  preProcess = "medianImpute",
-                 trControl = trainControl(method = "repeatedcv", number = 3, repeats = 10, verboseIter = FALSE))
+                 trControl = trainControl(method = "repeatedcv", number = 5, repeats = 10, verboseIter = FALSE))
 ```
 
 ``` r
@@ -638,78 +694,71 @@ confusionMatrix(predict(model_xgb_medianImpute, val_test_data[, -1]), val_test_d
     ## 
     ##           Reference
     ## Prediction Death Recover
-    ##    Death       3       5
-    ##    Recover     6       9
+    ##    Death       5       3
+    ##    Recover     4      11
     ##                                           
-    ##                Accuracy : 0.5217          
-    ##                  95% CI : (0.3059, 0.7318)
+    ##                Accuracy : 0.6957          
+    ##                  95% CI : (0.4708, 0.8679)
     ##     No Information Rate : 0.6087          
-    ##     P-Value [Acc > NIR] : 0.857           
+    ##     P-Value [Acc > NIR] : 0.2644          
     ##                                           
-    ##                   Kappa : -0.0243         
-    ##  Mcnemar's Test P-Value : 1.000           
+    ##                   Kappa : 0.3482          
+    ##  Mcnemar's Test P-Value : 1.0000          
     ##                                           
-    ##             Sensitivity : 0.3333          
-    ##             Specificity : 0.6429          
-    ##          Pos Pred Value : 0.3750          
-    ##          Neg Pred Value : 0.6000          
+    ##             Sensitivity : 0.5556          
+    ##             Specificity : 0.7857          
+    ##          Pos Pred Value : 0.6250          
+    ##          Neg Pred Value : 0.7333          
     ##              Prevalence : 0.3913          
-    ##          Detection Rate : 0.1304          
+    ##          Detection Rate : 0.2174          
     ##    Detection Prevalence : 0.3478          
-    ##       Balanced Accuracy : 0.4881          
+    ##       Balanced Accuracy : 0.6706          
     ##                                           
     ##        'Positive' Class : Death           
     ## 
 
-Median imputation doesn't improve the prediction rate either.
+``` r
+pred_6 <- predict(model_xgb_medianImpute, val_test_data[, -1])
+pred_6b <- round(predict(model_xgb_medianImpute, val_test_data[, -1], type="prob"), digits = 2)
+
+result_6 <- data.frame(case_ID = rownames(val_test_data),
+                       outcome = val_test_data$outcome, 
+                       label = label, 
+                       prediction = pred_6,
+                       pred_6b)
+result_6$prediction_eval <- ifelse(result_6$prediction != result_6$outcome, "wrong", "correct")
+result_6
+```
+
+    ##     case_ID outcome label prediction Death Recover prediction_eval
+    ## 1  case_123   Death     1    Recover  0.08    0.92           wrong
+    ## 2  case_127 Recover     0    Recover  0.05    0.95         correct
+    ## 3  case_128 Recover     0      Death  0.92    0.08           wrong
+    ## 4   case_14 Recover     0      Death  0.50    0.50           wrong
+    ## 5   case_19   Death     1      Death  0.79    0.21         correct
+    ## 6    case_2   Death     1      Death  0.53    0.47         correct
+    ## 7   case_20 Recover     0      Death  0.92    0.08           wrong
+    ## 8   case_21 Recover     0    Recover  0.01    0.99         correct
+    ## 9   case_34   Death     1      Death  0.98    0.02         correct
+    ## 10  case_37 Recover     0    Recover  0.00    1.00         correct
+    ## 11   case_5 Recover     0    Recover  0.08    0.92         correct
+    ## 12  case_51 Recover     0    Recover  0.45    0.55         correct
+    ## 13  case_55 Recover     0    Recover  0.06    0.94         correct
+    ## 14   case_6   Death     1    Recover  0.18    0.82           wrong
+    ## 15  case_61   Death     1      Death  0.96    0.04         correct
+    ## 16  case_65 Recover     0    Recover  0.01    0.99         correct
+    ## 17  case_74 Recover     0    Recover  0.04    0.96         correct
+    ## 18  case_78   Death     1      Death  0.57    0.43         correct
+    ## 19  case_79 Recover     0    Recover  0.03    0.97         correct
+    ## 20   case_8   Death     1    Recover  0.05    0.95           wrong
+    ## 21  case_87   Death     1    Recover  0.31    0.69           wrong
+    ## 22  case_91 Recover     0    Recover  0.03    0.97         correct
+    ## 23  case_94 Recover     0    Recover  0.04    0.96         correct
 
 <br>
 
 Comparison of extreme gradient boosting models
 ==============================================
-
-Caret
------
-
-``` r
-pred_3 <- predict(model_xgb_pca, val_test_data[, -1])
-pred_3b <- round(predict(model_xgb_pca, val_test_data[, -1], type="prob"), digits = 2)
-
-result_3 <- data.frame(case_ID = rownames(val_test_data),
-                       outcome = val_test_data$outcome, 
-                       label = label, 
-                       prediction = pred_3,
-                       pred_3b)
-result_3$prediction_eval <- ifelse(result_3$prediction != result_3$outcome, "wrong", "correct")
-result_3
-```
-
-    ##     case_ID outcome label prediction Death Recover prediction_eval
-    ## 1  case_123   Death     1    Recover  0.02    0.98           wrong
-    ## 2  case_127 Recover     0    Recover  0.07    0.93         correct
-    ## 3  case_128 Recover     0    Recover  0.02    0.98         correct
-    ## 4   case_14 Recover     0    Recover  0.19    0.81         correct
-    ## 5   case_19   Death     1    Recover  0.42    0.58           wrong
-    ## 6    case_2   Death     1    Recover  0.08    0.92           wrong
-    ## 7   case_20 Recover     0    Recover  0.20    0.80         correct
-    ## 8   case_21 Recover     0      Death  0.84    0.16           wrong
-    ## 9   case_34   Death     1      Death  0.56    0.44         correct
-    ## 10  case_37 Recover     0    Recover  0.11    0.89         correct
-    ## 11   case_5 Recover     0    Recover  0.11    0.89         correct
-    ## 12  case_51 Recover     0    Recover  0.25    0.75         correct
-    ## 13  case_55 Recover     0    Recover  0.29    0.71         correct
-    ## 14   case_6   Death     1    Recover  0.29    0.71           wrong
-    ## 15  case_61   Death     1      Death  0.80    0.20         correct
-    ## 16  case_65 Recover     0    Recover  0.02    0.98         correct
-    ## 17  case_74 Recover     0      Death  0.86    0.14           wrong
-    ## 18  case_78   Death     1    Recover  0.06    0.94           wrong
-    ## 19  case_79 Recover     0    Recover  0.18    0.82         correct
-    ## 20   case_8   Death     1    Recover  0.49    0.51           wrong
-    ## 21  case_87   Death     1      Death  0.70    0.30         correct
-    ## 22  case_91 Recover     0    Recover  0.06    0.94         correct
-    ## 23  case_94 Recover     0    Recover  0.19    0.81         correct
-
-<br>
 
 Combining results
 -----------------
@@ -718,104 +767,11 @@ Combining results
 library(dplyr)
 result <- left_join(result_1[, c(1, 2, 6)], result_2[, c(1, 6)], by = "case_ID")
 result <- left_join(result, result_3[, c(1, 7)], by = "case_ID")
-colnames(result)[3:5] <- c("pred_xgboost_gbtree", "pred_xgboost_gblinear", "pred_xgbTree_pca")
-
-result
+result <- left_join(result, result_4[, c(1, 7)], by = "case_ID")
+result <- left_join(result, result_5[, c(1, 7)], by = "case_ID")
+result <- left_join(result, result_6[, c(1, 7)], by = "case_ID")
+colnames(result)[-c(1:2)] <- c("pred_xgboost_gbtree", "pred_xgboost_gblinear", "model_xgb_sc_cen", "model_xgb_BoxCox", "pred_xgbTree_pca", "model_xgb_medianImpute")
 ```
-
-    ##     case_ID outcome pred_xgboost_gbtree pred_xgboost_gblinear pred_xgbTree_pca
-    ## 1  case_123   Death             correct               correct            wrong
-    ## 2  case_123   Death             correct               correct            wrong
-    ## 3  case_127 Recover             correct               correct          correct
-    ## 4  case_127 Recover             correct                 wrong          correct
-    ## 5  case_128 Recover               wrong                 wrong          correct
-    ## 6  case_128 Recover               wrong               correct          correct
-    ## 7   case_14 Recover             correct               correct          correct
-    ## 8   case_14 Recover             correct               correct          correct
-    ## 9   case_19   Death               wrong               correct            wrong
-    ## 10  case_19   Death               wrong               correct            wrong
-    ## 11   case_2   Death             correct                 wrong            wrong
-    ## 12   case_2   Death             correct               correct            wrong
-    ## 13  case_20 Recover             correct                 wrong          correct
-    ## 14  case_20 Recover             correct               correct          correct
-    ## 15  case_21 Recover               wrong               correct            wrong
-    ## 16  case_21 Recover               wrong                 wrong            wrong
-    ## 17  case_34   Death               wrong               correct          correct
-    ## 18  case_34   Death               wrong                 wrong          correct
-    ## 19  case_37 Recover               wrong               correct          correct
-    ## 20  case_37 Recover               wrong                 wrong          correct
-    ## 21   case_5 Recover             correct                 wrong          correct
-    ## 22   case_5 Recover             correct               correct          correct
-    ## 23  case_51 Recover               wrong               correct          correct
-    ## 24  case_51 Recover               wrong                 wrong          correct
-    ## 25  case_55 Recover             correct               correct          correct
-    ## 26  case_55 Recover             correct               correct          correct
-    ## 27   case_6   Death             correct               correct            wrong
-    ## 28   case_6   Death             correct               correct            wrong
-    ## 29  case_61   Death             correct                 wrong          correct
-    ## 30  case_61   Death             correct                 wrong          correct
-    ## 31  case_65 Recover             correct                 wrong          correct
-    ## 32  case_65 Recover             correct                 wrong          correct
-    ## 33  case_74 Recover             correct               correct            wrong
-    ## 34  case_74 Recover             correct               correct            wrong
-    ## 35  case_78   Death             correct               correct            wrong
-    ## 36  case_78   Death             correct               correct            wrong
-    ## 37  case_79 Recover               wrong                 wrong          correct
-    ## 38  case_79 Recover               wrong               correct          correct
-    ## 39   case_8   Death               wrong                 wrong            wrong
-    ## 40   case_8   Death               wrong               correct            wrong
-    ## 41  case_87   Death             correct               correct          correct
-    ## 42  case_87   Death             correct                 wrong          correct
-    ## 43  case_91 Recover             correct               correct          correct
-    ## 44  case_91 Recover             correct                 wrong          correct
-    ## 45  case_94 Recover             correct               correct          correct
-    ## 46  case_94 Recover             correct               correct          correct
-    ## 47 case_123   Death             correct               correct            wrong
-    ## 48 case_123   Death             correct               correct            wrong
-    ## 49 case_127 Recover               wrong               correct          correct
-    ## 50 case_127 Recover               wrong                 wrong          correct
-    ## 51 case_128 Recover             correct                 wrong          correct
-    ## 52 case_128 Recover             correct               correct          correct
-    ## 53  case_14 Recover               wrong               correct          correct
-    ## 54  case_14 Recover               wrong               correct          correct
-    ## 55  case_19   Death               wrong               correct            wrong
-    ## 56  case_19   Death               wrong               correct            wrong
-    ## 57   case_2   Death               wrong                 wrong            wrong
-    ## 58   case_2   Death               wrong               correct            wrong
-    ## 59  case_20 Recover               wrong                 wrong          correct
-    ## 60  case_20 Recover               wrong               correct          correct
-    ## 61  case_21 Recover               wrong               correct            wrong
-    ## 62  case_21 Recover               wrong                 wrong            wrong
-    ## 63  case_34   Death               wrong               correct          correct
-    ## 64  case_34   Death               wrong                 wrong          correct
-    ## 65  case_37 Recover             correct               correct          correct
-    ## 66  case_37 Recover             correct                 wrong          correct
-    ## 67   case_5 Recover               wrong                 wrong          correct
-    ## 68   case_5 Recover               wrong               correct          correct
-    ## 69  case_51 Recover               wrong               correct          correct
-    ## 70  case_51 Recover               wrong                 wrong          correct
-    ## 71  case_55 Recover             correct               correct          correct
-    ## 72  case_55 Recover             correct               correct          correct
-    ## 73   case_6   Death             correct               correct            wrong
-    ## 74   case_6   Death             correct               correct            wrong
-    ## 75  case_61   Death               wrong                 wrong          correct
-    ## 76  case_61   Death               wrong                 wrong          correct
-    ## 77  case_65 Recover               wrong                 wrong          correct
-    ## 78  case_65 Recover               wrong                 wrong          correct
-    ## 79  case_74 Recover             correct               correct            wrong
-    ## 80  case_74 Recover             correct               correct            wrong
-    ## 81  case_78   Death             correct               correct            wrong
-    ## 82  case_78   Death             correct               correct            wrong
-    ## 83  case_79 Recover             correct                 wrong          correct
-    ## 84  case_79 Recover             correct               correct          correct
-    ## 85   case_8   Death             correct                 wrong            wrong
-    ## 86   case_8   Death             correct               correct            wrong
-    ## 87  case_87   Death               wrong               correct          correct
-    ## 88  case_87   Death               wrong                 wrong          correct
-    ## 89  case_91 Recover               wrong               correct          correct
-    ## 90  case_91 Recover               wrong                 wrong          correct
-    ## 91  case_94 Recover             correct               correct          correct
-    ## 92  case_94 Recover             correct               correct          correct
 
 <br>
 
@@ -825,47 +781,42 @@ result
 round(sum(result$pred_xgboost_gbtree == "correct")/nrow(result), digits = 2)
 ```
 
-    ## [1] 0.54
+    ## [1] 0.7
 
 ``` r
 round(sum(result$pred_xgboost_gblinear == "correct")/nrow(result), digits = 2)
 ```
 
-    ## [1] 0.63
+    ## [1] 0.57
+
+``` r
+round(sum(result$model_xgb_sc_cen == "correct")/nrow(result), digits = 2)
+```
+
+    ## [1] 0.7
+
+``` r
+round(sum(result$model_xgb_BoxCox == "correct")/nrow(result), digits = 2)
+```
+
+    ## [1] 0.7
 
 ``` r
 round(sum(result$pred_xgbTree_pca == "correct")/nrow(result), digits = 2)
 ```
 
-    ## [1] 0.65
-
-<br>
-
-### Are predictions from combined models better than from individual models?
+    ## [1] 0.61
 
 ``` r
-result <- left_join(result_1[, c(1, 2, 5)], result_2[, c(1, 5)], by = "case_ID")
-result <- left_join(result, result_3[, c(1, 5)], by = "case_ID")
-colnames(result)[3:5] <- c("pred_death_xgboost_gbtree", "pred_death_xgboost_gblinear", "pred_death_xgbTree_pca")
-result$mean_pred_death <- round(rowMeans(result[, c(3:5)]), digits = 2)
-result$prediction_combined <- ifelse(result$mean_pred_death >= 0.6, "Death", 
-                                     ifelse(result$mean_pred_death <= 0.4, "Recover", "uncertain"))
-result$prediction <- ifelse(result$outcome == result$prediction_combined, "correct",
-                            ifelse(result$prediction_combined == "uncertain", "uncertain", "wrong"))
+round(sum(result$model_xgb_medianImpute == "correct")/nrow(result), digits = 2)
 ```
 
-``` r
-round(sum(result$prediction == "correct")/nrow(result), digits = 2)
-```
-
-    ## [1] 0.46
+    ## [1] 0.7
 
 <br>
 
 Predicting unknown output
 =========================
-
-The highest prediction accuracy was achieved with the PCA corrected model of the "xgbTree" implementation in caret. I will apply this model to predict the outcome of the unclassified cases from the original dataset.
 
 ``` r
 set.seed(27)
@@ -873,7 +824,7 @@ model_xgb_pca <-train(outcome ~ .,
                  data = train_data,
                  method = "xgbTree",
                  preProcess = "pca",
-                 trControl = trainControl(method = "repeatedcv", number = 3, repeats = 10, verboseIter = FALSE))
+                 trControl = trainControl(method = "repeatedcv", number = 5, repeats = 10, verboseIter = FALSE))
 ```
 
 ``` r
@@ -883,69 +834,69 @@ predb <- round(predict(model_xgb_pca, test_data, type="prob"), digits = 2)
 result <- data.frame(case_ID = rownames(test_data),
                        prediction = pred,
                        predb)
-result$predicted_outcome <- ifelse(result$Death > 0.75, "Death",
-                                   ifelse(result$Recover > 0.75, "Recover", "uncertain"))
+result$predicted_outcome <- ifelse(result$Death > 0.7, "Death",
+                                   ifelse(result$Recover > 0.7, "Recover", "uncertain"))
 result
 ```
 
     ##     case_ID prediction Death Recover predicted_outcome
-    ## 1  case_100    Recover  0.02    0.98           Recover
-    ## 2  case_101      Death  0.68    0.32         uncertain
-    ## 3  case_102    Recover  0.01    0.99           Recover
-    ## 4  case_103    Recover  0.01    0.99           Recover
-    ## 5  case_104    Recover  0.05    0.95           Recover
-    ## 6  case_105    Recover  0.00    1.00           Recover
-    ## 7  case_108      Death  0.88    0.12             Death
-    ## 8  case_109    Recover  0.01    0.99           Recover
-    ## 9  case_110    Recover  0.38    0.62         uncertain
-    ## 10 case_112    Recover  0.02    0.98           Recover
-    ## 11 case_113    Recover  0.04    0.96           Recover
-    ## 12 case_114    Recover  0.04    0.96           Recover
-    ## 13 case_115    Recover  0.01    0.99           Recover
-    ## 14 case_118    Recover  0.00    1.00           Recover
-    ## 15 case_120      Death  0.67    0.33         uncertain
-    ## 16 case_122    Recover  0.01    0.99           Recover
-    ## 17 case_126    Recover  0.06    0.94           Recover
-    ## 18 case_130    Recover  0.40    0.60         uncertain
-    ## 19 case_132    Recover  0.46    0.54         uncertain
-    ## 20 case_136    Recover  0.21    0.79           Recover
-    ## 21  case_15      Death  0.99    0.01             Death
-    ## 22  case_16      Death  0.75    0.25         uncertain
-    ## 23  case_22      Death  0.98    0.02             Death
-    ## 24  case_28    Recover  0.30    0.70         uncertain
-    ## 25  case_31      Death  0.52    0.48         uncertain
-    ## 26  case_32      Death  0.86    0.14             Death
-    ## 27  case_38      Death  0.62    0.38         uncertain
-    ## 28  case_39    Recover  0.05    0.95           Recover
-    ## 29   case_4      Death  0.83    0.17             Death
-    ## 30  case_40      Death  0.79    0.21             Death
-    ## 31  case_41      Death  0.96    0.04             Death
-    ## 32  case_42    Recover  0.04    0.96           Recover
-    ## 33  case_47      Death  0.97    0.03             Death
-    ## 34  case_48    Recover  0.34    0.66         uncertain
-    ## 35  case_52      Death  0.95    0.05             Death
-    ## 36  case_54    Recover  0.19    0.81           Recover
-    ## 37  case_56      Death  0.94    0.06             Death
-    ## 38  case_62    Recover  0.31    0.69         uncertain
-    ## 39  case_63      Death  0.55    0.45         uncertain
-    ## 40  case_66      Death  0.92    0.08             Death
-    ## 41  case_67    Recover  0.00    1.00           Recover
-    ## 42  case_68    Recover  0.01    0.99           Recover
-    ## 43  case_69    Recover  0.00    1.00           Recover
-    ## 44  case_70    Recover  0.22    0.78           Recover
-    ## 45  case_71      Death  0.86    0.14             Death
-    ## 46  case_80      Death  0.91    0.09             Death
-    ## 47  case_84    Recover  0.28    0.72         uncertain
-    ## 48  case_85      Death  0.81    0.19             Death
-    ## 49  case_86    Recover  0.04    0.96           Recover
-    ## 50  case_88    Recover  0.01    0.99           Recover
-    ## 51   case_9    Recover  0.10    0.90           Recover
-    ## 52  case_90    Recover  0.07    0.93           Recover
-    ## 53  case_92    Recover  0.01    0.99           Recover
-    ## 54  case_93    Recover  0.00    1.00           Recover
-    ## 55  case_95    Recover  0.50    0.50         uncertain
-    ## 56  case_96    Recover  0.29    0.71         uncertain
-    ## 57  case_99    Recover  0.49    0.51         uncertain
+    ## 1  case_100    Recover  0.06    0.94           Recover
+    ## 2  case_101    Recover  0.35    0.65         uncertain
+    ## 3  case_102    Recover  0.04    0.96           Recover
+    ## 4  case_103    Recover  0.05    0.95           Recover
+    ## 5  case_104    Recover  0.03    0.97           Recover
+    ## 6  case_105    Recover  0.05    0.95           Recover
+    ## 7  case_108    Recover  0.11    0.89           Recover
+    ## 8  case_109    Recover  0.02    0.98           Recover
+    ## 9  case_110    Recover  0.00    1.00           Recover
+    ## 10 case_112    Recover  0.22    0.78           Recover
+    ## 11 case_113    Recover  0.42    0.58         uncertain
+    ## 12 case_114    Recover  0.01    0.99           Recover
+    ## 13 case_115    Recover  0.03    0.97           Recover
+    ## 14 case_118    Recover  0.08    0.92           Recover
+    ## 15 case_120      Death  0.89    0.11             Death
+    ## 16 case_122    Recover  0.02    0.98           Recover
+    ## 17 case_126      Death  0.93    0.07             Death
+    ## 18 case_130    Recover  0.00    1.00           Recover
+    ## 19 case_132    Recover  0.42    0.58         uncertain
+    ## 20 case_136    Recover  0.28    0.72           Recover
+    ## 21  case_15      Death  0.95    0.05             Death
+    ## 22  case_16      Death  0.86    0.14             Death
+    ## 23  case_22      Death  0.87    0.13             Death
+    ## 24  case_28      Death  0.95    0.05             Death
+    ## 25  case_31      Death  0.97    0.03             Death
+    ## 26  case_32      Death  0.61    0.39         uncertain
+    ## 27  case_38      Death  0.93    0.07             Death
+    ## 28  case_39      Death  0.66    0.34         uncertain
+    ## 29   case_4      Death  0.93    0.07             Death
+    ## 30  case_40      Death  0.57    0.43         uncertain
+    ## 31  case_41      Death  0.89    0.11             Death
+    ## 32  case_42    Recover  0.09    0.91           Recover
+    ## 33  case_47      Death  0.89    0.11             Death
+    ## 34  case_48      Death  0.90    0.10             Death
+    ## 35  case_52    Recover  0.37    0.63         uncertain
+    ## 36  case_54      Death  0.97    0.03             Death
+    ## 37  case_56    Recover  0.30    0.70         uncertain
+    ## 38  case_62      Death  0.97    0.03             Death
+    ## 39  case_63    Recover  0.32    0.68         uncertain
+    ## 40  case_66      Death  0.87    0.13             Death
+    ## 41  case_67    Recover  0.06    0.94           Recover
+    ## 42  case_68    Recover  0.02    0.98           Recover
+    ## 43  case_69    Recover  0.08    0.92           Recover
+    ## 44  case_70    Recover  0.35    0.65         uncertain
+    ## 45  case_71    Recover  0.30    0.70         uncertain
+    ## 46  case_80    Recover  0.29    0.71           Recover
+    ## 47  case_84    Recover  0.00    1.00           Recover
+    ## 48  case_85    Recover  0.24    0.76           Recover
+    ## 49  case_86    Recover  0.06    0.94           Recover
+    ## 50  case_88    Recover  0.02    0.98           Recover
+    ## 51   case_9      Death  0.98    0.02             Death
+    ## 52  case_90    Recover  0.02    0.98           Recover
+    ## 53  case_92      Death  0.85    0.15             Death
+    ## 54  case_93    Recover  0.04    0.96           Recover
+    ## 55  case_95    Recover  0.34    0.66         uncertain
+    ## 56  case_96      Death  0.98    0.02             Death
+    ## 57  case_99    Recover  0.37    0.63         uncertain
 
 <br>
 
@@ -1048,7 +999,7 @@ ggplot(data = subset(results_combined_gather, group_dates == "Date of onset"), a
   scale_fill_brewer(palette="Set1")
 ```
 
-<img src="flu_outcome_ML_2_post_files/figure-markdown_github/unnamed-chunk-37-1.png" style="display: block; margin: auto;" />
+<img src="flu_outcome_ML_2_post_files/figure-markdown_github/unnamed-chunk-38-1.png" style="display: block; margin: auto;" />
 
 There is much less uncertainty in the XGBoost data, even tough I used slightly different methods for classifying uncertainty: In last week's analysis I based uncertainty on the ratio of combined prediction values from all analyses, this week uncertainty is based on the prediction value from one analysis.
 
