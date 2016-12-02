@@ -231,7 +231,7 @@ model_xgb_null <-train(outcome ~ .,
                  data=val_train_data,
                  method="xgbTree",
                  preProcess = NULL,
-                 trControl = trainControl(method = "repeatedcv", number = 10, repeats = 10, verboseIter = FALSE))
+                 trControl = trainControl(method = "repeatedcv", number = 3, repeats = 10, verboseIter = FALSE))
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
@@ -250,7 +250,7 @@ model_xgb_sc_cen <-train(outcome ~ .,
                  data=val_train_data,
                  method="xgbTree",
                  preProcess = c("scale", "center"),
-                 trControl = trainControl(method = "repeatedcv", number = 10, repeats = 10, verboseIter = FALSE))
+                 trControl = trainControl(method = "repeatedcv", number = 3, repeats = 10, verboseIter = FALSE))
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
@@ -271,7 +271,7 @@ model_xgb_BoxCox <-train(outcome ~ .,
                  data=val_train_data,
                  method="xgbTree",
                  preProcess = "BoxCox",
-                 trControl = trainControl(method = "repeatedcv", number = 10, repeats = 10, verboseIter = FALSE))
+                 trControl = trainControl(method = "repeatedcv", number = 3, repeats = 10, verboseIter = FALSE))
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
@@ -292,7 +292,7 @@ model_xgb_pca <-train(outcome ~ .,
                  data=val_train_data,
                  method="xgbTree",
                  preProcess = "pca",
-                 trControl = trainControl(method = "repeatedcv", number = 10, repeats = 10, verboseIter = FALSE))
+                 trControl = trainControl(method = "repeatedcv", number = 3, repeats = 10, verboseIter = FALSE))
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
@@ -311,7 +311,7 @@ model_xgb_medianImpute <-train(outcome ~ .,
                  data=val_train_data,
                  method="xgbTree",
                  preProcess = "medianImpute",
-                 trControl = trainControl(method = "repeatedcv", number = 10, repeats = 10, verboseIter = FALSE))
+                 trControl = trainControl(method = "repeatedcv", number = 3, repeats = 10, verboseIter = FALSE))
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
@@ -394,7 +394,7 @@ model_xgb_pca <-train(outcome ~ .,
                  data = train_data,
                  method = "xgbTree",
                  preProcess = "pca",
-                 trControl = trainControl(method = "repeatedcv", number = 10, repeats = 10, verboseIter = FALSE))
+                 trControl = trainControl(method = "repeatedcv", number = 3, repeats = 10, verboseIter = FALSE))
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
