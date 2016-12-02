@@ -2,7 +2,6 @@
 title: "Extreme Gradient Boosting and Preprocessing in Machine Learning - Addendum to predicting flu outcome with R"
 author: "Shirin Glander"
 date: "December 1, 2016"
-always_allow_html: yes
 output:
   md_document:
     variant: markdown_github
@@ -155,9 +154,7 @@ xgb.ggplot.importance(importance_matrix_1) +
   theme_minimal()
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 10, fig.align = "center"}
-xgb.plot.multi.trees(feature_names = features, model = bst_1)
-```
+
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 pred_1 <- predict(bst_1, xgb_test_matrix)
@@ -416,6 +413,402 @@ model_xgb_pca <-train(outcome ~ .,
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 pred <- predict(model_xgb_pca, test_data)
 predb <- round(predict(model_xgb_pca, test_data, type="prob"), digits = 2)
+
+result <- data.frame(case_ID = rownames(test_data),
+                       prediction = pred,
+                       predb)
+result$predicted_outcome <- ifelse(result$Death > 0.7, "Death",
+                                   ifelse(result$Recover > 0.7, "Recover", "uncertain"))
+result
+```
+
+<br>
+
+## Comparison with predicted outcome from last week's analyses
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+results_last_week <- read.table("results_prediction_unknown_outcome_ML_part1.txt", header = TRUE, sep = "\t")
+```
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+result <- merge(result[, c(1, 5)], results_last_week[, ncol(results_last_week), drop = FALSE], by.x = "case_ID", by.y = "row.names")
+colnames(result)[2:3] <- c("predicted_outcome_xgboost", "predicted_outcome_last_week")
+```
+
+<br>
+
+### Plotting predicted outcome
+
+Combining the table with predicted outcomes from this and last week with the original data.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+results_combined <- merge(result, fluH7N9.china.2013[which(fluH7N9.china.2013$case.ID %in% result$case_ID), ], 
+                          by.x = "case_ID", by.y = "case.ID")
+results_combined <- results_combined[, -c(6,7)]
+```
+
+For plotting with ggplot2, the dataframe needs to be gathered.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+library(tidyr)
+results_combined_gather <- results_combined %>%
+  gather(group_dates, date, date.of.onset:date.of.hospitalisation)
+
+results_combined_gather$group_dates <- factor(results_combined_gather$group_dates, levels = c("date.of.onset", "date.of.hospitalisation"))
+
+results_combined_gather$group_dates <- mapvalues(results_combined_gather$group_dates, from = c("date.of.onset", "date.of.hospitalisation"), 
+                                             to = c("Date of onset", "Date of hospitalisation"))
+
+results_combined_gather$gender <- mapvalues(results_combined_gather$gender, from = c("f", "m"), 
+                                             to = c("Female", "Male"))
+levels(results_combined_gather$gender) <- c(levels(results_combined_gather$gender), "unknown")
+results_combined_gather$gender[is.na(results_combined_gather$gender)] <- "unknown"
+
+results_combined_gather <- results_combined_gather %>%
+  gather(group_pred, prediction, predicted_outcome_xgboost:predicted_outcome_last_week)
+
+results_combined_gather$group_pred <- mapvalues(results_combined_gather$group_pred, from = c("predicted_outcome_xgboost", "predicted_outcome_last_week"), 
+                                             to = c("Predicted outcome from XGBoost", "Predicted outcome from last week"))
+```
+
+Setting a custom theme for plotting:
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+library(ggplot2)
+my_theme <- function(base_size = 12, base_family = "sans"){
+  theme_minimal(base_size = base_size, base_family = base_family) +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5),
+    axis.title = element_text(size = 14),
+    panel.grid.major = element_line(color = "grey"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "aliceblue"),
+    strip.background = element_rect(fill = "lightgrey", color = "grey", size = 1),
+    strip.text = element_text(face = "bold", size = 12, color = "black"),
+    legend.position = "bottom",
+    legend.justification = "top", 
+    legend.box = "horizontal",
+    legend.box.background = element_rect(colour = "grey50"),
+    legend.background = element_blank(),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5),
+    panel.spacing = unit(1, "lines")
+  )
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 18, fig.height = 6, fig.align = "center"}
+results_combined_gather$province <- mapvalues(results_combined_gather$province, 
+                                                from = c("Anhui", "Beijing", "Fujian", "Guangdong", "Hebei", "Henan", "Hunan", "Jiangxi", "Shandong", "Taiwan"), 
+                                                to = rep("Other", 10))
+
+levels(results_combined_gather$gender) <- c(levels(results_combined_gather$gender), "unknown")
+results_combined_gather$gender[is.na(results_combined_gather$gender)] <- "unknown"
+
+results_combined_gather$province <- factor(results_combined_gather$province, levels = c("Jiangsu",  "Shanghai", "Zhejiang", "Other"))
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 12, fig.height = 8, fig.align = "center"}
+ggplot(data = subset(results_combined_gather, group_dates == "Date of onset"), aes(x = date, y = as.numeric(age), fill = prediction)) +
+  stat_density2d(aes(alpha = ..level..), geom = "polygon") +
+  geom_jitter(aes(color = prediction, shape = gender), size = 2) +
+  geom_rug(aes(color = prediction)) +
+  labs(
+    fill = "Predicted outcome",
+    color = "Predicted outcome",
+    alpha = "Level",
+    shape = "Gender",
+    x = "Date of onset in 2013",
+    y = "Age",
+    title = "2013 Influenza A H7N9 cases in China",
+    subtitle = "Predicted outcome of cases with unknown outcome",
+    caption = ""
+  ) +
+  facet_grid(group_pred ~ province) +
+  my_theme() +
+  scale_shape_manual(values = c(15, 16, 17)) +
+  scale_color_brewer(palette="Set1", na.value = "grey50") +
+  scale_fill_brewer(palette="Set1")
+```
+
+---
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+set.seed(27)
+model_xgb <-train(outcome ~ .,
+                 data = train_data,
+                 method = "xgbTree",
+                 preProcess = c("scale", "center"),
+                 trControl = trainControl(method = "repeatedcv", number = 5, repeats = 10, verboseIter = FALSE))
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+pred <- predict(model_xgb, test_data)
+predb <- round(predict(model_xgb, test_data, type="prob"), digits = 2)
+
+result <- data.frame(case_ID = rownames(test_data),
+                       prediction = pred,
+                       predb)
+result$predicted_outcome <- ifelse(result$Death > 0.7, "Death",
+                                   ifelse(result$Recover > 0.7, "Recover", "uncertain"))
+result
+```
+
+<br>
+
+## Comparison with predicted outcome from last week's analyses
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+results_last_week <- read.table("results_prediction_unknown_outcome_ML_part1.txt", header = TRUE, sep = "\t")
+```
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+result <- merge(result[, c(1, 5)], results_last_week[, ncol(results_last_week), drop = FALSE], by.x = "case_ID", by.y = "row.names")
+colnames(result)[2:3] <- c("predicted_outcome_xgboost", "predicted_outcome_last_week")
+```
+
+<br>
+
+### Plotting predicted outcome
+
+Combining the table with predicted outcomes from this and last week with the original data.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+results_combined <- merge(result, fluH7N9.china.2013[which(fluH7N9.china.2013$case.ID %in% result$case_ID), ], 
+                          by.x = "case_ID", by.y = "case.ID")
+results_combined <- results_combined[, -c(6,7)]
+```
+
+For plotting with ggplot2, the dataframe needs to be gathered.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+library(tidyr)
+results_combined_gather <- results_combined %>%
+  gather(group_dates, date, date.of.onset:date.of.hospitalisation)
+
+results_combined_gather$group_dates <- factor(results_combined_gather$group_dates, levels = c("date.of.onset", "date.of.hospitalisation"))
+
+results_combined_gather$group_dates <- mapvalues(results_combined_gather$group_dates, from = c("date.of.onset", "date.of.hospitalisation"), 
+                                             to = c("Date of onset", "Date of hospitalisation"))
+
+results_combined_gather$gender <- mapvalues(results_combined_gather$gender, from = c("f", "m"), 
+                                             to = c("Female", "Male"))
+levels(results_combined_gather$gender) <- c(levels(results_combined_gather$gender), "unknown")
+results_combined_gather$gender[is.na(results_combined_gather$gender)] <- "unknown"
+
+results_combined_gather <- results_combined_gather %>%
+  gather(group_pred, prediction, predicted_outcome_xgboost:predicted_outcome_last_week)
+
+results_combined_gather$group_pred <- mapvalues(results_combined_gather$group_pred, from = c("predicted_outcome_xgboost", "predicted_outcome_last_week"), 
+                                             to = c("Predicted outcome from XGBoost", "Predicted outcome from last week"))
+```
+
+Setting a custom theme for plotting:
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+library(ggplot2)
+my_theme <- function(base_size = 12, base_family = "sans"){
+  theme_minimal(base_size = base_size, base_family = base_family) +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5),
+    axis.title = element_text(size = 14),
+    panel.grid.major = element_line(color = "grey"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "aliceblue"),
+    strip.background = element_rect(fill = "lightgrey", color = "grey", size = 1),
+    strip.text = element_text(face = "bold", size = 12, color = "black"),
+    legend.position = "bottom",
+    legend.justification = "top", 
+    legend.box = "horizontal",
+    legend.box.background = element_rect(colour = "grey50"),
+    legend.background = element_blank(),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5),
+    panel.spacing = unit(1, "lines")
+  )
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 18, fig.height = 6, fig.align = "center"}
+results_combined_gather$province <- mapvalues(results_combined_gather$province, 
+                                                from = c("Anhui", "Beijing", "Fujian", "Guangdong", "Hebei", "Henan", "Hunan", "Jiangxi", "Shandong", "Taiwan"), 
+                                                to = rep("Other", 10))
+
+levels(results_combined_gather$gender) <- c(levels(results_combined_gather$gender), "unknown")
+results_combined_gather$gender[is.na(results_combined_gather$gender)] <- "unknown"
+
+results_combined_gather$province <- factor(results_combined_gather$province, levels = c("Jiangsu",  "Shanghai", "Zhejiang", "Other"))
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 12, fig.height = 8, fig.align = "center"}
+ggplot(data = subset(results_combined_gather, group_dates == "Date of onset"), aes(x = date, y = as.numeric(age), fill = prediction)) +
+  stat_density2d(aes(alpha = ..level..), geom = "polygon") +
+  geom_jitter(aes(color = prediction, shape = gender), size = 2) +
+  geom_rug(aes(color = prediction)) +
+  labs(
+    fill = "Predicted outcome",
+    color = "Predicted outcome",
+    alpha = "Level",
+    shape = "Gender",
+    x = "Date of onset in 2013",
+    y = "Age",
+    title = "2013 Influenza A H7N9 cases in China",
+    subtitle = "Predicted outcome of cases with unknown outcome",
+    caption = ""
+  ) +
+  facet_grid(group_pred ~ province) +
+  my_theme() +
+  scale_shape_manual(values = c(15, 16, 17)) +
+  scale_color_brewer(palette="Set1", na.value = "grey50") +
+  scale_fill_brewer(palette="Set1")
+```
+
+---
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+set.seed(27)
+model_xgb <-train(outcome ~ .,
+                 data = train_data,
+                 method = "xgbTree",
+                 preProcess = "BoxCox",
+                 trControl = trainControl(method = "repeatedcv", number = 5, repeats = 10, verboseIter = FALSE))
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+pred <- predict(model_xgb, test_data)
+predb <- round(predict(model_xgb, test_data, type="prob"), digits = 2)
+
+result <- data.frame(case_ID = rownames(test_data),
+                       prediction = pred,
+                       predb)
+result$predicted_outcome <- ifelse(result$Death > 0.7, "Death",
+                                   ifelse(result$Recover > 0.7, "Recover", "uncertain"))
+result
+```
+
+<br>
+
+## Comparison with predicted outcome from last week's analyses
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+results_last_week <- read.table("results_prediction_unknown_outcome_ML_part1.txt", header = TRUE, sep = "\t")
+```
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+result <- merge(result[, c(1, 5)], results_last_week[, ncol(results_last_week), drop = FALSE], by.x = "case_ID", by.y = "row.names")
+colnames(result)[2:3] <- c("predicted_outcome_xgboost", "predicted_outcome_last_week")
+```
+
+<br>
+
+### Plotting predicted outcome
+
+Combining the table with predicted outcomes from this and last week with the original data.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+results_combined <- merge(result, fluH7N9.china.2013[which(fluH7N9.china.2013$case.ID %in% result$case_ID), ], 
+                          by.x = "case_ID", by.y = "case.ID")
+results_combined <- results_combined[, -c(6,7)]
+```
+
+For plotting with ggplot2, the dataframe needs to be gathered.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+library(tidyr)
+results_combined_gather <- results_combined %>%
+  gather(group_dates, date, date.of.onset:date.of.hospitalisation)
+
+results_combined_gather$group_dates <- factor(results_combined_gather$group_dates, levels = c("date.of.onset", "date.of.hospitalisation"))
+
+results_combined_gather$group_dates <- mapvalues(results_combined_gather$group_dates, from = c("date.of.onset", "date.of.hospitalisation"), 
+                                             to = c("Date of onset", "Date of hospitalisation"))
+
+results_combined_gather$gender <- mapvalues(results_combined_gather$gender, from = c("f", "m"), 
+                                             to = c("Female", "Male"))
+levels(results_combined_gather$gender) <- c(levels(results_combined_gather$gender), "unknown")
+results_combined_gather$gender[is.na(results_combined_gather$gender)] <- "unknown"
+
+results_combined_gather <- results_combined_gather %>%
+  gather(group_pred, prediction, predicted_outcome_xgboost:predicted_outcome_last_week)
+
+results_combined_gather$group_pred <- mapvalues(results_combined_gather$group_pred, from = c("predicted_outcome_xgboost", "predicted_outcome_last_week"), 
+                                             to = c("Predicted outcome from XGBoost", "Predicted outcome from last week"))
+```
+
+Setting a custom theme for plotting:
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+library(ggplot2)
+my_theme <- function(base_size = 12, base_family = "sans"){
+  theme_minimal(base_size = base_size, base_family = base_family) +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5),
+    axis.title = element_text(size = 14),
+    panel.grid.major = element_line(color = "grey"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "aliceblue"),
+    strip.background = element_rect(fill = "lightgrey", color = "grey", size = 1),
+    strip.text = element_text(face = "bold", size = 12, color = "black"),
+    legend.position = "bottom",
+    legend.justification = "top", 
+    legend.box = "horizontal",
+    legend.box.background = element_rect(colour = "grey50"),
+    legend.background = element_blank(),
+    panel.border = element_rect(color = "grey", fill = NA, size = 0.5),
+    panel.spacing = unit(1, "lines")
+  )
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 18, fig.height = 6, fig.align = "center"}
+results_combined_gather$province <- mapvalues(results_combined_gather$province, 
+                                                from = c("Anhui", "Beijing", "Fujian", "Guangdong", "Hebei", "Henan", "Hunan", "Jiangxi", "Shandong", "Taiwan"), 
+                                                to = rep("Other", 10))
+
+levels(results_combined_gather$gender) <- c(levels(results_combined_gather$gender), "unknown")
+results_combined_gather$gender[is.na(results_combined_gather$gender)] <- "unknown"
+
+results_combined_gather$province <- factor(results_combined_gather$province, levels = c("Jiangsu",  "Shanghai", "Zhejiang", "Other"))
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 12, fig.height = 8, fig.align = "center"}
+ggplot(data = subset(results_combined_gather, group_dates == "Date of onset"), aes(x = date, y = as.numeric(age), fill = prediction)) +
+  stat_density2d(aes(alpha = ..level..), geom = "polygon") +
+  geom_jitter(aes(color = prediction, shape = gender), size = 2) +
+  geom_rug(aes(color = prediction)) +
+  labs(
+    fill = "Predicted outcome",
+    color = "Predicted outcome",
+    alpha = "Level",
+    shape = "Gender",
+    x = "Date of onset in 2013",
+    y = "Age",
+    title = "2013 Influenza A H7N9 cases in China",
+    subtitle = "Predicted outcome of cases with unknown outcome",
+    caption = ""
+  ) +
+  facet_grid(group_pred ~ province) +
+  my_theme() +
+  scale_shape_manual(values = c(15, 16, 17)) +
+  scale_color_brewer(palette="Set1", na.value = "grey50") +
+  scale_fill_brewer(palette="Set1")
+```
+
+---
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+set.seed(27)
+model_xgb <-train(outcome ~ .,
+                 data = train_data,
+                 method = "xgbTree",
+                 preProcess = "medianImpute",
+                 trControl = trainControl(method = "repeatedcv", number = 5, repeats = 10, verboseIter = FALSE))
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+pred <- predict(model_xgb, test_data)
+predb <- round(predict(model_xgb, test_data, type="prob"), digits = 2)
 
 result <- data.frame(case_ID = rownames(test_data),
                        prediction = pred,
