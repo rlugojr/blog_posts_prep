@@ -1,0 +1,168 @@
+---
+title: "Species gene homology network with biomaRt"
+author: "Shirin Glander"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: tactile
+    highlight: github
+---
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+library("biomaRt")
+ensembl=useMart("ensembl")
+datasets <- listDatasets(ensembl)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+for (i in 1:nrow(datasets)){
+  ensembl <- datasets[i, 1]
+  assign(paste0(ensembl), useMart("ensembl", dataset = paste0(ensembl)))
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+library(AnnotationDbi)
+library(EnsDb.Hsapiens.v79)
+human_EnsDb <- keys(EnsDb.Hsapiens.v79, keytype = "GENEID")
+
+human_gene_EnsDb <- ensembldb::select(EnsDb.Hsapiens.v79, keys=human_EnsDb, 
+                                          columns="GENEBIOTYPE", keytype="GENEID")
+
+human_prot_coding_genes <- human_gene_EnsDb[which(human_gene_EnsDb$GENEBIOTYPE == "protein_coding"), ]
+```
+
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+specieslist <- datasets$dataset
+
+for (species in specieslist){
+  print(species)
+  assign(paste0("homologs_human_", species), getLDS(attributes = c("ensembl_gene_id", "chromosome_name"), 
+       filters = "ensembl_gene_id", 
+       values = human_prot_coding_genes$GENEID, 
+       mart = human, 
+       attributesL = c("ensembl_gene_id", "chromosome_name"), 
+       martL = get(species)))
+}
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+library(dplyr)
+
+for (i in 1:length(specieslist)){
+  species <- specieslist[i]
+  homologs_human <- left_join(human_prot_coding_genes, get(paste0("homologs_human_", species)), by = c("GENEID" = "Ensembl.Gene.ID"))
+  homologs_human[, paste0(species)] <- ifelse(is.na(homologs_human$Ensembl.Gene.ID.1), 0, 1)
+  homologs_human <- homologs_human[, c(1, 6)]
+  homologs_human <- homologs_human[!duplicated(homologs_human$GENEID), ]
+  
+  if (i == 1){
+    homologs_human_table <- homologs_human
+  } else {
+    homologs_human_table <- left_join(homologs_human_table, homologs_human, by = "GENEID")
+  }
+}
+
+homologs_human_table
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+write.table(homologs_human_table, "U:/Github_blog/blog_posts_prep/annotationdbi/homologs_human_table.txt", row.names = FALSE, col.names = TRUE, sep = "\t")
+```
+
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+homologs_human_table <- read.table("U:/Github_blog/blog_posts_prep/annotationdbi/homologs_human_table.txt", header = TRUE, sep = "\t")
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
+gene_matrix <- homologs_human_table[, -1]
+number_genes <- colSums(gene_matrix)
+
+co_occurrence <- t(as.matrix(gene_matrix)) %*% as.matrix(gene_matrix)
+co_occurrence[-grep("sapiens", rownames(co_occurrence)), -grep("sapiens", colnames(co_occurrence))] <- 0
+
+# plot the network graph
+library(igraph)
+g <- graph_from_adjacency_matrix(co_occurrence,
+                         weighted = TRUE,
+                         diag = FALSE,
+                         mode = "plus")
+
+g <- simplify(g, remove.multiple = F, remove.loops = T, edge.attr.comb = c(weight = "sum", type = "ignore"))
+
+#plot(g,
+#     vertex.label.family = "Helvetica",
+#     vertex.label.font = 1,
+#     vertex.shape = "sphere",
+#     vertex.size=number_genes/10000,
+#     vertex.label.cex=0.8,
+#     vertex.label.color="black",
+#     vertex.frame.color = NA,
+#     edge.width = E(g)$weight/10000,
+#     edge.curved=.1,
+#     layout=layout_in_circle)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 20, fig.height = 20, fig.align = "center"}
+h <- hclust(dist(scale(as.matrix(t(gene_matrix))), method = "manhattan"))
+
+library(ape)
+# plot basic tree
+#plot(as.phylo(h), cex = 0.9, label.offset = 1)
+plot(as.phylo(h), type = "fan")
+
+# vector of colors
+mypal = c("#556270", "#4ECDC4", "#1B676B", "#FF6B6B", "#C44D58")
+# cutting dendrogram in 5 clusters
+clus5 = cutree(h, 5)
+# plot
+op = par(bg = "#E8DDCB")
+# Size reflects miles per gallon
+plot(as.phylo(h), type = "fan", tip.color = mypal[clus5], label.offset = 1, col = "red")
+
+
+library(dendextend)
+library(circlize)
+
+# create a dendrogram
+dend <- as.dendrogram(h)
+
+
+library(dplyr)
+labels <- as.data.frame(dend %>% labels) %>%
+  left_join(datasets, by = c("dend %>% labels" = "dataset"))
+
+labels[, 2] <- gsub("(.*)( genes (.*))", "\\1", labels[, 2])
+labels$group <- c(rep("mammal", 2), rep("fish", 8), "amphibia", rep("fish", 4), rep("bird", 5), rep("reptile", 2), rep("mammal", 41), "fungus", "lamprey", rep("seasquirt", 2), "celegans", "insect")
+
+library(RColorBrewer)
+
+dend %>% set("labels_col", "blue")
+cols <- brewer.pal(10, "Set3")
+
+labels$col <- c(rep("#8DD3C7", 2), rep("#FFFFB3", 8), "#BEBADA", rep("#FFFFB3", 4), rep("#FB8072", 5), rep("#80B1D3", 2), rep("#8DD3C7", 41), "#FDB462", "#B3DE69", rep("#FCCDE5", 2), "#D9D9D9", "#BC80BD")
+
+labels(dend) <- labels[, 2]
+dend %>% set("labels_col", labels[, 5]) %>% circlize_dendrogram(labels_track_height = NA, dend_track_height = .3) 
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+#clustering
+wc <- cluster_walktrap(g)
+members <- membership(wc)
+
+library(networkD3)
+
+net_d3 <- igraph_to_networkD3(g, group = members)
+
+# Create force directed network plot
+forceNetwork(Links = net_d3$links, Nodes = net_d3$nodes, zoom=T, opacity = 1,
+             Source = 'source', Target = 'target',
+             linkDistance = 100, bounded=F, colourScale = JS("d3.scale.category10()"),
+             NodeID = 'name', Group = 'group', 
+             fontSize=8, opacityNoHover = .7)
+```
+
+

@@ -1,8 +1,11 @@
 ---
 title: "Time series forecasting of sin taxes with R"
 author: "Shirin Glander"
-date: "November 29, 2016"
-output: html_document
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: tactile
+    highlight: github
 ---
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}

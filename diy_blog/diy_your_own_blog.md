@@ -1,3 +1,11 @@
+---
+layout: post
+title: "How to set up your own R blog with Github pages and Jekyll Boostrap"
+date: 2016-12-02
+categories: blogging
+tags: blogging github jekyll bootstrap
+---
+
 ### This post is in reply to a request: How did I set up this R blog?
 
 I have wanted to have my own R blog for a while before I actually went ahead and realised this page. I had seen all the cool things people did (and still do) with R by following [R-bloggers](https://www.r-bloggers.com/) and reading their newsletter every day!
