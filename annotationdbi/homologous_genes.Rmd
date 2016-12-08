@@ -10,11 +10,11 @@ output:
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 library("biomaRt")
-ensembl=useMart("ensembl")
+ensembl = useMart("ensembl")
 datasets <- listDatasets(ensembl)
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+```{r echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 for (i in 1:nrow(datasets)){
   ensembl <- datasets[i, 1]
   assign(paste0(ensembl), useMart("ensembl", dataset = paste0(ensembl)))
@@ -33,7 +33,7 @@ human_prot_coding_genes <- human_gene_EnsDb[which(human_gene_EnsDb$GENEBIOTYPE =
 ```
 
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+```{r echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 specieslist <- datasets$dataset
 
 for (species in specieslist){
@@ -47,7 +47,7 @@ for (species in specieslist){
 }
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+```{r echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 library(dplyr)
 
 for (i in 1:length(specieslist)){
@@ -67,13 +67,14 @@ for (i in 1:length(specieslist)){
 homologs_human_table
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+```{r echo = FALSE, eval = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 write.table(homologs_human_table, "U:/Github_blog/blog_posts_prep/annotationdbi/homologs_human_table.txt", row.names = FALSE, col.names = TRUE, sep = "\t")
 ```
 
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 homologs_human_table <- read.table("U:/Github_blog/blog_posts_prep/annotationdbi/homologs_human_table.txt", header = TRUE, sep = "\t")
+homologs_human_table <- read.table("~/Documents/Github/blog_posts_prep/annotationdbi/homologs_human_table.txt", header = TRUE, sep = "\t")
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
