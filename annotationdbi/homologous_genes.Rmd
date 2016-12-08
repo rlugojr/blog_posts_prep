@@ -74,7 +74,7 @@ write.table(homologs_human_table, "U:/Github_blog/blog_posts_prep/annotationdbi/
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 homologs_human_table <- read.table("U:/Github_blog/blog_posts_prep/annotationdbi/homologs_human_table.txt", header = TRUE, sep = "\t")
-homologs_human_table <- read.table("~/Documents/Github/blog_posts_prep/annotationdbi/homologs_human_table.txt", header = TRUE, sep = "\t")
+#homologs_human_table <- read.table("~/Documents/Github/blog_posts_prep/annotationdbi/homologs_human_table.txt", header = TRUE, sep = "\t")
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
@@ -83,73 +83,82 @@ number_genes <- colSums(gene_matrix)
 
 co_occurrence <- t(as.matrix(gene_matrix)) %*% as.matrix(gene_matrix)
 co_occurrence[-grep("sapiens", rownames(co_occurrence)), -grep("sapiens", colnames(co_occurrence))] <- 0
-
-# plot the network graph
-library(igraph)
-g <- graph_from_adjacency_matrix(co_occurrence,
-                         weighted = TRUE,
-                         diag = FALSE,
-                         mode = "plus")
-
-g <- simplify(g, remove.multiple = F, remove.loops = T, edge.attr.comb = c(weight = "sum", type = "ignore"))
-
-#plot(g,
-#     vertex.label.family = "Helvetica",
-#     vertex.label.font = 1,
-#     vertex.shape = "sphere",
-#     vertex.size=number_genes/10000,
-#     vertex.label.cex=0.8,
-#     vertex.label.color="black",
-#     vertex.frame.color = NA,
-#     edge.width = E(g)$weight/10000,
-#     edge.curved=.1,
-#     layout=layout_in_circle)
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 20, fig.height = 20, fig.align = "center"}
-h <- hclust(dist(scale(as.matrix(t(gene_matrix))), method = "manhattan"))
-
-library(ape)
-# plot basic tree
-#plot(as.phylo(h), cex = 0.9, label.offset = 1)
-plot(as.phylo(h), type = "fan")
-
-# vector of colors
-mypal = c("#556270", "#4ECDC4", "#1B676B", "#FF6B6B", "#C44D58")
-# cutting dendrogram in 5 clusters
-clus5 = cutree(h, 5)
-# plot
-op = par(bg = "#E8DDCB")
-# Size reflects miles per gallon
-plot(as.phylo(h), type = "fan", tip.color = mypal[clus5], label.offset = 1, col = "red")
-```
-
-
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 20, fig.height = 20, fig.align = "center"}
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 32, fig.height = 32, fig.align = "center"}
 library(dendextend)
 library(circlize)
 
 # create a dendrogram
+h <- hclust(dist(scale(as.matrix(t(gene_matrix))), method = "manhattan"))
 dend <- as.dendrogram(h)
-
 
 library(dplyr)
 labels <- as.data.frame(dend %>% labels) %>%
   left_join(datasets, by = c("dend %>% labels" = "dataset"))
 
 labels[, 2] <- gsub("(.*)( genes (.*))", "\\1", labels[, 2])
-labels$group <- c(rep("mammal", 2), rep("fish", 8), "amphibia", rep("fish", 4), rep("bird", 5), rep("reptile", 2), rep("mammal", 41), "fungus", "lamprey", rep("seasquirt", 2), "celegans", "insect")
+labels$group <- c(rep("mammal", 2), rep("fish", 8), "amphibia", rep("fish", 4), rep("bird", 5), rep("reptile", 2), rep("mammal", 41), "fungus", "lamprey", rep("seasquirt", 2), "nematode", "insect")
 
-library(RColorBrewer)
-
-dend %>% set("labels_col", "blue")
-cols <- brewer.pal(10, "Set3")
-
-labels$col <- c(rep("#8DD3C7", 2), rep("#FFFFB3", 8), "#BEBADA", rep("#FFFFB3", 4), rep("#FB8072", 5), rep("#80B1D3", 2), rep("#8DD3C7", 41), "#FDB462", "#B3DE69", rep("#FCCDE5", 2), "#D9D9D9", "#BC80BD")
-
-labels(dend) <- labels[, 2]
-dend %>% set("labels_col", labels[, 5]) %>% circlize_dendrogram(labels_track_height = NA, dend_track_height = .3) 
+labels$description[grep("hedgehog", labels$description)] <- "Hedgehog"
+labels$description[grep("Saccharomyces", labels$description)] <- "Yeast"
+labels$description[grep("savignyi", labels$description)] <- "C. savignyi"
+labels$description[grep("intestinalis", labels$description)] <- "C. intestinalis"
+labels$description[grep("elegans", labels$description)] <- "C. elegans"
+labels$description[grep("turtle", labels$description)] <- "Turtle"
+labels$description[grep("Vervet", labels$description)] <- "Vervet"
 ```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 32, fig.height = 32, fig.align = "center"}
+labels$col <- c(rep("aquamarine4", 2), rep("darkorange3", 8), "blue4", rep("darkorange3", 4), rep("darkred", 5), rep("darkmagenta", 2), rep("aquamarine4", 41), "darkslateblue", "deepskyblue1", rep("deeppink3", 2), "forestgreen", "brown3")
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 32, fig.height = 32, fig.align = "center"}
+labels(dend) <- labels$description
+dend %>% 
+  set("labels_col", labels$col) %>% 
+  set("nodes_col", labels$col) %>% 
+  set("labels_cex", 2) %>% 
+  circlize_dendrogram(labels_track_height = NA, dend_track_height = .3) 
+
+legend("topleft", unique(labels$group), pch=19,
+       col=unique(labels$col), pt.cex=3, cex=3, bty="n", ncol=1)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 20, fig.height = 20, fig.align = "center"}
+# plot the network graph
+library(igraph)
+g <- graph_from_adjacency_matrix(co_occurrence,
+                         weighted = TRUE,
+                         diag = FALSE,
+                         mode = "undirected")
+
+g <- simplify(g, remove.multiple = F, remove.loops = T, edge.attr.comb = c(weight = "sum", type = "ignore"))
+
+labels_2 <- labels[match(rownames(co_occurrence), labels[, 1]), ]
+
+V(g)$color <- labels_2$col
+V(g)$label <- labels_2$description
+E(g)$arrow.size <- .2
+E(g)$edge.color <- "gray80"
+E(g)$width <- 1+E(g)$weight/12
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 20, fig.height = 20, fig.align = "center"}
+plot(g,
+     vertex.label.font = 1,
+     vertex.shape = "sphere",
+     vertex.size=number_genes/900,
+     vertex.label.cex=1,
+     vertex.label.color="white",
+     vertex.frame.color = NA,
+     edge.width = E(g)$weight/5000)
+
+legend("topleft", unique(labels_2$group), pch=19,
+       col=unique(labels_2$col), pt.cex=2, cex=1.5, bty="n", ncol=1)
+```
+
+
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
 #clustering
@@ -159,14 +168,27 @@ members <- membership(wc)
 
 library(networkD3)
 
-net_d3 <- igraph_to_networkD3(g, group = members)
+net_d3 <- igraph_to_networkD3(g, group = labels_2$group)
+net_d3$nodes <- merge(net_d3$nodes, as.data.frame(number_genes), by.x = "name", by.y = "row.names")
+net_d3$nodes$number_genes <- net_d3$nodes$number_genes/900
+net_d3$nodes <- merge(net_d3$nodes, labels_2[, 1:2], by.x = "name", by.y = "dend %>% labels")
+net_d3$nodes[, 1] <- net_d3$nodes$description
 
 # Create force directed network plot
-forceNetwork(Links = net_d3$links, Nodes = net_d3$nodes, zoom=T, opacity = 1,
-             Source = 'source', Target = 'target',
-             linkDistance = 100, bounded=F, colourScale = JS("d3.scale.category10()"),
-             NodeID = 'name', Group = 'group', 
-             fontSize=8, opacityNoHover = .7)
+forceNetwork(Links = net_d3$links, 
+             Nodes = net_d3$nodes,
+             Nodesize = "number_genes",
+             zoom=T, 
+             opacity = 0.9,
+             Source = 'source', 
+             Target = 'target',
+             linkWidth = networkD3::JS("function(d) { return d.value/5; }"),
+             bounded=F, 
+             colourScale = JS("d3.scale.category10()"),
+             NodeID = 'name', 
+             Group = 'group', 
+             fontSize=10, 
+             opacityNoHover = 0.7)
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
@@ -176,15 +198,4 @@ library('ndtv')
 library('visNetwork')
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
-library(tidyr)
-links <- homologs_human_table[, -grep("sapiens", colnames(homologs_human_table))] %>%
-  gather(other, value, oanatinus_gene_ensembl:cfamiliaris_gene_ensembl)
-links <- links[-which(links$value == 0), ]
-links$GENEID <- "human"
-nodes <- colnames(homologs_human_table[, -grep("sapiens", colnames(homologs_human_table))])
-
-links2 <- co_occurrence
-nodes2 <- colnames(co_occurrence)
-```
 
