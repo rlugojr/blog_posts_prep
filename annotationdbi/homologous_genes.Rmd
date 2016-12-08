@@ -122,8 +122,10 @@ clus5 = cutree(h, 5)
 op = par(bg = "#E8DDCB")
 # Size reflects miles per gallon
 plot(as.phylo(h), type = "fan", tip.color = mypal[clus5], label.offset = 1, col = "red")
+```
 
 
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 20, fig.height = 20, fig.align = "center"}
 library(dendextend)
 library(circlize)
 
@@ -151,6 +153,7 @@ dend %>% set("labels_col", labels[, 5]) %>% circlize_dendrogram(labels_track_hei
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
 #clustering
+library(igraph)
 wc <- cluster_walktrap(g)
 members <- membership(wc)
 
@@ -166,4 +169,22 @@ forceNetwork(Links = net_d3$links, Nodes = net_d3$nodes, zoom=T, opacity = 1,
              fontSize=8, opacityNoHover = .7)
 ```
 
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+library('network') 
+library('sna')
+library('ndtv')
+library('visNetwork')
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+library(tidyr)
+links <- homologs_human_table[, -grep("sapiens", colnames(homologs_human_table))] %>%
+  gather(other, value, oanatinus_gene_ensembl:cfamiliaris_gene_ensembl)
+links <- links[-which(links$value == 0), ]
+links$GENEID <- "human"
+nodes <- colnames(homologs_human_table[, -grep("sapiens", colnames(homologs_human_table))])
+
+links2 <- co_occurrence
+nodes2 <- colnames(co_occurrence)
+```
 
