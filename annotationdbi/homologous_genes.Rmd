@@ -79,7 +79,9 @@ homologs_human_table <- read.table("U:/Github_blog/blog_posts_prep/annotationdbi
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
 gene_matrix <- homologs_human_table[, -1]
-number_genes <- colSums(gene_matrix)
+genes <- data.frame(organism = colnames(gene_matrix),
+                    number_genes = colSums(gene_matrix),
+                    proportion_human_genes = colSums(gene_matrix)/nrow(homologs_human_table))
 
 co_occurrence <- t(as.matrix(gene_matrix)) %*% as.matrix(gene_matrix)
 co_occurrence[-grep("sapiens", rownames(co_occurrence)), -grep("sapiens", colnames(co_occurrence))] <- 0
@@ -95,7 +97,8 @@ dend <- as.dendrogram(h)
 
 library(dplyr)
 labels <- as.data.frame(dend %>% labels) %>%
-  left_join(datasets, by = c("dend %>% labels" = "dataset"))
+  left_join(datasets, by = c("dend %>% labels" = "dataset")) %>%
+  left_join(genes, by = c("dend %>% labels" = "organism"))
 
 labels[, 2] <- gsub("(.*)( genes (.*))", "\\1", labels[, 2])
 labels$group <- c(rep("mammal", 2), rep("fish", 8), "amphibia", rep("fish", 4), rep("bird", 5), rep("reptile", 2), rep("mammal", 41), "fungus", "lamprey", rep("seasquirt", 2), "nematode", "insect")
@@ -113,11 +116,24 @@ labels$description[grep("Vervet", labels$description)] <- "Vervet"
 labels$col <- c(rep("aquamarine4", 2), rep("darkorange3", 8), "blue4", rep("darkorange3", 4), rep("darkred", 5), rep("darkmagenta", 2), rep("aquamarine4", 41), "darkslateblue", "deepskyblue1", rep("deeppink3", 2), "forestgreen", "brown3")
 ```
 
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 20, fig.align = "center"}
+labels(dend) <- labels$description
+
+par(mar = c(4,0,0,8))
+dend %>% 
+  set("labels_col", labels$col) %>% 
+  set("labels_cex", 1) %>% 
+  set("branches_k_color", value = 10:1, k = 10) %>% 
+  plot(labels_track_height = NA, horiz = TRUE)
+
+legend("topleft", unique(labels$group), pch=19,
+       col=unique(labels$col), pt.cex=1.5, cex=1.5, bty="n", ncol=1)
+```
+
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 32, fig.height = 32, fig.align = "center"}
 labels(dend) <- labels$description
 dend %>% 
   set("labels_col", labels$col) %>% 
-  set("nodes_col", labels$col) %>% 
   set("labels_cex", 2) %>% 
   circlize_dendrogram(labels_track_height = NA, dend_track_height = .3) 
 
@@ -139,45 +155,43 @@ labels_2 <- labels[match(rownames(co_occurrence), labels[, 1]), ]
 
 V(g)$color <- labels_2$col
 V(g)$label <- labels_2$description
+V(g)$size <- labels_2$proportion_human_genes*25
 E(g)$arrow.size <- .2
 E(g)$edge.color <- "gray80"
-E(g)$width <- 1+E(g)$weight/12
+E(g)$width <- labels_2$proportion_human_genes*10
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 20, fig.height = 20, fig.align = "center"}
 plot(g,
      vertex.label.font = 1,
      vertex.shape = "sphere",
-     vertex.size=number_genes/900,
      vertex.label.cex=1,
      vertex.label.color="white",
-     vertex.frame.color = NA,
-     edge.width = E(g)$weight/5000)
+     vertex.frame.color = NA)
 
 legend("topleft", unique(labels_2$group), pch=19,
        col=unique(labels_2$col), pt.cex=2, cex=1.5, bty="n", ncol=1)
 ```
 
 
-
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
-#clustering
-library(igraph)
-wc <- cluster_walktrap(g)
-members <- membership(wc)
-
 library(networkD3)
 
 net_d3 <- igraph_to_networkD3(g, group = labels_2$group)
-net_d3$nodes <- merge(net_d3$nodes, as.data.frame(number_genes), by.x = "name", by.y = "row.names")
-net_d3$nodes$number_genes <- net_d3$nodes$number_genes/900
+net_d3$nodes <- merge(net_d3$nodes, genes, by.x = "name", by.y = "row.names")
+net_d3$nodes$proportion_human_genes <- net_d3$nodes$proportion_human_genes
 net_d3$nodes <- merge(net_d3$nodes, labels_2[, 1:2], by.x = "name", by.y = "dend %>% labels")
 net_d3$nodes[, 1] <- net_d3$nodes$description
+
+net_d3$nodes <- net_d3$nodes[match(labels_2[, 1], net_d3$nodes$organism), ]
+
 
 # Create force directed network plot
 forceNetwork(Links = net_d3$links, 
              Nodes = net_d3$nodes,
-             Nodesize = "number_genes",
+             Nodesize = "proportion_human_genes",
+             radiusCalculation = JS(" Math.sqrt(d.nodesize)*15"),
+             linkDistance = 100,
              zoom=T, 
              opacity = 0.9,
              Source = 'source', 
@@ -188,14 +202,6 @@ forceNetwork(Links = net_d3$links,
              NodeID = 'name', 
              Group = 'group', 
              fontSize=10, 
+             charge = -200,
              opacityNoHover = 0.7)
 ```
-
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
-library('network') 
-library('sna')
-library('ndtv')
-library('visNetwork')
-```
-
-
