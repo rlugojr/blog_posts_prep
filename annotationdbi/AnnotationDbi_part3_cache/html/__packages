@@ -12,3 +12,5 @@ EnsDb.Hsapiens.v79
 dplyr
 reshape2
 ggplot2
+EnsDb.Mmusculus.v79
+EnsDb.Rnorvegicus.v79
