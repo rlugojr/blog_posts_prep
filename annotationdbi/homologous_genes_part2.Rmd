@@ -185,7 +185,7 @@ Now each row in the table shows one gene and its homologs in all of the 11 speci
 head(homologs_table_combined)
 ```
 
-In order to create the cooccurrence matrix, I am converting gene names to "1" and NAs to "0" and multiply the matrix with its transposed self. This is now the basis for *igraph*'s **graph_from_adjacency_matrix()** function with which I'm creating an undirected network. Before plotting the network, I am removing multiple entries and loops.
+In order to create the cooccurrence matrix, I am converting gene names to "1" and NAs to "0" and multiply the matrix with its transposed self. This is now the basis for *igraph*'s **graph_from_adjacency_matrix()** function with which I'm creating a directed network. Before plotting the network, I am removing multiple entries and loops.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
 homologs_table_combined_matrix <- as.matrix(ifelse(is.na(homologs_table_combined), 0, 1))
@@ -198,8 +198,10 @@ g <- graph_from_adjacency_matrix(co_occurrence,
                                  diag = FALSE,
                                  mode = "directed")
 
-g <- simplify(g, remove.multiple = TRUE, remove.loops = TRUE, edge.attr.comb = "median")
+g <- simplify(g, remove.multiple = TRUE, remove.loops = TRUE)
 ```
+
+I am also preparing a node annotation table with colors for each species group and the count of unique gene identifiers for species.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
 datasets[, 2] <- gsub("(.*)( genes (.*))", "\\1", datasets[, 2])
@@ -224,7 +226,11 @@ colnames(no_genes)[1] <- "no_genes"
 
 library(dplyr)
 datasets <- left_join(datasets, no_genes, by = "dataset")
+
+datasets <- datasets[order(datasets$dataset), ]
 ```
+
+I also want to have the proportion of genes that have homologs in each of the respective other species as edge attributes. I am preparing an extra table for this of all possible combinations of nodes.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
 for (i in 1:ncol(homologs_table_combined)){
@@ -249,13 +255,15 @@ for (i in 1:ncol(homologs_table_combined)){
 }
 ```
 
+And finally I can produce the plot:
+
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
 V(g)$color <- datasets$col
 V(g)$label <- datasets$description
 V(g)$size <- datasets$no_genes/2000
-E(g)$arrow.size <- 0.2
+E(g)$arrow.size <- edge_table$weight*3
 E(g)$edge.color <- "gray80"
-E(g)$width <- edge_table$weight*10
+E(g)$width <- edge_table$weight*3
 
 plot(g,
      vertex.label.font = 1,
@@ -264,4 +272,14 @@ plot(g,
      vertex.label.color = "black",
      vertex.frame.color = NA,
      layout=layout_in_circle)
+```
+
+Node size shows the total number of genes of each species and edge width shows the proportion of these genes with homologs in the respective other species.
+
+------------------
+
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, fig.align="center", cache=FALSE}
+sessionInfo()
 ```

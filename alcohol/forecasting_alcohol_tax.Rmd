@@ -68,3 +68,10 @@ autoplot(d.forecast)
 ```
 
 
+------------------
+
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, fig.align="center", cache=FALSE}
+sessionInfo()
+```

@@ -97,3 +97,10 @@ p + geom_segment(data=snps_data_table, aes(x=Chr_num-0.45, xend=Chr_num+0.45, y=
 
 ```
 
+------------------
+
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, fig.align="center", cache=FALSE}
+sessionInfo()
+```
