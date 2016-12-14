@@ -1,18 +1,30 @@
 ---
-title: "Untitled"
+title: "Gene homology networks Part 2"
 author: "Shirin Glander"
-date: "December 14, 2016"
-output: html_document
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: tactile
+    highlight: github
 ---
+
+In my [last post](https://shiring.github.io/genome/2016/12/11/homologous_genes_post) I created a gene homology network for human genes. In this post I want to extend the network to include edges for other species.
+
+First, I am loading biomaRt and extract a list of all available datasets.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 library(biomaRt)
 ensembl = useMart("ensembl")
 datasets <- listDatasets(ensembl)
-datasets$orgDb <- NA
 ```
 
+For this network I don't want to include all species with available information in Biomart because it would get way too messy. So, I am only picking the 11 species below: Human, fruitfly, mouse, C. elegans, dog, zebrafish, chicken, chimp, rat, yeast and pig. For all of these species, I am going to use their respective org.db database to extract gene information.
+
+In order to loop over all species' org.dbs for installation and loading, I create a new column with the name of the library.
+
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+datasets$orgDb <- NA
+
 datasets[grep("hsapiens", datasets$dataset), "orgDb"] <- "org.Hs.eg.db"
 datasets[grep("dmel", datasets$dataset), "orgDb"] <- "org.Dm.eg.db"
 datasets[grep("mmus", datasets$dataset), "orgDb"] <- "org.Mm.eg.db"
@@ -26,21 +38,26 @@ datasets[grep("scer", datasets$dataset), "orgDb"] <- "org.Sc.sgd.db"
 datasets[grep("sscrofa", datasets$dataset), "orgDb"] <- "org.Ss.eg.db"
 
 datasets <- datasets[!is.na(datasets$orgDb), ]
+datasets
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+Now I can load the Ensembl mart for each species.
+
+```{r echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 for (i in 1:nrow(datasets)) {
   ensembl <- datasets[i, 1]
   assign(paste0(ensembl), useMart("ensembl", dataset = paste0(ensembl)))
 }
 
 specieslist <- datasets$dataset
+```
 
+And install all org.db libraries, if necessary.
 
+```{r echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 library(AnnotationDbi)
 
 load_orgDb <- function(orgDb){
-
   if(!orgDb %in% installed.packages()[,"Package"]){
     source("https://bioconductor.org/biocLite.R")
     biocLite(orgDb)
@@ -48,9 +65,17 @@ load_orgDb <- function(orgDb){
 }
 
 sapply(datasets$orgDb, load_orgDb, simplify = TRUE, USE.NAMES = TRUE)
+```
 
+Once they are all installed, I can load the libraries.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 lapply(datasets$orgDb, require, character.only = TRUE)
+```
 
+Because I want to exctract and compare information on homologus genes for all possible combinations of species, they need to have a common identifier. To find them, I first produce a list with all available keytypes and then ask for common elements using *rlist*'s **list.common()** function.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 keytypes_list <- lapply(datasets$orgDb, function(x) NULL)
 names(keytypes_list) <- paste(datasets$orgDb)
 
@@ -61,6 +86,8 @@ for (orgDb in datasets$orgDb){
 library(rlist)
 list.common(keytypes_list)
 ```
+
+Entrez IDs are available for all species, so these are the keys I am using as gene identifiers. I am first creating a table of homologous genes for each species with all other species separately by looping over the datasets table.
 
 ```{r echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 for (i in 1:nrow(datasets)){
@@ -89,6 +116,8 @@ for (i in 1:nrow(datasets)){
   }
 }
 ```
+
+Now I sort and combine these tables into one big table and remove duplicate entries.
 
 ```{r echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 library(dplyr)
@@ -150,9 +179,13 @@ homologs_table_combined <- read.table("U:/Github_blog/blog_posts_prep/annotation
 #homologs_table_combined <- read.table("~/Documents/Github/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
 ```
 
+Now each row in the table shows one gene and its homologs in all of the 11 species. Some genes have multiple homologs in other species (e.g. gene 44071 of the fruitfly has two homologs in zebrafish).
+
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
 head(homologs_table_combined)
 ```
+
+In order to create the cooccurrence matrix, I am converting gene names to "1" and NAs to "0" and multiply the matrix with its transposed self. This is now the basis for *igraph*'s **graph_from_adjacency_matrix()** function with which I'm creating an undirected network. Before plotting the network, I am removing multiple entries and loops.
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
 homologs_table_combined_matrix <- as.matrix(ifelse(is.na(homologs_table_combined), 0, 1))
@@ -163,9 +196,9 @@ library(igraph)
 g <- graph_from_adjacency_matrix(co_occurrence,
                                  weighted = TRUE,
                                  diag = FALSE,
-                                 mode = "undirected")
+                                 mode = "directed")
 
-g <- simplify(g, remove.multiple = F, remove.loops = T, edge.attr.comb = c(weight = "sum", type = "ignore"))
+g <- simplify(g, remove.multiple = TRUE, remove.loops = TRUE, edge.attr.comb = "median")
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
@@ -185,17 +218,44 @@ datasets$col <- ifelse(datasets$description == "Yeast", "deeppink3",
                                        ifelse(datasets$dataset == "Zebrafish", "darkorange3",
                                               ifelse(datasets$description == "Fruitfly", "darkred", "aquamarine4")))))
 
+no_genes <- as.data.frame(apply(homologs_table_combined, 2, function(x) length(unique(x))))
+no_genes$dataset <- rownames(no_genes)
+colnames(no_genes)[1] <- "no_genes"
+
 library(dplyr)
-datasets <- left_join(datasets, data.frame(dataset = rownames(co_occurrence), no_genes = rowSums(co_occurrence)), by = "dataset")
+datasets <- left_join(datasets, no_genes, by = "dataset")
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
+for (i in 1:ncol(homologs_table_combined)){
+  input <- unique(na.omit(homologs_table_combined[, i]))
+  
+  for (j in 1:ncol(homologs_table_combined)){
+    if (i != j){
+      output <- unique(na.omit(homologs_table_combined[, j]))
+      
+      if (i == 1 & j == 2){
+        edge_table <- data.frame(source = colnames(homologs_table_combined)[i], 
+                                 target = colnames(homologs_table_combined)[j], 
+                                 weight = length(input)/length(output))
+      } else {
+        table <- data.frame(source = colnames(homologs_table_combined)[i], 
+                            target = colnames(homologs_table_combined)[j], 
+                            weight = length(input)/length(output))
+        edge_table <- rbind(edge_table, table)
+      }
+    }
+  }
+}
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
 V(g)$color <- datasets$col
 V(g)$label <- datasets$description
-V(g)$size <- datasets$no_genes/10000
+V(g)$size <- datasets$no_genes/2000
 E(g)$arrow.size <- 0.2
 E(g)$edge.color <- "gray80"
-E(g)$width <- E(g)$weight/1000
+E(g)$width <- edge_table$weight*10
 
 plot(g,
      vertex.label.font = 1,
