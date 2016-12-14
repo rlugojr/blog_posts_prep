@@ -3,9 +3,8 @@ title: "Gene homology networks Part 2"
 author: "Shirin Glander"
 date: "`r Sys.Date()`"
 output:
-  prettydoc::html_pretty:
-    theme: tactile
-    highlight: github
+  md_document:
+    variant: markdown_github
 ---
 
 In my [last post](https://shiring.github.io/genome/2016/12/11/homologous_genes_post) I created a gene homology network for human genes. In this post I want to extend the network to include edges for other species.
