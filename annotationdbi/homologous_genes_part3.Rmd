@@ -1,0 +1,163 @@
+---
+title: "Gene homology Part 3"
+author: "Shirin Glander"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+library(biomaRt)
+ensembl = useMart("ensembl")
+datasets <- listDatasets(ensembl)
+
+datasets$orgDb <- NA
+
+datasets[grep("hsapiens", datasets$dataset), "orgDb"] <- "org.Hs.eg.db"
+datasets[grep("dmel", datasets$dataset), "orgDb"] <- "org.Dm.eg.db"
+datasets[grep("mmus", datasets$dataset), "orgDb"] <- "org.Mm.eg.db"
+datasets[grep("celegans", datasets$dataset), "orgDb"] <- "org.Ce.eg.db"
+datasets[grep("cfam", datasets$dataset), "orgDb"] <- "org.Cf.eg.db"
+datasets[grep("drerio", datasets$dataset), "orgDb"] <- "org.Dr.eg.db"
+datasets[grep("ggallus", datasets$dataset), "orgDb"] <- "org.Gg.eg.db"
+datasets[grep("ptrog", datasets$dataset), "orgDb"] <- "org.Pt.eg.db"
+datasets[grep("rnor", datasets$dataset), "orgDb"] <- "org.Rn.eg.db"
+datasets[grep("scer", datasets$dataset), "orgDb"] <- "org.Sc.sgd.db"
+datasets[grep("sscrofa", datasets$dataset), "orgDb"] <- "org.Ss.eg.db"
+
+datasets <- datasets[!is.na(datasets$orgDb), ]
+
+lapply(datasets$orgDb, require, character.only = TRUE)
+
+datasets[, 2] <- gsub("(.*)( genes (.*))", "\\1", datasets[, 2])
+datasets$description[grep("Saccharomyces", datasets$description)] <- "Yeast"
+datasets$description[grep("elegans", datasets$description)] <- "C. elegans"
+```
+
+## Which genes have homologs in many species and which have few?
+
+In [Part 1](https://shiring.github.io/genome/2016/12/11/homologous_genes_post) and [Part 2](https://shiring.github.io/genome/2016/12/14/homologous_genes_part2_post) I have already explored gene homology between humans and other species. But there I have only considered how many genes where shared between the species.
+
+In this post I want to have a closer look at what these genes are that have homologs in many species, and which genes are specific to individual species.
+
+<br>
+
+I am starting with the same table as from last week's post, called *homologs_table_combined*. Check back with [Part 2](https://shiring.github.io/genome/2016/12/14/homologous_genes_part2_post) for how to produce this table.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+homologs_table_combined <- read.table("U:/Github_blog/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
+#homologs_table_combined <- read.table("~/Documents/Github/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
+head(homologs_table_combined)
+```
+
+Each row in this table denotes a gene with its Entrez ID and corresponding Entrez IDs for homologs in each of the other 10 species I explored. If a gene doesn't have homolog the table says "NA". However, some genes have duplicate entries for a species if there are multiple homologs in different species.
+
+By counting the number of NAs per row, we can identify genes with homologs in all species (sum of NAs = 0) and genes which are specific (sum of NAs = 10).
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
+homologs_na <- rowSums(is.na(homologs_table_combined))
+```
+
+Before I delve deeper into the biology behind these genes, I want to examine the distribution of the NA-counts. To do so, I am plotting a histogram:
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+library(ggplot2)
+ggplot() + aes(homologs_na) + geom_histogram(binwidth = 1, colour = "black", fill = "white")
+```
+
+Clearly, most genes are specific to a species, they have NAs in all but one column. The rest of the histogram is a bit hard to differentiate with the peak at 10, so let's look at the same data again with these genes:
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+ggplot() + aes(subset(homologs_na, homologs_na  < 10)) + geom_histogram(binwidth = 1, colour = "black", fill = "white")
+```
+
+Now we can see that most genes have homologs in 9 species (2 NAs). But there are still quite a few genes with homologs in all species. These I want to look at first.
+
+<br>
+
+### Which genes have homologs in many species?
+
+There are 3461 rows in the original table with no NAs.
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+genes_homologs_all <- homologs_table_combined[which(rowSums(is.na(homologs_table_combined)) == 0), ]
+nrow(genes_homologs_all)
+```
+
+Looking at all of these genes by hand wouldn't be feasible. So, to find out what biological functions these genes have, I am using gene ontology (GO-term) enrichment analysis as implemented in [clusterProfiler](https://bioconductor.org/packages/release/bioc/html/clusterProfiler.html).
+
+```{r echo=TRUE, message=TRUE, warning=TRUE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
+library(clusterProfiler)
+library(DOSE)
+
+for (i in 1:nrow(datasets)){
+  species <- datasets$dataset[i]
+  genes <- as.character(unique(genes_homologs_all[, species]))
+  universe <- as.character(unique(na.omit(homologs_table_combined[, species])))
+  
+  cat("\nSpecies", datasets$description[i], "has", length(universe), "unique Entrez IDs, of which", length(genes), "have homologs in all species.\n")
+  
+  try(go_enrich <- enrichGO(gene = genes, 
+                        keytype = "ENTREZID",
+                        OrgDb = get(datasets$orgDb[i]),
+                        ont = "BP",
+                        qvalueCutoff = 0.05,
+                        universe = universe,
+                        readable = TRUE))
+  
+  try(assign(paste("go_enrich", species, sep = "_"), go_enrich))
+}
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
+datasets_2 <- datasets[-grep("scerevisiae_gene_ensembl", datasets$dataset), ]
+for (i in 1:nrow(datasets_2)){
+  species <- datasets_2$dataset[i]
+  print(dotplot(get(paste("go_enrich", species, sep = "_")), showCategory = 25, title = paste("Top 25 enriched GO terms in", datasets_2$description[i])))
+}
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
+go_list <- lapply(datasets_2$dataset, function(x) NULL)
+names(go_list) <- paste(datasets_2$dataset)
+
+for (species in datasets_2$dataset){
+  df <- get(paste("go_enrich", species, sep = "_"))
+  go_list[[species]] <- summary(df)$ID
+}
+
+common_gos <- summary(go_enrich_cfamiliaris_gene_ensembl)
+
+library(rlist)
+common_gos[which(rownames(common_gos) %in% list.common(go_list)), 2, drop = FALSE]
+```
+
+------------------
+
+<br>
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, fig.align="center", cache=FALSE}
+sessionInfo()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
