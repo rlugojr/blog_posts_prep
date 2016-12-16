@@ -1,12 +1,4 @@
 base
-methods
-datasets
-utils
-grDevices
-graphics
-stats
-stats4
-parallel
 BiocGenerics
 Biobase
 S4Vectors

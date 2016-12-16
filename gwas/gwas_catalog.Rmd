@@ -45,7 +45,7 @@ data(ebicat38)
 
 gwas38 <- as.data.frame(ebicat38)
 gwas38_traits <- as.data.frame(table(gwas38$DISEASE.TRAIT))
-gwas38_traits[order(gwas38_traits$Freq, decreasing = TRUE), ]
+#gwas38_traits[order(gwas38_traits$Freq, decreasing = TRUE), ]
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=8, fig.height=8, fig.align="center", cache=TRUE}
@@ -99,6 +99,8 @@ library(shiny)
 
 setwd("U:/Github_blog/blog_posts_prep/gwas/shiny/gwas_app")
 runApp()
+
+runGitHub("ShirinG/GWAS_Shiny_App") 
 ```
 
 ------------------
