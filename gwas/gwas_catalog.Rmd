@@ -17,10 +17,7 @@ edb <- EnsDb.Hsapiens.v79
 
 keys <- keys(edb, keytype="SEQNAME")
 chromosome_length <- select(edb, keys=keys, columns=c("SEQLENGTH", "SEQNAME"), keytype="SEQNAME")
-chromosome_length <- chromosome_length[-grep("CHR", chromosome_length$SEQNAME), ]
-chromosome_length <- chromosome_length[-grep("LRG", chromosome_length$SEQNAME), ]
-chromosome_length <- chromosome_length[-grep("KI", chromosome_length$SEQNAME), ]
-chromosome_length <- chromosome_length[-grep("GL", chromosome_length$SEQNAME), ]
+chromosome_length <- chromosome_length[grep("^[0-9]+$|^X$|^Y$|^MT$", chromosome_length$SEQNAME), ]
 
 chr_data <- chromosome_length
 chr_data$SEQNAME <- as.factor(chr_data$SEQNAME)
@@ -39,62 +36,69 @@ p <- ggplot(data = chr_data, aes(x = SEQNAME, y = as.numeric(SEQLENGTH))) + geom
   ) +
   labs(title="SNP locations") +
   labs(x="Chromosome", y="Position")
+```
 
 
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=8, fig.height=8, fig.align="center", cache=TRUE}
 library(gwascat)
 data(ebicat38)
 
 gwas38 <- as.data.frame(ebicat38)
-
 gwas38_traits <- as.data.frame(table(gwas38$DISEASE.TRAIT))
+gwas38_traits[order(gwas38_traits$Freq, decreasing = TRUE), ]
+```
 
-snps_data_1 <- as.data.frame(locs4trait(ebicat38, trait = "Weight loss (gastric bypass surgery)", tag="DISEASE/TRAIT"))
-snps_data_2 <- as.data.frame(locs4trait(ebicat38, trait = "Waist circumference", tag="DISEASE/TRAIT"))
-
-snps_data_1 <- data.frame(Chr = snps_data_1$seqnames, Start = snps_data_1$CHR_POS, SNPid = snps_data_1$SNPS,
-                          Trait = rep("Weight loss (gastric bypass surgery)", nrow(snps_data_1)),
-                          PVALUE_MLOG = snps_data_1$PVALUE_MLOG, OR.or.BETA = snps_data_1$OR.or.BETA)
-
-snps_data_2 <- data.frame(Chr = snps_data_2$seqnames, Start = snps_data_2$CHR_POS, SNPid = snps_data_2$SNPS,
-                          Trait = rep("Waist circumference", nrow(snps_data_2)),
-                          PVALUE_MLOG = snps_data_2$PVALUE_MLOG, OR.or.BETA = snps_data_2$OR.or.BETA)
-
-snps_data <- rbind(snps_data_1, snps_data_2)
-
-
-p + geom_segment(data=snps_data, aes(x=as.numeric(as.character(Chr))-0.45, xend=as.numeric(as.character(Chr))+0.45,
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=8, fig.height=8, fig.align="center", cache=TRUE}
+plot_snps <- function(trait){
+  
+  if (length(trait) == 1){
+    snps_data <- as.data.frame(locs4trait(ebicat38, trait = paste(trait), tag="DISEASE/TRAIT"))
+    snps_data <- data.frame(Chr = snps_data$seqnames, 
+                            Start = snps_data$CHR_POS, 
+                            SNPid = snps_data$SNPS,
+                            Trait = rep(paste(trait), nrow(snps_data)),
+                            PVALUE_MLOG = snps_data$PVALUE_MLOG, 
+                            OR.or.BETA = snps_data$OR.or.BETA)
+    
+  } else {
+    
+    for(i in 1:length(trait)){
+      
+      trait_pre <- trait[i]
+      snps_data_pre <- as.data.frame(locs4trait(ebicat38, trait = paste(trait_pre), tag="DISEASE/TRAIT"))
+      snps_data_pre <- data.frame(Chr = snps_data_pre$seqnames, 
+                              Start = snps_data_pre$CHR_POS, 
+                              SNPid = snps_data_pre$SNPS,
+                              Trait = rep(paste(trait_pre), nrow(snps_data_pre)),
+                              PVALUE_MLOG = snps_data_pre$PVALUE_MLOG, 
+                              OR.or.BETA = snps_data_pre$OR.or.BETA)
+      
+      if (i == 1){
+        
+        snps_data <- snps_data_pre
+        
+      } else {
+        
+        snps_data <- rbind(snps_data, snps_data_pre)
+        
+      }
+    }
+  }
+  
+  p + geom_segment(data=snps_data, aes(x=as.numeric(as.character(Chr))-0.45, xend=as.numeric(as.character(Chr))+0.45,
                                      y=Start, yend=Start, colour=Trait), size=2, alpha = 0.5) +
   scale_colour_brewer(palette="Set1")
-
-
-gwas38_cancer <- gwas38_traits[grep("cancer$", gwas38_traits$Var1),]
-gwas38_cancer <- gwas38_cancer[c(2,3,14,16,22),]
-
-for (i in 1:nrow(gwas38_cancer)){
-  snps_data <- as.data.frame(locs4trait(ebicat38, trait = paste(gwas38_cancer$Var1[i]), tag="DISEASE/TRAIT"))
-
-  snps_data <- data.frame(Chr = snps_data$seqnames, Start = snps_data$CHR_POS, SNPid = snps_data$SNPS,
-                            Trait = rep(paste(gwas38_cancer$Var1[i]), nrow(snps_data)),
-                            PVALUE_MLOG = snps_data$PVALUE_MLOG, OR.or.BETA = snps_data$OR.or.BETA)
-
-  if (i==1){
-    snps_data_table <- snps_data
-  } else {
-    snps_data_table <- rbind(snps_data_table, snps_data)
-  }
+  
 }
 
-snps_data_table$Chr_num <- ifelse(snps_data_table$Chr == "X", "23",
-                                  ifelse(snps_data_table$Chr == "Y", "24",
-                                         ifelse(snps_data_table$Chr == "MT", "25", as.character(snps_data_table$Chr))))
-snps_data_table$Chr_num <- as.numeric(snps_data_table$Chr_num)
-snps_data_table <- snps_data_table[order(snps_data_table$Chr_num),]
-head(snps_data_table)
-str(snps_data_table)
+plot_snps(trait = c("Acne (severe)", "Addiction"))
+```
 
-p + geom_segment(data=snps_data_table, aes(x=Chr_num-0.45, xend=Chr_num+0.45, y=Start, yend=Start, colour=Trait), size=2, alpha = 0.3) +
-  scale_colour_brewer(palette="Set1")
+```{r echo=TRUE, eval = FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=8, fig.align="center", cache=TRUE}
+library(shiny)
 
+setwd("U:/Github_blog/blog_posts_prep/gwas/shiny/gwas_app")
+runApp()
 ```
 
 ------------------

@@ -88,7 +88,7 @@ nrow(genes_homologs_all)
 
 Looking at all of these genes by hand wouldn't be feasible. So, to find out what biological functions these genes have, I am using gene ontology (GO-term) enrichment analysis as implemented in [clusterProfiler](https://bioconductor.org/packages/release/bioc/html/clusterProfiler.html).
 
-```{r echo=TRUE, message=TRUE, warning=TRUE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
+```{r echo=TRUE, message=FALSE, warning=TRUE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
 library(clusterProfiler)
 library(DOSE)
 
@@ -111,7 +111,9 @@ for (i in 1:nrow(datasets)){
 }
 ```
 
-```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
+I'm not sure why yeast throws an error but since all the other species worked I will ignore the yeast gene for now...
+
+```{r eval = FALSE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
 datasets_2 <- datasets[-grep("scerevisiae_gene_ensembl", datasets$dataset), ]
 for (i in 1:nrow(datasets_2)){
   species <- datasets_2$dataset[i]
@@ -119,7 +121,12 @@ for (i in 1:nrow(datasets_2)){
 }
 ```
 
+#### Which GO terms are enriched in all species?
+
+10 GO terms were found to be enriched in all 10 species:
+
 ```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
+datasets_2 <- datasets[-grep("scerevisiae_gene_ensembl", datasets$dataset), ]
 go_list <- lapply(datasets_2$dataset, function(x) NULL)
 names(go_list) <- paste(datasets_2$dataset)
 
@@ -132,6 +139,64 @@ common_gos <- summary(go_enrich_cfamiliaris_gene_ensembl)
 
 library(rlist)
 common_gos[which(rownames(common_gos) %in% list.common(go_list)), 2, drop = FALSE]
+```
+
+<br>
+
+#### Comparing GO term enrichment between different species
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(RColorBrewer)
+
+wordcloud_function <- function(data = data,
+                               removewords = c("process", "activity", "positive", "negative", "response", "regulation"),
+                               min.freq = 4,
+                               max.words=Inf,
+                               random.order=TRUE){
+  input <- Corpus(VectorSource(data))
+
+  input <- tm_map(input, content_transformer(tolower))
+  input <- tm_map(input, content_transformer(removePunctuation))
+  input <- tm_map(input, removeNumbers)
+  input <- tm_map(input, stripWhitespace)
+
+  toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+  input <- tm_map(input, toSpace, "/")
+  input <- tm_map(input, toSpace, "@")
+  input <- tm_map(input, toSpace, "\\|")
+
+  input <- tm_map(input, function(x) removeWords(x, stopwords("english")))
+
+  # specify your stopwords as a character vector
+  input <- tm_map(input, removeWords, removewords)
+
+  tdm <- TermDocumentMatrix(input)
+  m <- as.matrix(tdm)
+  v <- sort(rowSums(m),decreasing=TRUE)
+  d <- data.frame(word = names(v),freq=v)
+
+  set.seed(1234)
+  wordcloud(words = d$word, freq = d$freq, min.freq = min.freq, scale=c(8,.2),
+            max.words=max.words, random.order=random.order, rot.per=0.15,
+            colors=brewer.pal(8, "Dark2"))
+}
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
+layout(matrix(c(1:20), nrow = 2, byrow = FALSE), heights = c(0.1, 1))
+
+for (i in 1:nrow(datasets_2)){
+  species <- datasets_2$dataset[i]
+  df <- summary(get(paste("go_enrich", species, sep = "_")))
+
+  par(mar=rep(0, 4))
+  plot.new()
+  text(x=0.5, y=0.5, paste0(datasets_2$description[i]), cex = 2)
+  wordcloud_function(data = df$Description)
+}
 ```
 
 ------------------
