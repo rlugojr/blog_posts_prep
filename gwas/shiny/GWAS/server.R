@@ -1,23 +1,14 @@
 library(shiny)
-library(AnnotationDbi)
-library(org.Hs.eg.db)
 
-library(EnsDb.Hsapiens.v79)
-edb <- EnsDb.Hsapiens.v79
+chr_data <- read.table("chromosome_length.txt", header = TRUE, sep = "\t")
 
-keys <- keys(edb, keytype="SEQNAME")
-chromosome_length <- select(edb, keys = keys, columns = c("SEQLENGTH", "SEQNAME"), keytype = "SEQNAME")
-chromosome_length <- chromosome_length[grep("^[0-9]+$|^X$|^Y$|^MT$", chromosome_length$SEQNAME), ]
-
-chr_data <- chromosome_length
 chr_data$SEQNAME <- as.factor(chr_data$SEQNAME)
 f = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "X", "Y", "MT")
 chr_data <- within(chr_data, SEQNAME <- factor(SEQNAME, levels = f))
 
 library(ggplot2)
 
-library(gwascat)
-data(ebicat38)
+gwas38 <- read.table("gwas38.txt", header = TRUE, sep = "\t")
 
 # Define server logic required to plot variables
 shinyServer(function(input, output) {
@@ -43,7 +34,7 @@ shinyServer(function(input, output) {
         for (i in 1:length(unique(trait))){
 
           trait_pre <- unique(trait)[i]
-          snps_data_pre <- as.data.frame(locs4trait(ebicat38, trait = paste(trait_pre), tag = "DISEASE/TRAIT"))
+          snps_data_pre <- gwas38[which(gwas38$DISEASE.TRAIT == paste(trait_pre)), ]
           snps_data_pre <- data.frame(Chr = snps_data_pre$seqnames,
                                       Start = snps_data_pre$CHR_POS,
                                       SNPid = snps_data_pre$SNPS,
