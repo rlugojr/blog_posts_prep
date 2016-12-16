@@ -94,6 +94,8 @@ plot_snps <- function(trait){
 plot_snps(trait = c("Acne (severe)", "Addiction"))
 ```
 
+Loading the data might take a minute. PATIENCE YOU MUST HAVE my young padawan...
+
 ```{r echo=TRUE, eval = FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=8, fig.align="center", cache=TRUE}
 library(shiny)
 
