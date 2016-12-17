@@ -6,10 +6,22 @@ gwas38_traits <- read.table("gwas38_traits.txt", header = TRUE, sep = "\t")
 diseases <- c("choose below", as.character(gwas38_traits$Var1))
 
 shinyUI(fluidPage(theme = shinytheme("united"),
-                  titlePanel("GWAS disease-associated SNP locations in the human genome"),
+                  titlePanel("GWAS disease- & trait-associated SNP locations in the human genome"),
 
                   sidebarLayout(
                     sidebarPanel(
+
+                      sliderInput("pvalmlog",
+                                  "-log(p-value):",
+                                  min = -13,
+                                  max = 332,
+                                  value = -13),
+
+                      sliderInput("orbeta",
+                                  "odds ratio/ beta-coefficient :",
+                                  min = 0,
+                                  max = 4426,
+                                  value = 0),
 
                       selectInput("variable", "First disease:",
                                   choices = diseases[-1]),

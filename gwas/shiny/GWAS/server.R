@@ -53,12 +53,15 @@ shinyServer(function(input, output) {
           }
         }
 
+        snps_data <- subset(snps_data_pre, PVALUE_MLOG > input$pvalmlog)
+        snps_data <- subset(snps_data, OR.or.BETA > input$orbeta | is.na(OR.or.BETA))
+
       p + geom_segment(data = snps_data, aes(x = as.numeric(as.character(Chr)) - 0.45, xend = as.numeric(as.character(Chr)) + 0.45,
                                            y = Start, yend = Start, colour = Trait), size = 2, alpha = 0.5) +
         scale_colour_brewer(palette = "Set1")
-
       }
 
     print(plot_snps(trait = c(input$variable, input$variable2, input$variable3, input$variable4, input$variable5, input$variable6, input$variable7, input$variable8, input$variable9)))
   })
+
 })

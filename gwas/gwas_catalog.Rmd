@@ -13,11 +13,19 @@ library(gwascat)
 data(ebicat38)
 
 gwas38 <- as.data.frame(ebicat38)
+gwas38$DISEASE.TRAIT <- gsub("&beta;", "beta", gwas38$DISEASE.TRAIT)
+
+# PVALUE_MLOG: -log(p-value)
+gwas38[is.infinite(gwas38$PVALUE_MLOG), "PVALUE_MLOG"] <- max(gwas38[is.finite(gwas38$PVALUE_MLOG), "PVALUE_MLOG"]) + 10
+summary(gwas38[is.finite(gwas38$PVALUE_MLOG), "PVALUE_MLOG"])
+summary(gwas38$PVALUE_MLOG)
+
+# OR or BETA*: Reported odds ratio or beta-coefficient associated with strongest SNP risk allele. Note that if an OR <1 is reported this is inverted, along with the reported allele, so that all ORs included in the Catalog are >1. Appropriate unit and increase/decrease are included for beta coefficients.
+summary(gwas38$OR.or.BETA)
 
 write.table(gwas38, "gwas38.txt", row.names = FALSE, col.names = TRUE, sep = "\t")
 
 gwas38_traits <- as.data.frame(table(gwas38$DISEASE.TRAIT))
-gwas38_traits <- gwas38_traits[order(gwas38_traits$Freq, decreasing = TRUE), ]
 
 write.table(gwas38_traits, "gwas38_traits.txt", row.names = FALSE, col.names = TRUE, sep = "\t")
 ```
