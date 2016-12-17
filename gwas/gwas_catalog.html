@@ -12,9 +12,9 @@
 
 <meta name="author" content="Dr. Shirin Glander" />
 
-<meta name="date" content="2016-12-16" />
+<meta name="date" content="2016-12-17" />
 
-<title>GWAS catalog</title>
+<title>How to build a Shiny app for disease- &amp; trait-associated locations of the human genome</title>
 
 
 
@@ -71,186 +71,362 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <div id="container">
 <div class="inner">
 <header>
-<h1 class="title toc-ignore">GWAS catalog</h1>
+<h1 class="title toc-ignore">How to build a Shiny app for disease- &amp; trait-associated locations of the human genome</h1>
 <h3 class="author">Dr. Shirin Glander</h3>
-<h3 class="date">2016-12-16</h3>
+<h3 class="date">2016-12-17</h3>
 </header>
 
 <hr>
 
 
 
+<p>The <a href="http://www.ebi.ac.uk/gwas/">National Human Genome Research Institute (NHGRI) catalog of Genome-Wide Association Studies (GWAS)</a> is a curated resource of single-nucleotide polymorphisms (SNP)-trait associations. The database contains more than 100,000 SNPs and all SNP-trait associations with a p-value &lt;1 × 10^−5.</p>
+<p>This app is based on the <a href="http://bioconductor.org/packages/release/bioc/html/gwascat.html">gwascat</a> R package and its <em>ebicat38</em> database and shows trait-associated SNP locations of the human genome.</p>
+<p>You can access the app at</p>
+<blockquote>
+<p><a href="https://shiring.shinyapps.io/gwas_shiny_app/" class="uri">https://shiring.shinyapps.io/gwas_shiny_app/</a></p>
+</blockquote>
+<p>Loading the data might take a few seconds. Patience you mus have, my young padawan… ;-)</p>
+<p><br></p>
+<p>Alternatively, if you are using R, you can load the app via Github with <strong>shiny</strong>:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(shiny)
+<span class="kw">runGitHub</span>(<span class="st">&quot;ShirinG/GWAS_Shiny_App&quot;</span>) </code></pre></div>
+<p><br></p>
+<p>If you want to know how I built this app, contine reading.</p>
+<p><br></p>
+<div id="data-preparation" class="section level1">
+<h1>Data preparation</h1>
+<p>Initially, I wanted to load all data directly from R packages. And while this worked in principal, it made the app load super slowly.</p>
+<p>So, I decided to prepare the data beforehand and save the datatables as tab-delimited text files.</p>
+<p><br></p>
+<div id="genome-information" class="section level2">
+<h2>Genome information</h2>
+<p>First, I’m preparing the genome information: for each chromosome I want to know its length:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(AnnotationDbi)
 <span class="kw">library</span>(org.Hs.eg.db)
 
-<span class="kw">library</span>(EnsDb.Hsapiens.v79)
-edb &lt;-<span class="st"> </span>EnsDb.Hsapiens.v79
+<span class="kw">library</span>(EnsDb.Hsapiens.v79)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">edb &lt;-<span class="st"> </span>EnsDb.Hsapiens.v79
 
 keys &lt;-<span class="st"> </span><span class="kw">keys</span>(edb, <span class="dt">keytype=</span><span class="st">&quot;SEQNAME&quot;</span>)
-chromosome_length &lt;-<span class="st"> </span><span class="kw">select</span>(edb, <span class="dt">keys=</span>keys, <span class="dt">columns=</span><span class="kw">c</span>(<span class="st">&quot;SEQLENGTH&quot;</span>, <span class="st">&quot;SEQNAME&quot;</span>), <span class="dt">keytype=</span><span class="st">&quot;SEQNAME&quot;</span>)
+chromosome_length &lt;-<span class="st"> </span><span class="kw">select</span>(edb, <span class="dt">keys =</span> keys, <span class="dt">columns =</span> <span class="kw">c</span>(<span class="st">&quot;SEQLENGTH&quot;</span>, <span class="st">&quot;SEQNAME&quot;</span>), <span class="dt">keytype =</span> <span class="st">&quot;SEQNAME&quot;</span>)
 chromosome_length &lt;-<span class="st"> </span>chromosome_length[<span class="kw">grep</span>(<span class="st">&quot;^[0-9]+$|^X$|^Y$|^MT$&quot;</span>, chromosome_length$SEQNAME), ]
 
-chr_data &lt;-<span class="st"> </span>chromosome_length
-chr_data$SEQNAME &lt;-<span class="st"> </span><span class="kw">as.factor</span>(chr_data$SEQNAME)
-f=<span class="kw">c</span>(<span class="st">&quot;1&quot;</span>, <span class="st">&quot;2&quot;</span>, <span class="st">&quot;3&quot;</span>, <span class="st">&quot;4&quot;</span>, <span class="st">&quot;5&quot;</span>, <span class="st">&quot;6&quot;</span>, <span class="st">&quot;7&quot;</span>, <span class="st">&quot;8&quot;</span>, <span class="st">&quot;9&quot;</span>, <span class="st">&quot;10&quot;</span>, <span class="st">&quot;11&quot;</span>, <span class="st">&quot;12&quot;</span>, <span class="st">&quot;13&quot;</span>, <span class="st">&quot;14&quot;</span>, <span class="st">&quot;15&quot;</span>, <span class="st">&quot;16&quot;</span>, <span class="st">&quot;17&quot;</span>, <span class="st">&quot;18&quot;</span>, <span class="st">&quot;19&quot;</span>, <span class="st">&quot;20&quot;</span>, <span class="st">&quot;21&quot;</span>, <span class="st">&quot;22&quot;</span>, <span class="st">&quot;X&quot;</span>, <span class="st">&quot;Y&quot;</span>, <span class="st">&quot;MT&quot;</span>)
-chr_data &lt;-<span class="st"> </span><span class="kw">within</span>(chr_data, SEQNAME &lt;-<span class="st"> </span><span class="kw">factor</span>(SEQNAME, <span class="dt">levels=</span>f))
-
-<span class="kw">library</span>(ggplot2)
-p &lt;-<span class="st"> </span><span class="kw">ggplot</span>(<span class="dt">data =</span> chr_data, <span class="kw">aes</span>(<span class="dt">x =</span> SEQNAME, <span class="dt">y =</span> <span class="kw">as.numeric</span>(SEQLENGTH))) +<span class="st"> </span><span class="kw">geom_bar</span>(<span class="dt">stat =</span> <span class="st">&quot;identity&quot;</span>, <span class="dt">fill =</span> <span class="st">&quot;grey90&quot;</span>, <span class="dt">color =</span> <span class="st">&quot;black&quot;</span>) +
-<span class="st">  </span><span class="kw">theme</span>(
-    <span class="dt">axis.text =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">14</span>),
-    <span class="dt">axis.title =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">14</span>),
-    <span class="dt">panel.grid.major =</span> <span class="kw">element_blank</span>(),
-    <span class="dt">panel.grid.minor =</span> <span class="kw">element_blank</span>(),
-    <span class="dt">panel.background =</span> <span class="kw">element_rect</span>(<span class="dt">fill =</span> <span class="st">&quot;white&quot;</span>),
-    <span class="dt">legend.position=</span><span class="st">&quot;bottom&quot;</span>
-  ) +
-<span class="st">  </span><span class="kw">labs</span>(<span class="dt">title=</span><span class="st">&quot;SNP locations&quot;</span>) +
-<span class="st">  </span><span class="kw">labs</span>(<span class="dt">x=</span><span class="st">&quot;Chromosome&quot;</span>, <span class="dt">y=</span><span class="st">&quot;Position&quot;</span>)</code></pre></div>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(gwascat)
-<span class="kw">data</span>(ebicat38)
+<span class="kw">write.table</span>(chromosome_length, <span class="st">&quot;chromosome_length.txt&quot;</span>, <span class="dt">row.names =</span> <span class="ot">FALSE</span>, <span class="dt">col.names =</span> <span class="ot">TRUE</span>, <span class="dt">sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>)</code></pre></div>
+<p><br></p>
+</div>
+<div id="gwas-snp-data" class="section level2">
+<h2>GWAS SNP data</h2>
+<p>I am saving the GWAS data as a text file as well; this datatable will be used for plotting the SNP locations.</p>
+<p>I am also saving a table with the alphabetically sorted traits as input for the drop-down menu.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(gwascat)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">data</span>(ebicat38)
 
 gwas38 &lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(ebicat38)
-gwas38_traits &lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(<span class="kw">table</span>(gwas38$DISEASE.TRAIT))
-<span class="co">#gwas38_traits[order(gwas38_traits$Freq, decreasing = TRUE), ]</span></code></pre></div>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">plot_snps &lt;-<span class="st"> </span>function(trait){
-  
-  if (<span class="kw">length</span>(trait) ==<span class="st"> </span><span class="dv">1</span>){
-    snps_data &lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(<span class="kw">locs4trait</span>(ebicat38, <span class="dt">trait =</span> <span class="kw">paste</span>(trait), <span class="dt">tag=</span><span class="st">&quot;DISEASE/TRAIT&quot;</span>))
-    snps_data &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">Chr =</span> snps_data$seqnames, 
-                            <span class="dt">Start =</span> snps_data$CHR_POS, 
-                            <span class="dt">SNPid =</span> snps_data$SNPS,
-                            <span class="dt">Trait =</span> <span class="kw">rep</span>(<span class="kw">paste</span>(trait), <span class="kw">nrow</span>(snps_data)),
-                            <span class="dt">PVALUE_MLOG =</span> snps_data$PVALUE_MLOG, 
-                            <span class="dt">OR.or.BETA =</span> snps_data$OR.or.BETA)
-    
-  } else {
-    
-    for(i in <span class="dv">1</span>:<span class="kw">length</span>(trait)){
-      
-      trait_pre &lt;-<span class="st"> </span>trait[i]
-      snps_data_pre &lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(<span class="kw">locs4trait</span>(ebicat38, <span class="dt">trait =</span> <span class="kw">paste</span>(trait_pre), <span class="dt">tag=</span><span class="st">&quot;DISEASE/TRAIT&quot;</span>))
-      snps_data_pre &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">Chr =</span> snps_data_pre$seqnames, 
-                              <span class="dt">Start =</span> snps_data_pre$CHR_POS, 
-                              <span class="dt">SNPid =</span> snps_data_pre$SNPS,
-                              <span class="dt">Trait =</span> <span class="kw">rep</span>(<span class="kw">paste</span>(trait_pre), <span class="kw">nrow</span>(snps_data_pre)),
-                              <span class="dt">PVALUE_MLOG =</span> snps_data_pre$PVALUE_MLOG, 
-                              <span class="dt">OR.or.BETA =</span> snps_data_pre$OR.or.BETA)
-      
-      if (i ==<span class="st"> </span><span class="dv">1</span>){
-        
-        snps_data &lt;-<span class="st"> </span>snps_data_pre
-        
-      } else {
-        
-        snps_data &lt;-<span class="st"> </span><span class="kw">rbind</span>(snps_data, snps_data_pre)
-        
-      }
-    }
-  }
-  
-  p +<span class="st"> </span><span class="kw">geom_segment</span>(<span class="dt">data=</span>snps_data, <span class="kw">aes</span>(<span class="dt">x=</span><span class="kw">as.numeric</span>(<span class="kw">as.character</span>(Chr))-<span class="fl">0.45</span>, <span class="dt">xend=</span><span class="kw">as.numeric</span>(<span class="kw">as.character</span>(Chr))+<span class="fl">0.45</span>,
-                                     <span class="dt">y=</span>Start, <span class="dt">yend=</span>Start, <span class="dt">colour=</span>Trait), <span class="dt">size=</span><span class="dv">2</span>, <span class="dt">alpha =</span> <span class="fl">0.5</span>) +
-<span class="st">  </span><span class="kw">scale_colour_brewer</span>(<span class="dt">palette=</span><span class="st">&quot;Set1&quot;</span>)
-  
-}
+gwas38$DISEASE.TRAIT &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;&amp;beta;&quot;</span>, <span class="st">&quot;beta&quot;</span>, gwas38$DISEASE.TRAIT)
 
-<span class="kw">plot_snps</span>(<span class="dt">trait =</span> <span class="kw">c</span>(<span class="st">&quot;Acne (severe)&quot;</span>, <span class="st">&quot;Addiction&quot;</span>))</code></pre></div>
-<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAwAAAAMACAMAAACkX/C8AAABEVBMVEUAAAAAADoAAGYAOjoAOmYAOpAAZrYcP1wzMzM3frg6AAA6ADo6AGY6OmY6OpA6kJA6kNtNTU1NTW5NTY5Nbm5NbqtNjshmAABmADpmAGZmOgBmOpBmZmZmtttmtv9uTU1uTW5ubk1ubm5uq6tuq+RyDQ6OTU2Ojo6Osc6OyMiOyP+QOgCQOjqQOmaQZgCQkDqQkLaQtpCQ27aQ2/+UuNWrbk2rq26rq46r5Mir5P+2ZgC225C22/+2/9u2///Ijk3I5KvI/+TI///bkDrbtmbb25Db/7bb/9vb///kf4Dkq27k/8jk///l5eXrhofy8vL/tmb/yI7/25D/27b/29v/5Kv//7b//8j//9v//+T////QoScJAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAgAElEQVR4nO2dAXvkOFqg03M7zRCWpauHTsMCyQKZ3G16bzm2LywdYAomwM4WA5vKkU5S//+HnCXLLtmSq6wqW5b8ve/zzKSqPtuypO+1JZe7fLIBEMzJ1DsAMCUIAKJBABANAoBoEABEgwAgGgQA0SAAiCayALcnBW/Uq7vyz+bz+zfqjebVR7PY84cvv9+9oYcff9tjKYA9RBXg8/sy0VXe3pl0twU4OTkvF9yf2ndfIAAMQFQBzFH/9qTMeZ2+pQBFOhfcn5iM7icAwNFEFeC2zNrP71+rDP4brYMtQLWAEUCdMCozzPnivhxCPX9Qf5pLFe/+1YyvdPg8Zs0gV6Y4A5Svv/inDyqpuwW4r+cFd40XRW5bAtRL6c904ptXGAD7mWAOUEpQ5PzDaZHAzSHQ63JBldpFGp+rlFevivy+1wd+tdzD6evtHMBeSq19V/zv4fSNOc0A7GGKq0DlJLjIYHVGaEyCq8tAKrV1nhdrvPqoE7pCSWQJsF2qtEPl/cPpCckP/Yj/PUCRntsMfvXRFqCe2Japrccw90qAc2vdk5YA1VLljOD5w2ujGVeIoAdTfBGmj9V35Wjmy3+35wDbJbwCqKP/eTWH3iFAKQrXiWA/MQUww5Vyrlvm/N3JH3UL4AyBymxvzAHsIdBWAP0Rs2DYT0wBymmqudxf5ry6YNMhQGsS/Pm9yfbiNKBW19d9mktVAtzrefZd/b0yQCdRh0BmCF9e0SxzvvioQwDrMuh98/qmFsBzGbQSwCzGJAD2M8VVIJ2ZVc7fdQqgfam/CNMDGjUJePVRjaDUeeA3jaWsIZA2gAtB0APuBgXRIACIBgFANAgAokEAEA0CgGgQAESDACAaBADRIACIBgFANAgAokEAEA0CgGgQAESDACAaBADRIACIBgFANAgAokEAEA0CgGgQAESDACAaBADRIACIBgFANAgAotknwNPVYrF490P9frXQXHeu8HJTh/W6l0PsJcBI7BHg8ULn+9tP1QfLPQLo/C/jZt2zwfYVYHB2C/Byo1N/XWfxy411NvCxUqeL9eLr75Qrl8oC9RIgUXYL8HSlM//lpspi84HL48W1teRKnQKW5cvt2QMgOXpNgrfH/ceLS+tTa4hvBHi60kuu1ecrzgCQPL0E2A6B1oufX5lJcXOIbwR4vDjb/tETZvIfUqaPAE9XdRabi0DFsKY4/quj/9LMh2sBLss1zhrz4c3mq4LBdx7gWHoI8HRlXwQqr++cVcf6l5uz8nJn6YUlQGmIvTJAcuwX4PHCTeFifmtGQGo81BCgHgI1RkPb8joYqDoAYezNvJVvFG8LUIbdSbA9GrLK+08vCADTsC/zVvbXwFV+q6tC9vWgje8yaMcZAAEgJfZk3qr1RW45B1AH+GKIX74sFzACWF+EVXOA5rfGCABJse+LsO04R3+jZT5Q54HmXRKVAPtuhUAASIrdmbdetAQoE7zMaf3SuTNiz81wCABJETvzEACSAgFANAgAokEAEA0CgGgQAESDACAaBADRIACIBgFANOkIwL8UgAlISADODRAfBADRIACIBgFANAgAokEAEA0CgGgQAESDACAaBADRIACIBgFANAgAokEAEA0CgGgQAESDACAaBADRIACIBgFANAgAokEAEA0CgGgQAESDACAaBADRIACIBgFANAgAokEAEA0CgGgQAESDACAaBADRIACIBgFANAgAokEAEA0CgGgQAESDACAaBADRIACIBgFANAgAokEAEA0CgGgQAESDACAaBADRIACIJnZ+ffNbLwgA04AAIBoEANEgAIgGAUA0XAUC0SAAiAYBQDQIAKJBABANAoBoEABEgwAgGgQA0SAAiAYBQDQIAKJBABANAoBoEABEgwAgGgQA0SAAiAYBQDQIAKJBABANAoBoEABEgwAgGgQA0SAAiAYBQDSx8+v3/pcXBIBp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" style="display: block; margin: auto;" /></p>
+<span class="co"># PVALUE_MLOG: -log(p-value)</span>
+gwas38[<span class="kw">is.infinite</span>(gwas38$PVALUE_MLOG), <span class="st">&quot;PVALUE_MLOG&quot;</span>] &lt;-<span class="st"> </span><span class="kw">max</span>(gwas38[<span class="kw">is.finite</span>(gwas38$PVALUE_MLOG), <span class="st">&quot;PVALUE_MLOG&quot;</span>]) +<span class="st"> </span><span class="dv">10</span>
+<span class="kw">summary</span>(gwas38[<span class="kw">is.finite</span>(gwas38$PVALUE_MLOG), <span class="st">&quot;PVALUE_MLOG&quot;</span>])
+<span class="kw">summary</span>(gwas38$PVALUE_MLOG)
+
+<span class="co"># OR or BETA*: Reported odds ratio or beta-coefficient associated with strongest SNP risk allele. Note that if an OR &lt;1 is reported this is inverted, along with the reported allele, so that all ORs included in the Catalog are &gt;1. Appropriate unit and increase/decrease are included for beta coefficients.</span>
+<span class="kw">summary</span>(gwas38$OR.or.BETA)
+
+<span class="kw">write.table</span>(gwas38, <span class="st">&quot;gwas38.txt&quot;</span>, <span class="dt">row.names =</span> <span class="ot">FALSE</span>, <span class="dt">col.names =</span> <span class="ot">TRUE</span>, <span class="dt">sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>)
+
+gwas38_traits &lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(<span class="kw">table</span>(gwas38$DISEASE.TRAIT))
+<span class="kw">colnames</span>(gwas38_traits) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Trait&quot;</span>, <span class="st">&quot;Frequency&quot;</span>)
+
+<span class="kw">write.table</span>(gwas38_traits, <span class="st">&quot;gwas38_traits.txt&quot;</span>, <span class="dt">row.names =</span> <span class="ot">FALSE</span>, <span class="dt">col.names =</span> <span class="ot">TRUE</span>, <span class="dt">sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>)</code></pre></div>
+<p><br></p>
+</div>
+</div>
+<div id="the-shiny-app" class="section level1">
+<h1>The Shiny App</h1>
+<p>I built my Shiny app with the traditional two-file system. This means that I have a “ui.R” file containing the layout and “server.R”, which contains the R code.</p>
+<p><br></p>
+<div id="ui.r" class="section level2">
+<h2>ui.R</h2>
+<p>From top to bottom I chose the following settings:</p>
+<ul>
+<li>loading the table with all traits</li>
+<li>adding a “choose below” option before the traits to have no trait chosen by default</li>
+<li>“united” theme for layout</li>
+<li>two slide bars, one for the p-value threshold and one for the odds ratio/ beta coefficient threshold</li>
+<li>drop-down menus for all traits, maximal eight can be chosen to be plotted simultaneously</li>
+<li>main panel with explanatory text, main plot and output tables</li>
+</ul>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(shiny)
+<span class="kw">library</span>(shinythemes)
+
+gwas38_traits &lt;-<span class="st"> </span><span class="kw">read.table</span>(<span class="st">&quot;gwas38_traits.txt&quot;</span>, <span class="dt">header =</span> <span class="ot">TRUE</span>, <span class="dt">sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>)
+
+diseases &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;choose below&quot;</span>, <span class="kw">as.character</span>(gwas38_traits$Trait))
+
+<span class="kw">shinyUI</span>(<span class="kw">fluidPage</span>(<span class="dt">theme =</span> <span class="kw">shinytheme</span>(<span class="st">&quot;united&quot;</span>),
+                  <span class="kw">titlePanel</span>(<span class="st">&quot;GWAS disease- &amp; trait-associated SNP locations of the human genome&quot;</span>),
+
+                  <span class="kw">sidebarLayout</span>(
+                    <span class="kw">sidebarPanel</span>(
+
+                      <span class="kw">sliderInput</span>(<span class="st">&quot;pvalmlog&quot;</span>,
+                                  <span class="st">&quot;-log(p-value):&quot;</span>,
+                                  <span class="dt">min =</span> -<span class="dv">13</span>,
+                                  <span class="dt">max =</span> <span class="dv">332</span>,
+                                  <span class="dt">value =</span> -<span class="dv">13</span>),
+
+                      <span class="kw">sliderInput</span>(<span class="st">&quot;orbeta&quot;</span>,
+                                  <span class="st">&quot;odds ratio/ beta-coefficient :&quot;</span>,
+                                  <span class="dt">min =</span> <span class="dv">0</span>,
+                                  <span class="dt">max =</span> <span class="dv">4426</span>,
+                                  <span class="dt">value =</span> <span class="dv">0</span>),
+
+                      <span class="kw">selectInput</span>(<span class="st">&quot;variable1&quot;</span>, <span class="st">&quot;First trait:&quot;</span>,
+                                  <span class="dt">choices =</span> diseases[-<span class="dv">1</span>]),
+
+                      <span class="kw">selectInput</span>(<span class="st">&quot;variable2&quot;</span>, <span class="st">&quot;Second trait:&quot;</span>,
+                                  <span class="dt">choices =</span> diseases),
+
+                      <span class="kw">selectInput</span>(<span class="st">&quot;variable3&quot;</span>, <span class="st">&quot;Third trait:&quot;</span>,
+                                  <span class="dt">choices =</span> diseases),
+
+                      <span class="kw">selectInput</span>(<span class="st">&quot;variable4&quot;</span>, <span class="st">&quot;Fourth trait:&quot;</span>,
+                                  <span class="dt">choices =</span> diseases),
+
+                      <span class="kw">selectInput</span>(<span class="st">&quot;variable5&quot;</span>, <span class="st">&quot;Fifth trait:&quot;</span>,
+                                  <span class="dt">choices =</span> diseases),
+
+                      <span class="kw">selectInput</span>(<span class="st">&quot;variable6&quot;</span>, <span class="st">&quot;Sixth trait:&quot;</span>,
+                                  <span class="dt">choices =</span> diseases),
+
+                      <span class="kw">selectInput</span>(<span class="st">&quot;variable7&quot;</span>, <span class="st">&quot;Seventh trait:&quot;</span>,
+                                  <span class="dt">choices =</span> diseases),
+
+                      <span class="kw">selectInput</span>(<span class="st">&quot;variable8&quot;</span>, <span class="st">&quot;Eighth trait:&quot;</span>,
+                                  <span class="dt">choices =</span> diseases)
+                    ),
+                    <span class="kw">mainPanel</span>(
+                      <span class="kw">br</span>(),
+                      <span class="kw">p</span>(<span class="st">&quot;The National Human Genome Research Institute (NHGRI) catalog of Genome-Wide Association Studies (GWAS) is a curated resource of single-nucleotide polymorphisms (SNP)-trait associations. The database contains more than 100,000 SNPs and all SNP-trait associations with a p-value &lt;1 × 10^−5.&quot;</span>),
+                      <span class="kw">p</span>(<span class="st">&quot;This app is based on the 'gwascat' R package and its 'ebicat38' database and shows trait-associated SNP locations of the human genome.&quot;</span>),
+                      <span class="kw">p</span>(<span class="st">&quot;For more info on how I built this app check out&quot;</span>, <span class="kw">a</span>(<span class="st">&quot;my blog.&quot;</span>, <span class="dt">href =</span> <span class="st">&quot;https://shiring.github.io/&quot;</span>)),
+                      <span class="kw">br</span>(),
+                      <span class="kw">h4</span>(<span class="st">&quot;How to use this app:&quot;</span>),
+                      <span class="kw">div</span>(<span class="st">&quot;Out of 1320 available traits or diseases you can choose up to 8 on the left-side panel und see their chromosomal locations below. The traits are sorted alphabetically. You can also start typing in the drop-down panel and traits matching your query will be suggested.&quot;</span>, <span class="dt">style =</span> <span class="st">&quot;color:blue&quot;</span>),
+                      <span class="kw">br</span>(),
+                      <span class="kw">div</span>(<span class="st">&quot;With the two sliders on the left-side panel you can select SNPs above a p-value threshold (-log of association p-value) and/or above an odds ratio/ beta-coefficient threshold. The higher the -log of the p-value the more significant the association of the SNP with the trait. Beware that some SNPs have no odds ratio value and will be shown regardless of the threshold.&quot;</span>, <span class="dt">style =</span> <span class="st">&quot;color:blue&quot;</span>),
+                      <span class="kw">br</span>(),
+                      <span class="kw">div</span>(<span class="st">&quot;The table directly below the plot shows the number of SNPs for each selected trait (without subsetting when p-value or odds ratio are changed). The second table below the first shows detailed information for each SNP of the chosen traits. This table shows only SNPs which are plotted (it subsets according to p-value and odds ratio thresholds).&quot;</span>, <span class="dt">style =</span> <span class="st">&quot;color:blue&quot;</span>),
+                      <span class="kw">br</span>(),
+                      <span class="kw">div</span>(<span class="st">&quot;Loading might take a few seconds...&quot;</span>, <span class="dt">style =</span> <span class="st">&quot;color:red&quot;</span>),
+                      <span class="kw">br</span>(),
+                      <span class="kw">plotOutput</span>(<span class="st">&quot;plot&quot;</span>),
+                      <span class="kw">tableOutput</span>(<span class="st">'table'</span>),
+                      <span class="kw">tableOutput</span>(<span class="st">'table2'</span>),
+                      <span class="kw">br</span>(),
+                      <span class="kw">p</span>(<span class="st">&quot;GWAS catalog:&quot;</span>, <span class="kw">a</span>(<span class="st">&quot;http://www.ebi.ac.uk/gwas/&quot;</span>, <span class="dt">href =</span> <span class="st">&quot;http://www.ebi.ac.uk/gwas/&quot;</span>)),
+                      <span class="kw">p</span>(<span class="kw">a</span>(<span class="st">&quot;Welter, Danielle et al. “The NHGRI GWAS Catalog, a Curated Resource of SNP-Trait Associations.” Nucleic Acids Research 42.Database issue (2014): D1001–D1006. PMC. Web. 17 Dec. 2016.&quot;</span>, <span class="dt">href =</span> <span class="st">&quot;https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3965119/&quot;</span>))
+                    )
+                  )
+))</code></pre></div>
+<p><br></p>
+</div>
+<div id="server.r" class="section level2">
+<h2>server.R</h2>
+<p>This file contains the R code to produce the plot and output tables.</p>
+<ul>
+<li>renderPlot() contains the code for the plot</li>
+<li>from the eight possible input traits, all unique traits are plotted (removing “choose below” first)</li>
+<li>the first output table shows the number of SNPs for the chosen traits</li>
+<li>the second output table shows SNP information for all SNPs of the chosen trait(s) and within the chosen thresholds</li>
+</ul>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(shiny)
 
-<span class="kw">setwd</span>(<span class="st">&quot;U:/Github_blog/blog_posts_prep/gwas/shiny/gwas_app&quot;</span>)
-<span class="kw">runApp</span>()
+chr_data &lt;-<span class="st"> </span><span class="kw">read.table</span>(<span class="st">&quot;chromosome_length.txt&quot;</span>, <span class="dt">header =</span> <span class="ot">TRUE</span>, <span class="dt">sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>)
 
-<span class="kw">runGitHub</span>(<span class="st">&quot;ShirinG/GWAS_Shiny_App&quot;</span>) </code></pre></div>
+chr_data$SEQNAME &lt;-<span class="st"> </span><span class="kw">as.factor</span>(chr_data$SEQNAME)
+f =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;1&quot;</span>, <span class="st">&quot;2&quot;</span>, <span class="st">&quot;3&quot;</span>, <span class="st">&quot;4&quot;</span>, <span class="st">&quot;5&quot;</span>, <span class="st">&quot;6&quot;</span>, <span class="st">&quot;7&quot;</span>, <span class="st">&quot;8&quot;</span>, <span class="st">&quot;9&quot;</span>, <span class="st">&quot;10&quot;</span>, <span class="st">&quot;11&quot;</span>, <span class="st">&quot;12&quot;</span>, <span class="st">&quot;13&quot;</span>, <span class="st">&quot;14&quot;</span>, <span class="st">&quot;15&quot;</span>, <span class="st">&quot;16&quot;</span>, <span class="st">&quot;17&quot;</span>, <span class="st">&quot;18&quot;</span>, <span class="st">&quot;19&quot;</span>, <span class="st">&quot;20&quot;</span>, <span class="st">&quot;21&quot;</span>, <span class="st">&quot;22&quot;</span>, <span class="st">&quot;X&quot;</span>, <span class="st">&quot;Y&quot;</span>, <span class="st">&quot;MT&quot;</span>)
+chr_data &lt;-<span class="st"> </span><span class="kw">within</span>(chr_data, SEQNAME &lt;-<span class="st"> </span><span class="kw">factor</span>(SEQNAME, <span class="dt">levels =</span> f))
+
+<span class="kw">library</span>(ggplot2)
+
+gwas38 &lt;-<span class="st"> </span><span class="kw">read.table</span>(<span class="st">&quot;gwas38.txt&quot;</span>, <span class="dt">header =</span> <span class="ot">TRUE</span>, <span class="dt">sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>)
+gwas38_traits &lt;-<span class="st"> </span><span class="kw">read.table</span>(<span class="st">&quot;gwas38_traits.txt&quot;</span>, <span class="dt">header =</span> <span class="ot">TRUE</span>, <span class="dt">sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>)
+
+<span class="co"># Define server logic required to plot variables</span>
+<span class="kw">shinyServer</span>(function(input, output) {
+
+  <span class="co"># Generate a plot of the requested variables</span>
+  output$plot &lt;-<span class="st"> </span><span class="kw">renderPlot</span>({
+
+    plot_snps &lt;-<span class="st"> </span>function(trait){
+
+      if (<span class="kw">any</span>(trait ==<span class="st"> &quot;choose below&quot;</span>)){
+        trait &lt;-<span class="st"> </span>trait[-<span class="kw">which</span>(trait ==<span class="st"> &quot;choose below&quot;</span>)]
+      } else {
+        trait &lt;-<span class="st"> </span><span class="kw">unique</span>(trait)
+      }
+
+        for (i in <span class="dv">1</span>:<span class="kw">length</span>(<span class="kw">unique</span>(trait))){
+
+          trait_pre &lt;-<span class="st"> </span><span class="kw">unique</span>(trait)[i]
+          snps_data_pre &lt;-<span class="st"> </span>gwas38[<span class="kw">which</span>(gwas38$DISEASE.TRAIT ==<span class="st"> </span><span class="kw">paste</span>(trait_pre)), ]
+          snps_data_pre &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">Chr =</span> snps_data_pre$seqnames,
+                                      <span class="dt">Start =</span> snps_data_pre$CHR_POS,
+                                      <span class="dt">SNPid =</span> snps_data_pre$SNPS,
+                                      <span class="dt">Trait =</span> <span class="kw">rep</span>(<span class="kw">paste</span>(trait_pre), <span class="kw">nrow</span>(snps_data_pre)),
+                                      <span class="dt">PVALUE_MLOG =</span> snps_data_pre$PVALUE_MLOG,
+                                      <span class="dt">OR.or.BETA =</span> snps_data_pre$OR.or.BETA)
+
+          snps_data_pre &lt;-<span class="st"> </span><span class="kw">subset</span>(snps_data_pre, PVALUE_MLOG &gt;<span class="st"> </span>input$pvalmlog)
+          snps_data_pre &lt;-<span class="st"> </span><span class="kw">subset</span>(snps_data_pre, OR.or.BETA &gt;<span class="st"> </span>input$orbeta |<span class="st"> </span><span class="kw">is.na</span>(OR.or.BETA))
+
+          if (i ==<span class="st"> </span><span class="dv">1</span>){
+
+            snps_data &lt;-<span class="st"> </span>snps_data_pre
+
+          } else {
+
+            snps_data &lt;-<span class="st"> </span><span class="kw">rbind</span>(snps_data, snps_data_pre)
+
+          }
+        }
+
+      snps_data &lt;-<span class="st"> </span><span class="kw">within</span>(snps_data, Chr &lt;-<span class="st"> </span><span class="kw">factor</span>(Chr, <span class="dt">levels =</span> f))
+
+      p &lt;-<span class="st"> </span><span class="kw">ggplot</span>(<span class="dt">data =</span> snps_data, <span class="kw">aes</span>(<span class="dt">x =</span> Chr, <span class="dt">y =</span> <span class="kw">as.numeric</span>(Start))) +
+<span class="st">        </span><span class="kw">geom_bar</span>(<span class="dt">data =</span> chr_data, <span class="kw">aes</span>(<span class="dt">x =</span> SEQNAME, <span class="dt">y =</span> <span class="kw">as.numeric</span>(SEQLENGTH)), <span class="dt">stat =</span> <span class="st">&quot;identity&quot;</span>, <span class="dt">fill =</span> <span class="st">&quot;grey90&quot;</span>, <span class="dt">color =</span> <span class="st">&quot;black&quot;</span>) +
+<span class="st">        </span><span class="kw">theme</span>(
+          <span class="dt">axis.text =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">14</span>),
+          <span class="dt">axis.title =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">14</span>),
+          <span class="dt">panel.grid.major =</span> <span class="kw">element_blank</span>(),
+          <span class="dt">panel.grid.minor =</span> <span class="kw">element_blank</span>(),
+          <span class="dt">panel.background =</span> <span class="kw">element_rect</span>(<span class="dt">fill =</span> <span class="st">&quot;white&quot;</span>),
+          <span class="dt">legend.position =</span> <span class="st">&quot;bottom&quot;</span>
+        ) +
+<span class="st">        </span><span class="kw">labs</span>(<span class="dt">x =</span> <span class="st">&quot;Chromosome&quot;</span>, <span class="dt">y =</span> <span class="st">&quot;Position&quot;</span>)
+
+      p +<span class="st"> </span><span class="kw">geom_segment</span>(<span class="dt">data =</span> snps_data, <span class="kw">aes</span>(<span class="dt">x =</span> <span class="kw">as.numeric</span>(<span class="kw">as.character</span>(Chr)) -<span class="st"> </span><span class="fl">0.45</span>, <span class="dt">xend =</span> <span class="kw">as.numeric</span>(<span class="kw">as.character</span>(Chr)) +<span class="st"> </span><span class="fl">0.45</span>,
+                                           <span class="dt">y =</span> Start, <span class="dt">yend =</span> Start, <span class="dt">colour =</span> Trait), <span class="dt">size =</span> <span class="dv">2</span>, <span class="dt">alpha =</span> <span class="fl">0.5</span>) +
+<span class="st">        </span><span class="kw">scale_colour_brewer</span>(<span class="dt">palette =</span> <span class="st">&quot;Set1&quot;</span>) +
+<span class="st">        </span><span class="kw">guides</span>(<span class="dt">colour =</span> <span class="kw">guide_legend</span>(<span class="dt">ncol =</span> <span class="dv">3</span>, <span class="dt">byrow =</span> <span class="ot">FALSE</span>))
+
+      }
+
+    <span class="kw">plot_snps</span>(<span class="dt">trait =</span> <span class="kw">c</span>(input$variable1, input$variable2, input$variable3, input$variable4, input$variable5, input$variable6, input$variable7, input$variable8, input$variable9))
+  })
+
+  output$table &lt;-<span class="st"> </span><span class="kw">renderTable</span>({
+    table &lt;-<span class="st"> </span>gwas38_traits[<span class="kw">which</span>(gwas38_traits$Trait %in%<span class="st"> </span><span class="kw">c</span>(input$variable1, input$variable2, input$variable3, input$variable4, input$variable5, input$variable6, input$variable7, input$variable8)), ]
+
+    })
+
+  output$table2 &lt;-<span class="st"> </span><span class="kw">renderTable</span>({
+    table &lt;-<span class="st"> </span>gwas38[<span class="kw">which</span>(gwas38$DISEASE.TRAIT %in%<span class="st"> </span><span class="kw">c</span>(input$variable1, input$variable2, input$variable3, input$variable4, input$variable5, input$variable6, input$variable7, input$variable8)), <span class="kw">c</span>(<span class="dv">1</span>:<span class="dv">5</span>, <span class="dv">8</span>, <span class="dv">10</span>, <span class="dv">11</span>, <span class="dv">13</span>, <span class="dv">14</span>, <span class="dv">20</span>, <span class="dv">27</span>, <span class="dv">32</span>, <span class="dv">33</span>, <span class="dv">34</span>, <span class="dv">36</span>)]
+
+    table &lt;-<span class="st"> </span><span class="kw">subset</span>(table, PVALUE_MLOG &gt;<span class="st"> </span>input$pvalmlog)
+    table &lt;-<span class="st"> </span><span class="kw">subset</span>(table, OR.or.BETA &gt;<span class="st"> </span>input$orbeta |<span class="st"> </span><span class="kw">is.na</span>(OR.or.BETA))
+
+    table[<span class="kw">order</span>(table$seqnames), ]
+    })
+
+})</code></pre></div>
+<p><br></p>
+</div>
+<div id="deploying-to-shinyapps.io" class="section level2">
+<h2>Deploying to shinyapps.io</h2>
+<p>Finally, I am deploying my finished app to shinyapps.io with the <em>rsconnect</em> package. You will need to register with shinyapps.io before you can host your Shiny app there and register rsconnect with the token you received.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(rsconnect)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">rsconnect::<span class="kw">deployApp</span>(<span class="st">'~/Documents/Github/blog_posts_prep/gwas/shiny/GWAS_Shiny_App'</span>)</code></pre></div>
+<p>This will open your deployed app right aways. You can now share the link to your app with the world! :-)</p>
 <hr />
 <p><br></p>
 <pre><code>## R version 3.3.2 (2016-10-31)
-## Platform: x86_64-w64-mingw32/x64 (64-bit)
-## Running under: Windows 7 x64 (build 7601) Service Pack 1
+## Platform: x86_64-apple-darwin13.4.0 (64-bit)
+## Running under: macOS Sierra 10.12.1
 ## 
 ## locale:
-## [1] LC_COLLATE=English_United States.1252 
-## [2] LC_CTYPE=English_United States.1252   
-## [3] LC_MONETARY=English_United States.1252
-## [4] LC_NUMERIC=C                          
-## [5] LC_TIME=English_United States.1252    
+## [1] de_DE.UTF-8/de_DE.UTF-8/de_DE.UTF-8/C/de_DE.UTF-8/de_DE.UTF-8
 ## 
 ## attached base packages:
 ## [1] stats4    parallel  stats     graphics  grDevices utils     datasets 
 ## [8] methods   base     
 ## 
 ## other attached packages:
-##  [1] gwascat_2.6.0                          
-##  [2] Homo.sapiens_1.3.1                     
-##  [3] TxDb.Hsapiens.UCSC.hg19.knownGene_3.2.2
-##  [4] GO.db_3.4.0                            
-##  [5] OrganismDbi_1.16.0                     
-##  [6] ggplot2_2.2.0                          
-##  [7] EnsDb.Hsapiens.v79_2.1.0               
-##  [8] ensembldb_1.6.2                        
-##  [9] GenomicFeatures_1.26.0                 
-## [10] GenomicRanges_1.26.1                   
-## [11] GenomeInfoDb_1.10.1                    
-## [12] org.Hs.eg.db_3.4.0                     
-## [13] AnnotationDbi_1.36.0                   
-## [14] IRanges_2.8.1                          
-## [15] S4Vectors_0.12.1                       
-## [16] Biobase_2.34.0                         
-## [17] BiocGenerics_0.20.0                    
+##  [1] rsconnect_0.6                          
+##  [2] gwascat_2.6.0                          
+##  [3] Homo.sapiens_1.3.1                     
+##  [4] TxDb.Hsapiens.UCSC.hg19.knownGene_3.2.2
+##  [5] GO.db_3.4.0                            
+##  [6] OrganismDbi_1.16.0                     
+##  [7] ggplot2_2.2.0                          
+##  [8] EnsDb.Hsapiens.v79_2.1.0               
+##  [9] ensembldb_1.6.2                        
+## [10] GenomicFeatures_1.26.0                 
+## [11] GenomicRanges_1.26.1                   
+## [12] GenomeInfoDb_1.10.1                    
+## [13] org.Hs.eg.db_3.4.0                     
+## [14] AnnotationDbi_1.36.0                   
+## [15] IRanges_2.8.1                          
+## [16] S4Vectors_0.12.1                       
+## [17] Biobase_2.34.0                         
+## [18] BiocGenerics_0.20.0                    
 ## 
 ## loaded via a namespace (and not attached):
-##   [1] nlme_3.1-128                  matrixStats_0.51.0           
-##   [3] bitops_1.0-6                  RColorBrewer_1.1-2           
-##   [5] doParallel_1.0.10             httr_1.2.1                   
-##   [7] rprojroot_1.1                 GenomicFiles_1.10.3          
-##   [9] tools_3.3.2                   backports_1.0.4              
-##  [11] R6_2.2.0                      rpart_4.1-10                 
-##  [13] Gviz_1.18.1                   Hmisc_4.0-1                  
-##  [15] DBI_0.5-1                     lazyeval_0.2.0               
-##  [17] mgcv_1.8-16                   colorspace_1.3-2             
-##  [19] nnet_7.3-12                   gridExtra_2.2.1              
-##  [21] GGally_1.3.0                  gQTLBase_1.6.0               
-##  [23] base64_2.0                    bit_1.1-12                   
-##  [25] sendmailR_1.2-1               graph_1.52.0                 
-##  [27] htmlTable_1.7                 ggbio_1.22.0                 
-##  [29] rtracklayer_1.34.1            scales_0.4.1                 
-##  [31] checkmate_1.8.2               BatchJobs_1.6                
-##  [33] RBGL_1.50.0                   stringr_1.1.0                
-##  [35] digest_0.6.10                 Rsamtools_1.26.1             
-##  [37] foreign_0.8-67                rmarkdown_1.2                
-##  [39] XVector_0.14.0                dichromat_2.0-0              
-##  [41] base64enc_0.1-3               htmltools_0.3.5              
-##  [43] limma_3.30.7                  BSgenome_1.42.0              
-##  [45] RSQLite_1.1-1                 BBmisc_1.10                  
-##  [47] BiocInstaller_1.24.0          shiny_0.14.2                 
-##  [49] prettydoc_0.2.0               BiocParallel_1.8.1           
-##  [51] acepack_1.4.1                 dplyr_0.5.0                  
-##  [53] VariantAnnotation_1.20.2      RCurl_1.95-4.8               
-##  [55] magrittr_1.5                  Formula_1.2-1                
-##  [57] Matrix_1.2-7.1                Rcpp_0.12.8                  
-##  [59] munsell_0.4.3                 stringi_1.1.2                
-##  [61] yaml_2.1.14                   SummarizedExperiment_1.4.0   
-##  [63] zlibbioc_1.20.0               fail_1.3                     
-##  [65] plyr_1.8.4                    AnnotationHub_2.6.4          
-##  [67] grid_3.3.2                    snpStats_1.24.0              
-##  [69] lattice_0.20-34               Biostrings_2.42.1            
-##  [71] splines_3.3.2                 knitr_1.15.1                 
-##  [73] ffbase_0.12.3                 reshape2_1.4.2               
-##  [75] codetools_0.2-15              biomaRt_2.30.0               
-##  [77] fastmatch_1.0-4               XML_3.98-1.5                 
-##  [79] evaluate_0.10                 biovizBase_1.22.0            
-##  [81] latticeExtra_0.6-28           data.table_1.10.0            
-##  [83] httpuv_1.3.3                  foreach_1.4.3                
-##  [85] openssl_0.9.5                 gtable_0.2.0                 
-##  [87] reshape_0.8.6                 assertthat_0.1               
-##  [89] gQTLstats_1.6.0               mime_0.5                     
-##  [91] xtable_1.8-2                  ff_2.2-13                    
-##  [93] survival_2.40-1               tibble_1.2                   
-##  [95] iterators_1.0.8               GenomicAlignments_1.10.0     
-##  [97] beeswarm_0.2.3                memoise_1.0.0                
-##  [99] cluster_2.0.5                 brew_1.0-6                   
-## [101] interactiveDisplayBase_1.12.0</code></pre>
+##   [1] colorspace_1.3-1              rprojroot_1.1                
+##   [3] biovizBase_1.22.0             htmlTable_1.7                
+##   [5] XVector_0.14.0                base64enc_0.1-3              
+##   [7] dichromat_2.0-0               base64_2.0                   
+##   [9] interactiveDisplayBase_1.12.0 codetools_0.2-15             
+##  [11] splines_3.3.2                 snpStats_1.24.0              
+##  [13] ggbio_1.22.0                  fail_1.3                     
+##  [15] doParallel_1.0.10             knitr_1.15.1                 
+##  [17] Formula_1.2-1                 gQTLBase_1.6.0               
+##  [19] Rsamtools_1.26.1              cluster_2.0.5                
+##  [21] graph_1.52.0                  shiny_0.14.2                 
+##  [23] httr_1.2.1                    backports_1.0.4              
+##  [25] assertthat_0.1                Matrix_1.2-7.1               
+##  [27] lazyeval_0.2.0                limma_3.30.6                 
+##  [29] acepack_1.4.1                 htmltools_0.3.5              
+##  [31] tools_3.3.2                   gtable_0.2.0                 
+##  [33] reshape2_1.4.2                dplyr_0.5.0                  
+##  [35] fastmatch_1.0-4               Rcpp_0.12.8                  
+##  [37] Biostrings_2.42.1             nlme_3.1-128                 
+##  [39] rtracklayer_1.34.1            iterators_1.0.8              
+##  [41] ffbase_0.12.3                 stringr_1.1.0                
+##  [43] mime_0.5                      XML_3.98-1.5                 
+##  [45] AnnotationHub_2.6.4           zlibbioc_1.20.0              
+##  [47] scales_0.4.1                  BSgenome_1.42.0              
+##  [49] VariantAnnotation_1.20.2      BiocInstaller_1.24.0         
+##  [51] SummarizedExperiment_1.4.0    RBGL_1.50.0                  
+##  [53] RColorBrewer_1.1-2            BBmisc_1.10                  
+##  [55] yaml_2.1.14                   memoise_1.0.0                
+##  [57] gridExtra_2.2.1               biomaRt_2.30.0               
+##  [59] rpart_4.1-10                  reshape_0.8.6                
+##  [61] latticeExtra_0.6-28           stringi_1.1.2                
+##  [63] RSQLite_1.1-1                 foreach_1.4.3                
+##  [65] checkmate_1.8.2               BiocParallel_1.8.1           
+##  [67] BatchJobs_1.6                 GenomicFiles_1.10.3          
+##  [69] bitops_1.0-6                  matrixStats_0.51.0           
+##  [71] evaluate_0.10                 lattice_0.20-34              
+##  [73] GenomicAlignments_1.10.0      bit_1.1-12                   
+##  [75] GGally_1.3.0                  plyr_1.8.4                   
+##  [77] magrittr_1.5                  sendmailR_1.2-1              
+##  [79] R6_2.2.0                      Hmisc_4.0-1                  
+##  [81] DBI_0.5-1                     foreign_0.8-67               
+##  [83] mgcv_1.8-16                   prettydoc_0.2.0              
+##  [85] survival_2.40-1               RCurl_1.95-4.8               
+##  [87] nnet_7.3-12                   tibble_1.2                   
+##  [89] rmarkdown_1.2                 grid_3.3.2                   
+##  [91] data.table_1.10.0             gQTLstats_1.6.0              
+##  [93] digest_0.6.10                 xtable_1.8-2                 
+##  [95] ff_2.2-13                     httpuv_1.3.3                 
+##  [97] brew_1.0-6                    openssl_0.9.5                
+##  [99] munsell_0.4.3                 beeswarm_0.2.3               
+## [101] Gviz_1.18.1</code></pre>
+</div>
+</div>
 </div>
 </div>
 

@@ -16,3 +16,4 @@ GO.db
 TxDb.Hsapiens.UCSC.hg19.knownGene
 Homo.sapiens
 gwascat
+rsconnect

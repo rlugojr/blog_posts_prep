@@ -1,4 +1,4 @@
-"Var1"	"Freq"
+"Trait"	"Frequency"
 "5-HTT brain serotonin transporter levels"	1
 "Abdominal aortic aneurysm"	4
 "Acenocoumarol maintenance dosage"	4
