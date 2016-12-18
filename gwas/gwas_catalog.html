@@ -12,7 +12,7 @@
 
 <meta name="author" content="Dr. Shirin Glander" />
 
-<meta name="date" content="2016-12-17" />
+<meta name="date" content="2016-12-18" />
 
 <title>How to build a Shiny app for disease- &amp; trait-associated locations of the human genome</title>
 
@@ -73,31 +73,33 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <header>
 <h1 class="title toc-ignore">How to build a Shiny app for disease- &amp; trait-associated locations of the human genome</h1>
 <h3 class="author">Dr. Shirin Glander</h3>
-<h3 class="date">2016-12-17</h3>
+<h3 class="date">2016-12-18</h3>
 </header>
 
 <hr>
 
 
 
-<p>The <a href="http://www.ebi.ac.uk/gwas/">National Human Genome Research Institute (NHGRI) catalog of Genome-Wide Association Studies (GWAS)</a> is a curated resource of single-nucleotide polymorphisms (SNP)-trait associations. The database contains more than 100,000 SNPs and all SNP-trait associations with a p-value &lt;1 × 10^−5.</p>
-<p>This app is based on the <a href="http://bioconductor.org/packages/release/bioc/html/gwascat.html">gwascat</a> R package and its <em>ebicat38</em> database and shows trait-associated SNP locations of the human genome.</p>
+<p>This app is based on the <a href="http://bioconductor.org/packages/release/bioc/html/gwascat.html">gwascat</a> R package and its <em>ebicat38</em> database and shows trait-associated SNP locations of the human genome. You can visualize and compare the genomic locations of up to 8 traits simultaneously.</p>
+<p>The <a href="http://www.ebi.ac.uk/gwas/">National Human Genome Research Institute (NHGRI) catalog of Genome-Wide Association Studies (GWAS)</a> is a curated resource of single-nucleotide polymorphism (SNP)-trait associations. The database contains more than 100,000 SNPs and all SNP-trait associations with a p-value &lt;1 × 10^−5.</p>
+<p><br></p>
 <p>You can access the app at</p>
 <blockquote>
 <p><a href="https://shiring.shinyapps.io/gwas_shiny_app/" class="uri">https://shiring.shinyapps.io/gwas_shiny_app/</a></p>
 </blockquote>
-<p>Loading the data might take a few seconds. Patience you mus have, my young padawan… ;-)</p>
+<p>Loading the data might take a few seconds. Patience you must have, my young padawan… ;-)</p>
 <p><br></p>
 <p>Alternatively, if you are using R, you can load the app via Github with <strong>shiny</strong>:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(shiny)
 <span class="kw">runGitHub</span>(<span class="st">&quot;ShirinG/GWAS_Shiny_App&quot;</span>) </code></pre></div>
+<hr />
 <p><br></p>
 <p>If you want to know how I built this app, contine reading.</p>
 <p><br></p>
 <div id="data-preparation" class="section level1">
 <h1>Data preparation</h1>
 <p>Initially, I wanted to load all data directly from R packages. And while this worked in principal, it made the app load super slowly.</p>
-<p>So, I decided to prepare the data beforehand and save the datatables as tab-delimited text files.</p>
+<p>So, I decided to prepare the data beforehand and save the datatables as tab-delimited text files and load them in the app.</p>
 <p><br></p>
 <div id="genome-information" class="section level2">
 <h2>Genome information</h2>
@@ -144,7 +146,7 @@ gwas38_traits &lt;-<span class="st"> </span><span class="kw">as.data.frame</span
 </div>
 <div id="the-shiny-app" class="section level1">
 <h1>The Shiny App</h1>
-<p>I built my Shiny app with the traditional two-file system. This means that I have a “ui.R” file containing the layout and “server.R”, which contains the R code.</p>
+<p>I built my Shiny app with the traditional two-file system. This means that I have a “ui.R” file containing the layout and a “server.R” file, which contains the R code.</p>
 <p><br></p>
 <div id="ui.r" class="section level2">
 <h2>ui.R</h2>
@@ -153,7 +155,7 @@ gwas38_traits &lt;-<span class="st"> </span><span class="kw">as.data.frame</span
 <li>loading the table with all traits</li>
 <li>adding a “choose below” option before the traits to have no trait chosen by default</li>
 <li>“united” theme for layout</li>
-<li>two slide bars, one for the p-value threshold and one for the odds ratio/ beta coefficient threshold</li>
+<li>two slider bars, one for the p-value threshold and one for the odds ratio/ beta coefficient threshold</li>
 <li>drop-down menus for all traits, maximal eight can be chosen to be plotted simultaneously</li>
 <li>main panel with explanatory text, main plot and output tables</li>
 </ul>
@@ -236,10 +238,11 @@ diseases &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st
 <h2>server.R</h2>
 <p>This file contains the R code to produce the plot and output tables.</p>
 <ul>
+<li>The chromosome data is loaded for the chromosome length barplot. In order to have the correct order, I am setting the chromosome factor order manually</li>
 <li>renderPlot() contains the code for the plot</li>
-<li>from the eight possible input traits, all unique traits are plotted (removing “choose below” first)</li>
+<li>from the eight possible input traits, all unique traits are plotted (removing “choose below” first), unique traits were set here, so as not to plot the same trait on top of themselves if the same trait is chosen in two drop-down menus</li>
 <li>the first output table shows the number of SNPs for the chosen traits</li>
-<li>the second output table shows SNP information for all SNPs of the chosen trait(s) and within the chosen thresholds</li>
+<li>the second output table shows SNP information for all SNPs of the chosen trait(s) within the chosen thresholds</li>
 </ul>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(shiny)
 
@@ -342,6 +345,17 @@ gwas38_traits &lt;-<span class="st"> </span><span class="kw">read.table</span>(<
 <p>This will open your deployed app right aways. You can now share the link to your app with the world! :-)</p>
 <hr />
 <p><br></p>
+<div id="if-you-are-interested-in-human-genomics" class="section level4">
+<h4>If you are interested in human genomics…</h4>
+<p>… you might also like these posts:</p>
+<ul>
+<li><a href="https://shiring.github.io/genome/2016/10/23/AnnotationDbi" class="uri">https://shiring.github.io/genome/2016/10/23/AnnotationDbi</a></li>
+<li><a href="https://shiring.github.io/genome/2016/11/01/AnnotationDbi_part2" class="uri">https://shiring.github.io/genome/2016/11/01/AnnotationDbi_part2</a></li>
+<li><a href="https://shiring.github.io/genome/2016/12/11/homologous_genes_post" class="uri">https://shiring.github.io/genome/2016/12/11/homologous_genes_post</a></li>
+<li><a href="https://shiring.github.io/genome/2016/12/14/homologous_genes_part2_post" class="uri">https://shiring.github.io/genome/2016/12/14/homologous_genes_part2_post</a></li>
+</ul>
+<hr />
+<p><br></p>
 <pre><code>## R version 3.3.2 (2016-10-31)
 ## Platform: x86_64-apple-darwin13.4.0 (64-bit)
 ## Running under: macOS Sierra 10.12.1
@@ -350,81 +364,14 @@ gwas38_traits &lt;-<span class="st"> </span><span class="kw">read.table</span>(<
 ## [1] de_DE.UTF-8/de_DE.UTF-8/de_DE.UTF-8/C/de_DE.UTF-8/de_DE.UTF-8
 ## 
 ## attached base packages:
-## [1] stats4    parallel  stats     graphics  grDevices utils     datasets 
-## [8] methods   base     
-## 
-## other attached packages:
-##  [1] rsconnect_0.6                          
-##  [2] gwascat_2.6.0                          
-##  [3] Homo.sapiens_1.3.1                     
-##  [4] TxDb.Hsapiens.UCSC.hg19.knownGene_3.2.2
-##  [5] GO.db_3.4.0                            
-##  [6] OrganismDbi_1.16.0                     
-##  [7] ggplot2_2.2.0                          
-##  [8] EnsDb.Hsapiens.v79_2.1.0               
-##  [9] ensembldb_1.6.2                        
-## [10] GenomicFeatures_1.26.0                 
-## [11] GenomicRanges_1.26.1                   
-## [12] GenomeInfoDb_1.10.1                    
-## [13] org.Hs.eg.db_3.4.0                     
-## [14] AnnotationDbi_1.36.0                   
-## [15] IRanges_2.8.1                          
-## [16] S4Vectors_0.12.1                       
-## [17] Biobase_2.34.0                         
-## [18] BiocGenerics_0.20.0                    
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## loaded via a namespace (and not attached):
-##   [1] colorspace_1.3-1              rprojroot_1.1                
-##   [3] biovizBase_1.22.0             htmlTable_1.7                
-##   [5] XVector_0.14.0                base64enc_0.1-3              
-##   [7] dichromat_2.0-0               base64_2.0                   
-##   [9] interactiveDisplayBase_1.12.0 codetools_0.2-15             
-##  [11] splines_3.3.2                 snpStats_1.24.0              
-##  [13] ggbio_1.22.0                  fail_1.3                     
-##  [15] doParallel_1.0.10             knitr_1.15.1                 
-##  [17] Formula_1.2-1                 gQTLBase_1.6.0               
-##  [19] Rsamtools_1.26.1              cluster_2.0.5                
-##  [21] graph_1.52.0                  shiny_0.14.2                 
-##  [23] httr_1.2.1                    backports_1.0.4              
-##  [25] assertthat_0.1                Matrix_1.2-7.1               
-##  [27] lazyeval_0.2.0                limma_3.30.6                 
-##  [29] acepack_1.4.1                 htmltools_0.3.5              
-##  [31] tools_3.3.2                   gtable_0.2.0                 
-##  [33] reshape2_1.4.2                dplyr_0.5.0                  
-##  [35] fastmatch_1.0-4               Rcpp_0.12.8                  
-##  [37] Biostrings_2.42.1             nlme_3.1-128                 
-##  [39] rtracklayer_1.34.1            iterators_1.0.8              
-##  [41] ffbase_0.12.3                 stringr_1.1.0                
-##  [43] mime_0.5                      XML_3.98-1.5                 
-##  [45] AnnotationHub_2.6.4           zlibbioc_1.20.0              
-##  [47] scales_0.4.1                  BSgenome_1.42.0              
-##  [49] VariantAnnotation_1.20.2      BiocInstaller_1.24.0         
-##  [51] SummarizedExperiment_1.4.0    RBGL_1.50.0                  
-##  [53] RColorBrewer_1.1-2            BBmisc_1.10                  
-##  [55] yaml_2.1.14                   memoise_1.0.0                
-##  [57] gridExtra_2.2.1               biomaRt_2.30.0               
-##  [59] rpart_4.1-10                  reshape_0.8.6                
-##  [61] latticeExtra_0.6-28           stringi_1.1.2                
-##  [63] RSQLite_1.1-1                 foreach_1.4.3                
-##  [65] checkmate_1.8.2               BiocParallel_1.8.1           
-##  [67] BatchJobs_1.6                 GenomicFiles_1.10.3          
-##  [69] bitops_1.0-6                  matrixStats_0.51.0           
-##  [71] evaluate_0.10                 lattice_0.20-34              
-##  [73] GenomicAlignments_1.10.0      bit_1.1-12                   
-##  [75] GGally_1.3.0                  plyr_1.8.4                   
-##  [77] magrittr_1.5                  sendmailR_1.2-1              
-##  [79] R6_2.2.0                      Hmisc_4.0-1                  
-##  [81] DBI_0.5-1                     foreign_0.8-67               
-##  [83] mgcv_1.8-16                   prettydoc_0.2.0              
-##  [85] survival_2.40-1               RCurl_1.95-4.8               
-##  [87] nnet_7.3-12                   tibble_1.2                   
-##  [89] rmarkdown_1.2                 grid_3.3.2                   
-##  [91] data.table_1.10.0             gQTLstats_1.6.0              
-##  [93] digest_0.6.10                 xtable_1.8-2                 
-##  [95] ff_2.2-13                     httpuv_1.3.3                 
-##  [97] brew_1.0-6                    openssl_0.9.5                
-##  [99] munsell_0.4.3                 beeswarm_0.2.3               
-## [101] Gviz_1.18.1</code></pre>
+##  [1] backports_1.0.4 magrittr_1.5    rprojroot_1.1   tools_3.3.2    
+##  [5] htmltools_0.3.5 prettydoc_0.2.0 yaml_2.1.14     Rcpp_0.12.8    
+##  [9] stringi_1.1.2   rmarkdown_1.2   knitr_1.15.1    stringr_1.1.0  
+## [13] digest_0.6.10   evaluate_0.10</code></pre>
+</div>
 </div>
 </div>
 </div>

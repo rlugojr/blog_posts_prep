@@ -8,15 +8,17 @@ output:
     highlight: github
 ---
 
-The [National Human Genome Research Institute (NHGRI) catalog of Genome-Wide Association Studies (GWAS)](http://www.ebi.ac.uk/gwas/) is a curated resource of single-nucleotide polymorphisms (SNP)-trait associations. The database contains more than 100,000 SNPs and all SNP-trait associations with a p-value <1 × 10^−5.
+This app is based on the [gwascat](http://bioconductor.org/packages/release/bioc/html/gwascat.html) R package and its *ebicat38* database and shows trait-associated SNP locations of the human genome. You can visualize and compare the genomic locations of up to 8 traits simultaneously.
 
-This app is based on the [gwascat](http://bioconductor.org/packages/release/bioc/html/gwascat.html) R package and its *ebicat38* database and shows trait-associated SNP locations of the human genome.
+The [National Human Genome Research Institute (NHGRI) catalog of Genome-Wide Association Studies (GWAS)](http://www.ebi.ac.uk/gwas/) is a curated resource of single-nucleotide polymorphism (SNP)-trait associations. The database contains more than 100,000 SNPs and all SNP-trait associations with a p-value <1 × 10^−5.
+
+<br>
 
 You can access the app at
 
 > https://shiring.shinyapps.io/gwas_shiny_app/
 
-Loading the data might take a few seconds. Patience you mus have, my young padawan... ;-)
+Loading the data might take a few seconds. Patience you must have, my young padawan... ;-)
 
 <br>
 
@@ -27,6 +29,7 @@ library(shiny)
 runGitHub("ShirinG/GWAS_Shiny_App") 
 ```
 
+---
 
 <br>
 
@@ -38,7 +41,7 @@ If you want to know how I built this app, contine reading.
 
 Initially, I wanted to load all data directly from R packages. And while this worked in principal, it made the app load super slowly.
 
-So, I decided to prepare the data beforehand and save the datatables as tab-delimited text files.
+So, I decided to prepare the data beforehand and save the datatables as tab-delimited text files and load them in the app.
 
 <br>
 
@@ -101,7 +104,7 @@ write.table(gwas38_traits, "gwas38_traits.txt", row.names = FALSE, col.names = T
 
 # The Shiny App
 
-I built my Shiny app with the traditional two-file system. This means that I have a "ui.R" file containing the layout and "server.R", which contains the R code.
+I built my Shiny app with the traditional two-file system. This means that I have a "ui.R" file containing the layout and a "server.R" file, which contains the R code.
 
 <br>
 
@@ -112,7 +115,7 @@ From top to bottom I chose the following settings:
 - loading the table with all traits
 - adding a "choose below" option before the traits to have no trait chosen by default
 - "united" theme for layout
-- two slide bars, one for the p-value threshold and one for the odds ratio/ beta coefficient threshold
+- two slider bars, one for the p-value threshold and one for the odds ratio/ beta coefficient threshold
 - drop-down menus for all traits, maximal eight can be chosen to be plotted simultaneously
 - main panel with explanatory text, main plot and output tables
 
@@ -198,10 +201,12 @@ shinyUI(fluidPage(theme = shinytheme("united"),
 
 This file contains the R code to produce the plot and output tables.
 
+- The chromosome data is loaded for the chromosome length barplot. In order to have the correct order, I am setting the chromosome factor order manually
 - renderPlot() contains the code for the plot
-- from the eight possible input traits, all unique traits are plotted (removing "choose below" first)
+- from the eight possible input traits, all unique traits are plotted (removing "choose below" first),
+  unique traits were set here, so as not to plot the same trait on top of themselves if the same trait is chosen in two drop-down menus
 - the first output table shows the number of SNPs for the chosen traits
-- the second output table shows SNP information for all SNPs of the chosen trait(s) and within the chosen thresholds
+- the second output table shows SNP information for all SNPs of the chosen trait(s) within the chosen thresholds
 
 ```{r echo=TRUE, eval = FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=8, fig.align="center", cache=TRUE}
 library(shiny)
@@ -312,6 +317,19 @@ rsconnect::deployApp('~/Documents/Github/blog_posts_prep/gwas/shiny/GWAS_Shiny_A
 ```
 
 This will open your deployed app right aways. You can now share the link to your app with the world! :-)
+
+---
+
+<br>
+
+#### If you are interested in human genomics...
+
+... you might also like these posts:
+
+- https://shiring.github.io/genome/2016/10/23/AnnotationDbi
+- https://shiring.github.io/genome/2016/11/01/AnnotationDbi_part2
+- https://shiring.github.io/genome/2016/12/11/homologous_genes_post
+- https://shiring.github.io/genome/2016/12/14/homologous_genes_part2_post
 
 ------------------
 
