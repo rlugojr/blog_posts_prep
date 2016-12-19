@@ -1,0 +1,16 @@
+base
+BiocGenerics
+Biobase
+S4Vectors
+IRanges
+AnnotationDbi
+GenomeInfoDb
+GenomicRanges
+GenomicFeatures
+ensembldb
+EnsDb.Hsapiens.v79
+EnsDb.Mmusculus.v79
+EnsDb.Rnorvegicus.v79
+dplyr
+reshape2
+ggplot2

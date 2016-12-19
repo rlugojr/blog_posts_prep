@@ -1,0 +1,84 @@
+---
+title: "Time series forecasting of sin taxes with R"
+author: "Shirin Glander"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: tactile
+    highlight: github
+---
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+library(ttbbeer)
+
+artificialcarbontax$tax <- "artificialcarbon"
+artificialcarbontax[nrow(artificialcarbontax), 1] <- "1991-01-01"
+
+beertax$tax <- "beer"
+
+champagnetax$tax <- "champagne"
+
+spirittax$tax <- "spirit"
+
+tobaccotax$ITEM <- tolower(tobaccotax$ITEM)
+tobaccotax$ITEM <- gsub(" ", "_", tobaccotax$ITEM)
+tobaccotax$tax <- paste("tobacco", tobaccotax$ITEM, sep = "_")
+tobaccotax_2 <- tobaccotax[, -1]
+tobaccotax_2[18, 2] <- "1977-01-31"
+tobaccotax_2[18, 1] <- "1977-01-01"
+
+winetax14$tax <- "wine_14"
+
+winetax1421$tax <- "wine_14_21"
+
+winetax2124$tax <- "wine_21_24"
+
+tax <- rbind(artificialcarbontax, beertax, champagnetax, spirittax, tobaccotax_2, winetax14, winetax1421, winetax2124)
+
+tax_2 <- tax
+tax_2$ID <- paste(tax_2$tax, rownames(tax_2), sep = "_")
+head(tax_2)
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 12, fig.height = 5, fig.align = "center"}
+library(tidyr)
+tax_gather <- tax_2 %>%
+  gather(dat_column, Date, FROM:TO)
+
+library(ggplot2)
+theme_set(theme_bw())
+
+ggplot(tax_gather,aes(x = Date, y = RATE, color = tax)) +
+  geom_point(size = 1.5, alpha = 0.6) +
+  geom_line()
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 12, fig.height = 5, fig.align = "center"}
+library(gganimate)
+
+p <- ggplot(tax_gather,aes(x = Date, y = RATE, color = tax, frame = tax)) +
+  geom_point(size = 1.5, alpha = 0.6) +
+  geom_line()
+
+gganimate(p, filename = "taxes.gif")
+gganimate(p, filename = "taxes.mp4")
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 12, fig.height = 5, fig.align = "center"}
+z <- beertax[, -c(2, 4)]
+z$month_year <- format(z$FROM, format="%b %Y")
+library(splitstackshape)
+z <- cSplit(z, splitCols = "month_year", sep = " ", direction = "wide")
+z
+```
+
+
+
+
+------------------
+
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, fig.align="center", cache=FALSE}
+sessionInfo()
+```
