@@ -36,10 +36,9 @@ library(gridExtra) # for arranging plots
 electricity_subset <- electricity[, c(11:13)]
 
 library(stringi)
-
 electricity_subset$Month_2 <- stri_sub(electricity_subset$Month_2, 1, 3)
 electricity_subset$Date <- paste("01", electricity_subset$Month_2, electricity_subset$Month_1, sep = "-")
-electricity_subset$Date <- as.Date(electricity_subset$Date, format = "%d-%b-%Y")
+electricity_subset$Date2 <- as.Date(electricity_subset$Date, format = "%d-%b-%Y")
 
 ggplot(electricity_subset, aes(Date, Primary.Energy.Consumption.Total)) +
   geom_path() +
@@ -88,8 +87,38 @@ ggtsdiag(auto.arima(electricity_subset_ts))
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
-forecasts <- HoltWinters(electricity_subset_ts, beta=FALSE, gamma=FALSE)
+forecasts <- HoltWinters(electricity_subset_ts, beta = FALSE, gamma = FALSE)
 autoplot(forecasts)
+```
+
+https://cran.r-project.org/web/packages/zoo/vignettes/zoo.pdf
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+library(zoo)
+set.seed(1071)
+
+electricity$Month_3 <- stri_sub(electricity$Month_2, 1, 3)
+z2.index <- paste(electricity$Month_1, electricity$Month_3, "01", sep = "-")
+z2.index <- as.Date(z2.index, format = "%Y-%b-%d")
+
+electricity_subset_zoo <- zoo(electricity$Primary.Energy.Consumption.Total, z2.index)
+plot(electricity_subset_zoo)
+
+plot(diff(electricity_subset_zoo))
+plot(diff(log(electricity_subset_zoo)))
+
+plot(rollapply(electricity_subset_zoo, 5, sd))
+```
+
+https://cran.r-project.org/web/packages/xts/vignettes/xts.pdf
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
+library(xts)
+matrix_xts <- as.xts(electricity_subset_zoo, dateFormat = 'Date')
+
+plot(matrix_xts[,1],major.ticks='months',minor.ticks=FALSE,main=NULL,col=3)
+periodicity(matrix_xts)
+
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 5, fig.align = "center"}
