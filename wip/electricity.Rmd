@@ -58,6 +58,12 @@ library(ggfortify)
 autoplot(electricity_subset_ts)
 ```
 
+https://www.r-bloggers.com/why-time-series-forecasts-prediction-intervals-arent-as-good-as-wed-hope/
+
+https://www.r-bloggers.com/cross-validation-for-time-series/
+
+https://cran.r-project.org/web/views/TimeSeries.html
+
 http://a-little-book-of-r-for-time-series.readthedocs.io/en/latest/src/timeseries.html
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 12, fig.height = 10, fig.align = "center"}
