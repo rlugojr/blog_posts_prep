@@ -1,26 +1,26 @@
 ---
 layout: post
-title: "A simple 'How to map your Google location history with R'"
-date: 2016-11-27
+title: "How to map your Google location history with R"
+date: 2016-12-26
 categories: maps
-tags: ggmap ggplot2 Google
+tags: ggplot2 ggmap google maps
 ---
 
 It's no secret that Google basically Big Brothers most of us. But at least they allow us to access quite a lot of the data they have collected on us. Among this is the Google location history.
 
 If you want to see a few ways how to quickly and easily visualize your location history with R, stay tuned...
 
-The Google location history can be downloaded from your Google account under <http://takeout.google.com/>. Make sure you only tick *"location history"* for download, otherwise it will probably take super long to get all your Google data.
+The Google location history can be downloaded from your Google account under <https://takeout.google.com/settings/takeout>. Make sure you only tick *"location history"* for download, otherwise it will take super long to get all your Google data.
 
 The data Google provides you for download is a .json file and can be loaded with the [jsonlite](https://cran.r-project.org/web/packages/jsonlite/index.html) package. Loading this file into R might take a few minutes because it can be quite big, depending on how many location points Google had saved about you.
 
 ``` r
 library(jsonlite)
-system.time(x <- fromJSON("Takeout/Standortverlauf/Standortverlauf.json"))
+system.time(x <- fromJSON("Standortverlauf.json"))
 ```
 
     ##    user  system elapsed 
-    ##  108.98    0.82  129.64
+    ##  112.52    1.12  132.59
 
 <br>
 
@@ -49,19 +49,19 @@ head(loc)
 ```
 
     ##     timestampMs latitudeE7 longitudeE7 accuracy                 activitys
-    ## 1 1478512426116  519604433    76002853       21                      NULL
-    ## 2 1478512066098  519603684    76001572       20                      NULL
-    ## 3 1478511705982  519604501    76001796       20 1478511697443, still, 100
-    ## 4 1478511344897  519604501    76001796       21                      NULL
-    ## 5 1478511177794  519604501    76001796       21                      NULL
-    ## 6 1478511034069  519604501    76001796       21                      NULL
+    ## 1 1482393378938  519601402    76004708       29                      NULL
+    ## 2 1482393333953  519601402    76004708       29                      NULL
+    ## 3 1482393033893  519603616    76002628       20 1482393165600, still, 100
+    ## 4 1482392814435  519603684    76001572       20 1482392817678, still, 100
+    ## 5 1482392734911  519603684    76001572       20                      NULL
+    ## 6 1482392433788  519603684    76001572       20                      NULL
     ##   velocity heading altitude                time      lat      lon
-    ## 1       NA      NA       NA 2016-11-07 10:53:46 51.96044 7.600285
-    ## 2       NA      NA       NA 2016-11-07 10:47:46 51.96037 7.600157
-    ## 3       NA      NA       NA 2016-11-07 10:41:45 51.96045 7.600180
-    ## 4       NA      NA       NA 2016-11-07 10:35:44 51.96045 7.600180
-    ## 5       NA      NA       NA 2016-11-07 10:32:57 51.96045 7.600180
-    ## 6       NA      NA       NA 2016-11-07 10:30:34 51.96045 7.600180
+    ## 1       NA      NA       NA 2016-12-22 08:56:18 51.96014 7.600471
+    ## 2       NA      NA       NA 2016-12-22 08:55:33 51.96014 7.600471
+    ## 3       NA      NA       NA 2016-12-22 08:50:33 51.96036 7.600263
+    ## 4       NA      NA       NA 2016-12-22 08:46:54 51.96037 7.600157
+    ## 5       NA      NA       NA 2016-12-22 08:45:34 51.96037 7.600157
+    ## 6       NA      NA       NA 2016-12-22 08:40:33 51.96037 7.600157
 
 We have the original and converted time, latitude and longitude columns, plus accuracy, activities, velocity, heading and altitude. Accuracy gives the error distance around the point in metres. Activities are saved as a list of data frames and will be explored further down. Velocity, heading and altitude were not recorded for earlier data points.
 
@@ -82,14 +82,19 @@ How many data points did Google record over what period of time?
 nrow(loc)
 ```
 
-    ## [1] 587253
+    ## [1] 600897
 
 ``` r
-# 
 min(loc$time)
 ```
 
     ## [1] "2013-09-06 19:33:41 CEST"
+
+``` r
+max(loc$time)
+```
+
+    ## [1] "2016-12-22 08:56:18 CET"
 
 <br>
 
@@ -108,22 +113,27 @@ loc$month_year <- as.yearmon(loc$date)
 points_p_day <- data.frame(table(loc$date), group = "day")
 points_p_month <- data.frame(table(loc$month_year), group = "month")
 points_p_year <- data.frame(table(loc$year), group = "year")
+```
 
-# How many days were recorded?
+### How many days were recorded?
+
+``` r
 nrow(points_p_day)
 ```
 
-    ## [1] 1012
+    ## [1] 1057
+
+### How many months?
 
 ``` r
-# How many months?
 nrow(points_p_month)
 ```
 
-    ## [1] 38
+    ## [1] 39
+
+### And how many years?
 
 ``` r
-# And how many years?
 nrow(points_p_year)
 ```
 
@@ -172,11 +182,13 @@ ggplot(points, aes(x = group, y = Freq)) +
     y = "Number of data points",
     title = "How many data points did Google collect about me?",
     subtitle = "Number of data points per day, month and year",
-    caption = "\nGoogle collected between 0 and 1500 data points per day (median ~500), between 0 and 40,000 per month (median ~15,000) and between 80,000 and 220,000 per year (median ~140,000)."
+    caption = "\nGoogle collected between 0 and 1500 data points per day
+    (median ~500), between 0 and 40,000 per month (median ~15,000) and 
+    between 80,000 and 220,000 per year (median ~140,000)."
   )
 ```
 
-<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-8-1.png" style="display: block; margin: auto;" />
+<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-11-1.png" style="display: block; margin: auto;" />
 
 <br>
 
@@ -205,12 +217,13 @@ ggplot(accuracy, aes(x = accuracy, fill = group)) +
     y = "Count",
     title = "How accurate is the location data?",
     subtitle = "Histogram of accuracy of location points",
-    caption = "\nMost data points are pretty accurate, but there are still many data points with a very inaccuracy.
+    caption = "\nMost data points are pretty accurate, 
+but there are still many data points with a high inaccuracy.
     These were probably from areas with bad satellite reception."
   )
 ```
 
-<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-9-1.png" style="display: block; margin: auto;" />
+<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-12-1.png" style="display: block; margin: auto;" />
 
 <br>
 
@@ -230,10 +243,14 @@ germany <- get_map(location = 'Germany', zoom = 5)
 
 ggmap(germany) + geom_point(data = loc, aes(x = lon, y = lat), alpha = 0.5, color = "red") + 
   theme(legend.position = "right") + 
-  labs(x = "Longitude", y = "Latitude", title = "Location history data points in Europe")
+  labs(
+    x = "Longitude", 
+    y = "Latitude", 
+    title = "Location history data points in Europe",
+    caption = "\nA simple point plot shows recorded positions.")
 ```
 
-<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-10-1.png" style="display: block; margin: auto;" />
+<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-13-1.png" style="display: block; margin: auto;" />
 
 <br>
 
@@ -246,15 +263,20 @@ options(stringsAsFactors = T)
 ggmap(munster) + 
   stat_summary_2d(geom = "tile", bins = 100, data = loc, aes(x = lon, y = lat, z = accuracy), alpha = 0.5) + 
   scale_fill_gradient(low = "blue", high = "red", guide = guide_legend(title = "Accuracy")) +
-  labs(x = "Longitude", y = "Latitude", title = "Location history data points around Münster",
-       subtitle = "Color scale shows accuracy (low: blue, high: red)")
+  labs(
+    x = "Longitude", 
+    y = "Latitude", 
+    title = "Location history data points around Münster",
+    subtitle = "Color scale shows accuracy (low: blue, high: red)",
+    caption = "\nThis bin plot shows recorded positions 
+    and their accuracy in and around Münster")
 ```
 
-<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-11-1.png" style="display: block; margin: auto;" />
+<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-14-1.png" style="display: block; margin: auto;" />
 
 <br>
 
-We can also plot the velocity of each data point. This plot nicely reflects that I moved generally slower in the city center than on the autobahn.
+We can also plot the velocity of each data point:
 
 ``` r
 loc_2 <- loc[which(!is.na(loc$velocity)), ]
@@ -263,12 +285,16 @@ munster <- get_map(location = 'Munster', zoom = 10)
 
 ggmap(munster) + geom_point(data = loc_2, aes(x = lon, y = lat, color = velocity), alpha = 0.3) + 
   theme(legend.position = "right") + 
-  labs(x = "Longitude", y = "Latitude", title = "Location history data points in Münster",
-       subtitle = "Color scale shows velocity measured for location") +
+  labs(x = "Longitude", y = "Latitude", 
+       title = "Location history data points in Münster",
+       subtitle = "Color scale shows velocity measured for location",
+       caption = "\nA point plot where points are colored according 
+       to velocity nicely reflects that I moved generally 
+       slower in the city center than on the autobahn") +
   scale_colour_gradient(low = "blue", high = "red", guide = guide_legend(title = "Velocity"))
 ```
 
-<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-12-1.png" style="display: block; margin: auto;" />
+<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-15-1.png" style="display: block; margin: auto;" />
 
 <br>
 
@@ -279,7 +305,7 @@ To obtain the distance I moved, I am calculating the distance between data point
 
 ``` r
 loc3 <- with(loc, subset(loc, loc$time > as.POSIXct('2016-01-01 0:00:01')))
-loc3 <- with(loc, subset(loc3, loc$time < as.POSIXct('2016-10-31 23:59:59')))
+loc3 <- with(loc, subset(loc3, loc$time < as.POSIXct('2016-12-22 23:59:59')))
 
 # Shifting vectors for latitude and longitude to include end position
 shift.vec <- function(vec, shift){
@@ -312,25 +338,28 @@ loc3$dist.to.prev <- apply(loc3, 1, FUN = function(row) {
 round(sum(as.numeric(as.character(loc3$dist.to.prev)), na.rm = TRUE)*0.001, digits = 2)
 ```
 
-    ## [1] 50899.84
+    ## [1] 54466.08
 
 ``` r
 distance_p_month <- aggregate(loc3$dist.to.prev, by = list(month_year = as.factor(loc3$month_year)), FUN = sum)
 distance_p_month$x <- distance_p_month$x*0.001
-
-distance_p_month[-1, ]
 ```
 
-    ##    month_year         x
-    ## 2    Jan 2016  2571.256
-    ## 3    Mar 2016  1347.368
-    ## 4    Apr 2016  3312.868
-    ## 5    May 2016  4969.480
-    ## 6    Jun 2016  2205.380
-    ## 7    Jul 2016  3248.076
-    ## 8    Aug 2016  3149.511
-    ## 9    Sep 2016 27440.627
-    ## 10   Oct 2016  2635.799
+``` r
+ggplot(distance_p_month[-1, ], aes(x = month_year, y = x,  fill = month_year)) + 
+  geom_bar(stat = "identity")  + 
+  guides(fill = FALSE) +
+  my_theme() +
+  labs(
+    x = "",
+    y = "Distance in km",
+    title = "Distance traveled per month in 2016",
+    caption = "This barplot shows the sum of distances between recorded 
+    positions for 2016. In September we went to the US and Canada."
+  )
+```
+
+<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-18-1.png" style="display: block; margin: auto;" />
 
 <br>
 
@@ -357,25 +386,29 @@ head(activities_2)
 ```
 
     ##   main_activity                time
-    ## 1         still 2016-11-01 01:05:15
-    ## 2         still 2016-10-31 23:16:52
-    ## 3         still 2016-10-31 21:11:59
-    ## 4         still 2016-10-31 21:02:21
-    ## 5         still 2016-10-31 20:06:12
-    ## 6         still 2016-10-31 18:10:07
+    ## 1         still 2016-12-22 08:52:45
+    ## 2         still 2016-12-22 08:46:57
+    ## 3         still 2016-12-22 08:33:24
+    ## 4         still 2016-12-22 08:21:31
+    ## 5         still 2016-12-22 08:15:32
+    ## 6         still 2016-12-22 08:10:25
 
 ``` r
 ggplot(activities_2, aes(x = main_activity, group = main_activity, fill = main_activity)) + 
   geom_bar()  + 
+  guides(fill = FALSE) +
   my_theme() +
   labs(
     x = "",
     y = "Count",
-    fill = "Main activity"
+    title = "Main activities in 2016",
+    caption = "Associated activity for recorded positions in 2016. 
+    Because Google records activity probabilities for each position, 
+    only the activity with highest likelihood were chosen for each position."
   )
 ```
 
-<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-16-1.png" style="display: block; margin: auto;" />
+<img src="Standortverlauf_post_files/figure-markdown_github/unnamed-chunk-20-1.png" style="display: block; margin: auto;" />
 
 <br>
 
@@ -404,15 +437,16 @@ sessionInfo()
     ## [5] zoo_1.7-13      lubridate_1.6.0 jsonlite_1.1   
     ## 
     ## loaded via a namespace (and not attached):
-    ##  [1] Rcpp_0.12.7       plyr_1.8.4        bitops_1.0-6     
+    ##  [1] Rcpp_0.12.8       plyr_1.8.4        bitops_1.0-6     
     ##  [4] tools_3.3.2       digest_0.6.10     evaluate_0.10    
     ##  [7] tibble_1.2        gtable_0.2.0      lattice_0.20-34  
     ## [10] png_0.1-7         DBI_0.5-1         mapproj_1.2-4    
     ## [13] yaml_2.1.14       proto_1.0.0       stringr_1.1.0    
-    ## [16] dplyr_0.5.0       knitr_1.15        RgoogleMaps_1.4.1
-    ## [19] maps_3.1.1        grid_3.3.2        R6_2.2.0         
-    ## [22] jpeg_0.1-8        rmarkdown_1.1     reshape2_1.4.2   
-    ## [25] magrittr_1.5      codetools_0.2-15  scales_0.4.1     
-    ## [28] htmltools_0.3.5   assertthat_0.1    colorspace_1.3-0 
-    ## [31] geosphere_1.5-5   labeling_0.3      stringi_1.1.2    
-    ## [34] lazyeval_0.2.0    munsell_0.4.3     rjson_0.2.15
+    ## [16] dplyr_0.5.0       knitr_1.15.1      RgoogleMaps_1.4.1
+    ## [19] maps_3.1.1        rprojroot_1.1     grid_3.3.2       
+    ## [22] R6_2.2.0          jpeg_0.1-8        rmarkdown_1.2    
+    ## [25] reshape2_1.4.2    magrittr_1.5      codetools_0.2-15 
+    ## [28] backports_1.0.4   scales_0.4.1      htmltools_0.3.5  
+    ## [31] assertthat_0.1    colorspace_1.3-2  geosphere_1.5-5  
+    ## [34] labeling_0.3      stringi_1.1.2     lazyeval_0.2.0   
+    ## [37] munsell_0.4.3     rjson_0.2.15
