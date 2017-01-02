@@ -85,6 +85,9 @@ loc$month_year <- as.yearmon(loc$date)
 points_p_day <- data.frame(table(loc$date), group = "day")
 points_p_month <- data.frame(table(loc$month_year), group = "month")
 points_p_year <- data.frame(table(loc$year), group = "year")
+
+library(dplyr)
+head(arrange(points_p_day,desc(Freq)))
 ```
 
 ### How many days were recorded?
@@ -208,6 +211,14 @@ ggmap(germany) + geom_point(data = loc, aes(x = lon, y = lat), alpha = 0.5, colo
     y = "Latitude", 
     title = "Location history data points in Europe",
     caption = "\nA simple point plot shows recorded positions.")
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
+loc$year <- as.factor(loc$year)
+
+ggmap(germany) + 
+  theme(legend.position = "right") + 
+  geom_point(data = loc, aes(x = lon, y = lat, fill = year, color = year), alpha = 0.5, size = 0.75)
 ```
 
 <br>
