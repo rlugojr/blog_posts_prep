@@ -59,6 +59,8 @@ levels(fluH7N9.china.2013_gather$gender) <- c(levels(fluH7N9.china.2013_gather$g
 fluH7N9.china.2013_gather$gender[is.na(fluH7N9.china.2013_gather$gender)] <- "unknown"
 
 fluH7N9.china.2013_gather$province <- factor(fluH7N9.china.2013_gather$province, levels = c("Jiangsu",  "Shanghai", "Zhejiang", "Other"))
+
+fluH7N9.china.2013_gather$age <- as.numeric(as.character(fluH7N9.china.2013_gather$age))
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
@@ -85,10 +87,11 @@ my_theme <- function(base_size = 12, base_family = "sans"){
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 12, fig.height = 8, fig.align = "center"}
-ggplot(data = fluH7N9.china.2013_gather, aes(x = Date, y = as.numeric(age), fill = outcome)) +
+ggplot(data = fluH7N9.china.2013_gather, aes(x = Date, y = age, fill = outcome)) +
   stat_density2d(aes(alpha = ..level..), geom = "polygon") +
   geom_jitter(aes(color = outcome, shape = gender), size = 1.5) +
   geom_rug(aes(color = outcome)) +
+  scale_y_continuous(limits = c(0, 90)) +
   labs(
     fill = "Outcome",
     color = "Outcome",
@@ -132,9 +135,10 @@ p1 <- ggplot(data = fluH7N9.china.2013_gather_2, aes(x = value, fill = outcome, 
     caption = ""
   )
 
-p2 <- ggplot(data = fluH7N9.china.2013_gather, aes(x = as.numeric(age), fill = outcome, color = outcome)) +
+p2 <- ggplot(data = fluH7N9.china.2013_gather, aes(x = age, fill = outcome, color = outcome)) +
   geom_density(alpha = 0.3, size = 1) +
   geom_rug() +
+  scale_x_continuous(limits = c(0, 90)) +
   scale_color_brewer(palette="Set1", na.value = "grey50") +
   scale_fill_brewer(palette="Set1", na.value = "grey50") +
   my_theme() +
@@ -155,7 +159,7 @@ grid.arrange(p1, p2, ncol = 2)
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 8, fig.height = 8, fig.align = "center"}
-ggplot(data = fluH7N9.china.2013_gather, aes(x = Date, y = as.numeric(age), color = outcome)) +
+ggplot(data = fluH7N9.china.2013_gather, aes(x = Date, y = age, color = outcome)) +
   geom_point(aes(color = outcome, shape = gender), size = 1.5, alpha = 0.6) +
   geom_path(aes(group = case.ID)) +
   facet_wrap( ~ province, ncol = 2) +
@@ -198,7 +202,7 @@ dataset <- fluH7N9.china.2013 %>%
          days_onset_to_hospital = as.numeric(as.character(gsub(" days", "",
                                       as.Date(as.character(date.of.hospitalisation), format = "%Y-%m-%d") - 
                                         as.Date(as.character(date.of.onset), format = "%Y-%m-%d")))),
-         age = as.numeric(as.character(age)),
+         age = age,
          early_onset = as.factor(ifelse(date.of.onset < summary(fluH7N9.china.2013$date.of.onset)[[3]], 1, 0)),
          early_outcome = as.factor(ifelse(date.of.outcome < summary(fluH7N9.china.2013$date.of.outcome)[[3]], 1, 0))) %>%
   subset(select = -c(2:4, 6, 8))
@@ -663,7 +667,7 @@ results_combined_gather$gender[is.na(results_combined_gather$gender)] <- "unknow
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 6, fig.align = "center"}
 ggplot(data = results_combined_gather, aes(x = date, y = log2_ratio, color = predicted_outcome)) +
-  geom_jitter(aes(size = as.numeric(age)), alpha = 0.3) +
+  geom_jitter(aes(size = age), alpha = 0.3) +
   geom_rug() +
   facet_grid(gender ~ group_dates) +
   labs(

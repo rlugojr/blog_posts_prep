@@ -15,8 +15,8 @@ The data Google provides you for download is a .json file and can be loaded with
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE}
 library(jsonlite)
-system.time(x <- fromJSON("U:/Github_blog/Takeout/Standortverlauf/Standortverlauf.json"))
-#system.time(x <- fromJSON("~/Documents/Github/Standortverlauf.json"))
+#system.time(x <- fromJSON("U:/Github_blog/Takeout/Standortverlauf/Standortverlauf.json"))
+system.time(x <- fromJSON("~/Documents/Github/Standortverlauf.json"))
 ```
 
 <br>
