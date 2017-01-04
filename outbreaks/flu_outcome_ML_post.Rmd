@@ -224,7 +224,9 @@ https://www.r-bloggers.com/imputing-missing-data-with-r-mice-package/
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
 library(mice)
 
-dataset_impute <- mice(dataset[, -1],  print = FALSE)
+dataset[, -1] <- as.numeric(as.matrix(dataset[, -1]))
+
+dataset_impute <- mice(data = dataset[, -1],  print = FALSE)
 dataset_impute
 ```
 
@@ -285,7 +287,6 @@ model <- train(outcome ~ ., data = train_data, method = "rf", preProcess = NULL,
 
 # estimate variable importance
 importance <- varImp(model, scale=TRUE)
-
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 4, fig.align = "center"}
@@ -666,6 +667,8 @@ results_combined_gather$gender[is.na(results_combined_gather$gender)] <- "unknow
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 10, fig.height = 6, fig.align = "center"}
+results_combined_gather$age <- as.numeric(as.character(results_combined_gather$age))
+  
 ggplot(data = results_combined_gather, aes(x = date, y = log2_ratio, color = predicted_outcome)) +
   geom_jitter(aes(size = age), alpha = 0.3) +
   geom_rug() +
@@ -680,7 +683,6 @@ ggplot(data = results_combined_gather, aes(x = date, y = log2_ratio, color = pre
     caption = ""
   ) +
   my_theme() +
-  scale_shape_manual(values = c(15, 16, 17)) +
   scale_color_brewer(palette="Set1") +
   scale_fill_brewer(palette="Set1")
 ```

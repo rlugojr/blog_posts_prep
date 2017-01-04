@@ -44,8 +44,8 @@ In this post I want to have a closer look at what these genes with homologs in m
 I am starting with the same table as from [this post](https://shiring.github.io/genome/2016/12/14/homologous_genes_part2_post), called *homologs_table_combined*.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
-#homologs_table_combined <- read.table("U:/Github_blog/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
-homologs_table_combined <- read.table("~/Documents/Github/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
+homologs_table_combined <- read.table("U:/Github_blog/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
+#homologs_table_combined <- read.table("~/Documents/Github/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
@@ -228,6 +228,10 @@ for (i in 1:nrow(datasets_2)){
   }
 }
 
+length(unique(plot_df$ID))
+```
+
+```{r message=FALSE, warning=FALSE, fig.width=20, fig.height=22, fig.align="center", cache=FALSE}
 ggplot(plot_df, aes(x = GR, y = Description, size = Count, color = p.adjust)) +
     geom_point() +
     labs(
@@ -237,116 +241,6 @@ ggplot(plot_df, aes(x = GR, y = Description, size = Count, color = p.adjust)) +
     ) +
     facet_grid(Category ~ Species, scales = "free_y")
 ```
-
-<br>
-
-#### Which GO terms are enriched in all species?
-
-```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
-# create empty list to populate with a loop
-go_list_BP <- lapply(datasets_2$dataset, function(x) NULL)
-names(go_list_BP) <- paste(datasets_2$dataset)
-
-for (species in datasets_2$dataset){
-  df_BP <- as.data.frame(get(paste("go_enrich_BP", species, sep = "_")))
-  go_list_BP[[species]] <- df_BP$ID
-}
-
-# Now I know which GO IDs are common but I want to know the description as well.
-# Because they are in all go_enrich tables, I'm chosen one to subset
-
-library(rlist)
-common_gos_BP <- as.data.frame(go_enrich_BP_cfamiliaris_gene_ensembl) %>%
-  filter(ID %in% list.common(go_list_BP)) %>%
-  select(ID, Description) %>%
-  arrange(Description)
-common_gos_BP
-
-
-go_list_MF <- lapply(datasets_2$dataset, function(x) NULL)
-names(go_list_MF) <- paste(datasets_2$dataset)
-
-for (species in datasets_2$dataset){
-  df_MF <- as.data.frame(get(paste("go_enrich_MF", species, sep = "_")))
-  go_list_MF[[species]] <- df_MF$ID
-}
-
-library(rlist)
-common_gos_MF <- as.data.frame(go_enrich_MF_cfamiliaris_gene_ensembl) %>%
-  filter(ID %in% list.common(go_list_MF)) %>%
-  select(ID, Description) %>%
-  arrange(Description)
-common_gos_MF
-
-
-go_list_CC <- lapply(datasets_2$dataset, function(x) NULL)
-names(go_list_CC) <- paste(datasets_2$dataset)
-
-for (species in datasets_2$dataset){
-  df_CC <- as.data.frame(get(paste("go_enrich_CC", species, sep = "_")))
-  go_list_CC[[species]] <- df_CC$ID
-}
-
-library(rlist)
-common_gos_CC <- as.data.frame(go_enrich_CC_cfamiliaris_gene_ensembl) %>%
-  filter(ID %in% list.common(go_list_CC)) %>%
-  select(ID, Description) %>%
-  arrange(Description)
-common_gos_CC
-```
-
-```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=20, fig.height=8, fig.align="center", cache=FALSE}
-for (i in 1:nrow(datasets_2)){
-  species <- datasets_2$dataset[i]
-  
-  go_enrich_BP_df <- as.data.frame(get(paste("go_enrich_BP", species, sep = "_"))) %>%
-    filter(ID %in% list.common(go_list_BP)) %>%
-    mutate(GR = as.numeric(Count) / as.numeric(gsub(".*/", "", GeneRatio)),
-           Category = "BP")
-  
-  go_enrich_BP_df$Description <- factor(go_enrich_BP_df$Description, levels = go_enrich_BP_df$Description[order(go_enrich_BP_df$GR)])
-    
-  go_enrich_MF_df <- as.data.frame(get(paste("go_enrich_MF", species, sep = "_"))) %>%
-    filter(ID %in% list.common(go_list_MF)) %>%
-    mutate(GR = as.numeric(Count) / as.numeric(gsub(".*/", "", GeneRatio)),
-           Category = "MF")
-  
-  go_enrich_MF_df$Description <- factor(go_enrich_MF_df$Description, levels = go_enrich_MF_df$Description[order(go_enrich_MF_df$GR)])
-
-  go_enrich_CC_df <- as.data.frame(get(paste("go_enrich_CC", species, sep = "_"))) %>%
-    filter(ID %in% list.common(go_list_CC)) %>%
-    mutate(GR = as.numeric(Count) / as.numeric(gsub(".*/", "", GeneRatio)),
-           Category = "CC")
-  
-  go_enrich_CC_df$Description <- factor(go_enrich_CC_df$Description, levels = go_enrich_CC_df$Description[order(go_enrich_CC_df$GR)])
-  
-  plot <- rbind(go_enrich_BP_df, go_enrich_MF_df, go_enrich_CC_df)
-  plot$Species <- paste(datasets_2$description[i])
-
-  if (i == 1){
-    plot_df <- plot
-  } else {
-    plot_df <- rbind(plot_df, plot)
-  }
-}
-
-ggplot(plot_df, aes(x = GR, y = Description, size = Count, color = p.adjust)) +
-    geom_point() +
-    labs(
-      title = "Common enriched GO terms",
-      x = "Gene Ratio",
-      y = ""
-    ) +
-    facet_grid(Category ~ Species, scales = "free_y")
-```
-
-- discuss go terms
-- and their relevance for the organisms
-- evolutionarily conserved functions
-
-<br>
-
-#### Comparing GO term enrichment between different species
 
 <br>
 
@@ -410,33 +304,84 @@ for (i in 1:nrow(datasets_2)){
 }
 ```
 
-```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=20, fig.height=20, fig.align="center", cache=FALSE}
-library(RamiGO)
+<br>
 
-library(RColorBrewer)
-set3 <- brewer.pal(10, "Set3")
+#### Which GO terms are enriched in all species?
 
-goIDs <- list.common(go_list_BP)
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
+# create empty list to populate with a loop
+go_list_BP <- lapply(datasets_2$dataset, function(x) NULL)
+names(go_list_BP) <- paste(datasets_2$dataset)
 
-getAmigoTree(goIDs, set3, filename = "example", picType = "png",
-  modeType = "amigo", saveResult = TRUE)
+for (species in datasets_2$dataset){
+  df_BP <- as.data.frame(get(paste("go_enrich_BP", species, sep = "_")))
+  go_list_BP[[species]] <- df_BP$ID
+}
+
+# Now I know which GO IDs are common but I want to know the description as well.
+# Because they are in all go_enrich tables, I'm chosen one to subset
+
+library(rlist)
+common_gos_BP <- as.data.frame(go_enrich_BP_cfamiliaris_gene_ensembl) %>%
+  filter(ID %in% list.common(go_list_BP)) %>%
+  select(ID, Description) %>%
+  arrange(Description)
+
+
+go_list_MF <- lapply(datasets_2$dataset, function(x) NULL)
+names(go_list_MF) <- paste(datasets_2$dataset)
+
+for (species in datasets_2$dataset){
+  df_MF <- as.data.frame(get(paste("go_enrich_MF", species, sep = "_")))
+  go_list_MF[[species]] <- df_MF$ID
+}
+
+library(rlist)
+common_gos_MF <- as.data.frame(go_enrich_MF_cfamiliaris_gene_ensembl) %>%
+  filter(ID %in% list.common(go_list_MF)) %>%
+  select(ID, Description) %>%
+  arrange(Description)
+
+
+go_list_CC <- lapply(datasets_2$dataset, function(x) NULL)
+names(go_list_CC) <- paste(datasets_2$dataset)
+
+for (species in datasets_2$dataset){
+  df_CC <- as.data.frame(get(paste("go_enrich_CC", species, sep = "_")))
+  go_list_CC[[species]] <- df_CC$ID
+}
+
+library(rlist)
+common_gos_CC <- as.data.frame(go_enrich_CC_cfamiliaris_gene_ensembl) %>%
+  filter(ID %in% list.common(go_list_CC)) %>%
+  select(ID, Description) %>%
+  arrange(Description)
 ```
 
-```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, fig.align="center", cache=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=20, fig.height=8, fig.align="center", cache=FALSE}
 for (i in 1:nrow(datasets_2)){
   species <- datasets_2$dataset[i]
   
   go_enrich_BP_df <- as.data.frame(get(paste("go_enrich_BP", species, sep = "_"))) %>%
+    filter(ID %in% list.common(go_list_BP)) %>%
     mutate(GR = as.numeric(Count) / as.numeric(gsub(".*/", "", GeneRatio)),
            Category = "BP")
   
+  go_enrich_BP_df$Description <- factor(go_enrich_BP_df$Description, levels = go_enrich_BP_df$Description[order(go_enrich_BP_df$GR)])
+    
   go_enrich_MF_df <- as.data.frame(get(paste("go_enrich_MF", species, sep = "_"))) %>%
+    filter(ID %in% list.common(go_list_MF)) %>%
     mutate(GR = as.numeric(Count) / as.numeric(gsub(".*/", "", GeneRatio)),
            Category = "MF")
   
+  go_enrich_MF_df$Description <- factor(go_enrich_MF_df$Description, levels = go_enrich_MF_df$Description[order(go_enrich_MF_df$GR)])
+
   go_enrich_CC_df <- as.data.frame(get(paste("go_enrich_CC", species, sep = "_"))) %>%
+    filter(ID %in% list.common(go_list_CC)) %>%
     mutate(GR = as.numeric(Count) / as.numeric(gsub(".*/", "", GeneRatio)),
            Category = "CC")
+  
+  go_enrich_CC_df$Description <- factor(go_enrich_CC_df$Description, levels = go_enrich_CC_df$Description[order(go_enrich_CC_df$GR)])
   
   plot <- rbind(go_enrich_BP_df, go_enrich_MF_df, go_enrich_CC_df)
   plot$Species <- paste(datasets_2$description[i])
@@ -448,60 +393,55 @@ for (i in 1:nrow(datasets_2)){
   }
 }
 
-amiTree <- getAmigoTree(unique(plot_df$ID), filename = "example", picType = "dot", modeType = "amigo", saveResult = FALSE)
+ggplot(plot_df, aes(x = GR, y = Description, size = Count, color = p.adjust)) +
+    geom_point() +
+    labs(
+      title = "Common enriched GO terms",
+      x = "Gene Ratio",
+      y = ""
+    ) +
+    facet_grid(Category ~ Species, scales = "free_y")
+```
 
-amiTree_file <- readAmigoDot(object = amiTree)
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=20, fig.height=20, fig.align="center", cache=FALSE}
+library(RamiGO)
+library(RColorBrewer)
+```
 
-object <- amiTree
-inputData <- strsplit(object,"\n")[[1]]
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=20, fig.height=20, fig.align="center", cache=FALSE}
+set3 <- brewer.pal(10, "Set3")
+goIDs <- list.common(go_list_BP)
+getAmigoTree(goIDs, set3, filename = "common_gos_BP", picType = "png", modeType = "amigo", saveResult = TRUE)
 
-## split data
-  metaData <- inputData[grep("\tnode[\\d]+\\s\\[",inputData,perl=TRUE)]
-  nodeData <- inputData[grep("\tnode[\\d]+\\s->\\snode[\\d]+\\s\\[",inputData,perl=TRUE)]
-  
-  ## get meta data
-  metaDataValues <- sapply(t(metaData),function(x)strapply(x, '(node[\\d]+).*(GO:[\\d]+|BFO:[\\d]+)<br/>(.+)</TD>.*,\\scolor=["]?(#.+[^"]|.+[^"])["]?,\\sfillcolor=["]?(#.+[^"]|.+[^"])["]?,\\sfontcolor=["]?(#.+[^"]|.+[^"])["]?];', c, backref = -6))
-  annot <- NULL
-  for(i in 1:6){
-    annot <- cbind(annot,as.character(sapply(metaDataValues,function(x)x[i])))
-  }
-  annot <- as.data.frame(annot,stringsAsFactors=FALSE)
-  names(annot) <- c("node","GO_ID","description","color","fillcolor","fontcolor")
-  annot[,"description"] <- as.character(sapply(annot[,"description"],function(x)paste(strsplit(x,"\\s*\\<br \\/\\>\\s*",perl=TRUE)[[1]],collapse=" ")))
-  
-  ## get relations between nodes
-  nodeDataValues <-  sapply(nodeData,function(x)strapply(x, "\t(node[\\d]+) -> (node[\\d]+) \\[arrowhead=(.+), arrowtail=(.+), color=(.+), style=(.+)\\];", c, backref = -6))
-  relations <- NULL
-  for(i in 1:6){
-    relations <- cbind(relations,as.character(sapply(nodeDataValues,function(x)x[i])))
-  }
-  relations <- as.data.frame(relations,stringsAsFactors=FALSE)
-  names(relations) <- c("parent","child","arrowhead","arrowtail","color","style")
-  
-  ## sort edges
-  parentList <- as.numeric(sapply(relations[,"parent"],function(x)substr(x,5,nchar(x))))
-  childList <- as.numeric(sapply(relations[,"child"],function(x)substr(x,5,nchar(x))))
-  relationsOrder <- order(parentList,childList)
-  relations <- relations[relationsOrder,]
-  
-  ## create adjacency matrix
-  graph <- matrix(0,nrow(annot),nrow(annot),dimnames=list(annot[,"node"],annot[,"node"]))
-  for(i in 1:nrow(relations)){
-    graph[relations[i,"parent"],relations[i,"child"]] <- 1
-  }
-  adjMatrix <- graph
-  graph <- graph.adjacency(graph,mode="directed")
-  
-  ## get leaves
-  leaves <- annot[!annot[,"node"]%in%unique(relations[,"parent"]),]
-  
-net <- amiTree@
-anno <- amiTree@
+set3 <- brewer.pal(8, "Set3")
+goIDs <- list.common(go_list_MF)
+getAmigoTree(goIDs, set3, filename = "common_gos_MF", picType = "png", modeType = "amigo", saveResult = TRUE)
 
-library(igraph)
+goIDs <- list.common(go_list_CC)
+getAmigoTree(goIDs, set3, filename = "common_gos_CC", picType = "png", modeType = "amigo", saveResult = TRUE)
+```
 
-V(net)$color
-plot(net)
+![Common GOs BP](common_gos_BP.png)
+
+![Common GOs MF](common_gos_MF.png)
+
+![Common GOs CC](common_gos_CC.png)
+
+- discuss go terms
+- and their relevance for the organisms
+- evolutionarily conserved functions
+
+<br>
+
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, fig.align="center", cache=FALSE}
+species
+df_BP
+
+library(GO.db)
+
+as.list(GOBPANCESTOR)
 ```
 
 
