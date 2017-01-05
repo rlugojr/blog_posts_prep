@@ -1,13 +1,5 @@
 base
-methods
-datasets
-utils
-grDevices
-graphics
-stats
 biomaRt
-stats4
-parallel
 BiocGenerics
 Biobase
 S4Vectors
@@ -24,3 +16,6 @@ org.Dr.eg.db
 org.Dm.eg.db
 org.Mm.eg.db
 org.Cf.eg.db
+ggplot2
+DOSE
+clusterProfiler

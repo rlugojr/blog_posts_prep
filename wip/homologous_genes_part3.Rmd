@@ -44,8 +44,8 @@ In this post I want to have a closer look at what these genes with homologs in m
 I am starting with the same table as from [this post](https://shiring.github.io/genome/2016/12/14/homologous_genes_part2_post), called *homologs_table_combined*.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
-#homologs_table_combined <- read.table("U:/Github_blog/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
-homologs_table_combined <- read.table("~/Documents/Github/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
+homologs_table_combined <- read.table("U:/Github_blog/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
+#homologs_table_combined <- read.table("~/Documents/Github/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
@@ -448,7 +448,7 @@ getAmigoTree(goIDs, set3, filename = "common_gos_CC", picType = "png", modeType 
 for (i in 1:nrow(datasets_2)) {
   species <- datasets_2$dataset[i]
   df_BP <- as.data.frame(get(paste("go_enrich_BP", species, sep = "_")))
-  df_BP <- df_BP[1:10, 1, drop = FALSE]
+  df_BP <- df_BP[1:15, 1, drop = FALSE]
   df_BP$species <- datasets_2$description[i]
   
   if (i == 1) {
@@ -465,21 +465,40 @@ df_BP_all$value <- 1
 df_BP_all <- spread(df_BP_all, species, value)
 
 go_sums <- data.frame(ID = df_BP_all$ID,
-                      sum = rowSums(is.na(df_BP_all[, -1])))
+                      sum = rowSums(!is.na(df_BP_all[, -1])))
 
 # GO in all species
+go_anno <- data.frame(ID = go_sums$ID)
+go_anno$group <- ifelse(go_sums$sum == 10, "common_all", NA)
 
+x <- subset(go_sums, sum == 1)
+xx <- subset(df_BP_all, ID %in% x$ID)
+
+for (i in 2:11) {
+  xxx <- xx[, i]
+  xxx[which(!is.na(xxx))] <- colnames(xx[, i, drop = FALSE])
+  unique <- as.data.frame(cbind(xx[, 1], xxx)) %>%
+    subset(!is.na(xxx))
+  
+  if (i == 2) {
+    unique_all <- unique
+  } else {
+    unique_all <- rbind(unique_all, unique)
+  }
+}
+
+# Common GOs
+
+unique_common_all <- rbind(unique_all, data.frame(V1 = list.common(go_list_BP), xxx = "common"))
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=25, fig.height=25, fig.align="center", cache=FALSE}
 library(GO.db)
 
-df_BP <- as.data.frame(go_enrich_BP_hsapiens_gene_ensembl)
-
 # GO parents list
 ontology <- as.list(GOBPPARENTS)
 
-goChilds <- unique(df_BP$ID)[1:100]
+goChilds <- unique(df_BP_all$ID)
 goChilds <- goChilds[goChilds %in% names(ontology)]
 
 adjList <- matrix(nrow = 0, ncol = 3)
@@ -528,9 +547,20 @@ goTerms <- sapply(V(goGraph)$name, function(x)
 
 goTerms_df <- as.data.frame(goTerms)
 
-goTerms_df$color <- ifelse(rownames(goTerms_df) %in% goChilds, "red", "skyblue2")
+goTerms_df$color <- ifelse(rownames(goTerms_df) %in% unique_common_all[which(unique_common_all$xxx == "C. elegans"), 1], "green",
+                           ifelse(rownames(goTerms_df) %in% unique_common_all[which(unique_common_all$xxx == "Chicken"), 1], "yellowgreen",
+                                  ifelse(rownames(goTerms_df) %in% unique_common_all[which(unique_common_all$xxx == "Chimpanzee"), 1], "violetred",
+                                         ifelse(rownames(goTerms_df) %in% unique_common_all[which(unique_common_all$xxx == "Dog"), 1], "turquoise",
+                                                ifelse(rownames(goTerms_df) %in% unique_common_all[which(unique_common_all$xxx == "Fruitfly"), 1], "violet", 
+                                                       ifelse(rownames(goTerms_df) %in% unique_common_all[which(unique_common_all$xxx == "Human"), 1], "thistle", 
+                                                              ifelse(rownames(goTerms_df) %in% unique_common_all[which(unique_common_all$xxx == "Mouse"), 1], "tan1", 
+                                                                     ifelse(rownames(goTerms_df) %in% unique_common_all[which(unique_common_all$xxx == "Pig"), 1], "steelblue", 
+                                                                            ifelse(rownames(goTerms_df) %in% unique_common_all[which(unique_common_all$xxx == "Rat"), 1], "orangered", 
+                                                                                   ifelse(rownames(goTerms_df) %in% unique_common_all[which(unique_common_all$xxx == "Zebrafish"), 1], "olivedrab", 
+                                                                                          ifelse(rownames(goTerms_df) %in% unique_common_all[which(unique_common_all$xxx == "common"), 1], "cyan", 
+                                                                                          ifelse(rownames(goTerms_df) %in% goChilds, "red", "skyblue2"))))))))))))
 
-V(goGraph)$color <- goTerms_df$color
+V(goGraph)$color <- adjustcolor(goTerms_df$color, alpha.f = 0.8)
 V(goGraph)$label <- goTerms
 
 Ecolor <- ifelse(E(goGraph)$type == "is_a", "slategrey",
@@ -538,17 +568,20 @@ Ecolor <- ifelse(E(goGraph)$type == "is_a", "slategrey",
                            ifelse(E(goGraph)$type == "regulates", "tomato",
                            ifelse(E(goGraph)$type == "negatively_regulates", "orange", "greenyellow"))))
 
-#E(goGraph)$color <- Ecolor
+E(goGraph)$color <- Ecolor
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=25, fig.height=25, fig.align="center", cache=FALSE}
-goGraph <- simplify(goGraph, remove.multiple = T, remove.loops = T, edge.attr.comb = c(weight = "sum", type = "ignore"))
-
 plot(goGraph,
      vertex.label.color = "black",
      vertex.label.cex = 0.8,
      vertex.size = 2,
-     margin = 0)  
+     margin = 0)
+
+labels <- c("C. elegans", "Chicken", "Chimpanzee", "Dog", "Fruitfly", "Human", "Mouse", "Pig", "Rat", "Zebrafish", "common", "other enriched GO", "parent")
+colors <- c("green", "yellowgreen", "violetred", "turquoise", "violet", "thistle", "tan1", "steelblue", "orangered", "olivedrab", "cyan", "red", "skyblue2")
+legend("topleft", labels, pch = 19,
+       col = colors, pt.cex = 2, cex = 2, bty = "n", ncol = 2)
 ```
 
 ------------------
