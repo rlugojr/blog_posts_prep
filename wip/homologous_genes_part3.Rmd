@@ -44,8 +44,8 @@ In this post I want to have a closer look at what these genes with homologs in m
 I am starting with the same table as from [this post](https://shiring.github.io/genome/2016/12/14/homologous_genes_part2_post), called *homologs_table_combined*.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 6, fig.height = 5, fig.align = "center"}
-homologs_table_combined <- read.table("U:/Github_blog/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
-#homologs_table_combined <- read.table("~/Documents/Github/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
+#homologs_table_combined <- read.table("U:/Github_blog/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
+homologs_table_combined <- read.table("~/Documents/Github/blog_posts_prep/annotationdbi/homologs_table_combined_full_network.txt", header = TRUE, sep = "\t")
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 30, fig.height = 30, fig.align = "center"}
@@ -141,11 +141,11 @@ Looking at all of these genes by hand wouldn't be feasible. So, to find out what
 - Cellular component: (sub-) cellular structures and locations, macromolecular complexes
 - Molecular functions: Molecular functions like catalytic or binding activity
 
-```{r echo=TRUE, message=FALSE, warning=TRUE, fig.width=15, fig.height=6, fig.align="center", cache=FALSE}
+```{r echo=TRUE, message=FALSE, warning=TRUE, fig.width=15, fig.height=6, fig.align="center", cache=TRUE}
 library(clusterProfiler)
 library(DOSE)
 
-for (i in 1:nrow(datasets)){
+for (i in 1:nrow(datasets)) {
   species <- datasets$dataset[i]
   genes <- as.character(unique(genes_homologs_all[, species]))
   universe <- as.character(unique(na.omit(homologs_table_combined[, species])))
@@ -185,14 +185,14 @@ for (i in 1:nrow(datasets)){
 I'm not sure why yeast throws an error but since all the other species worked I will ignore yeast genes for now...
 
 ```{r message=FALSE, warning=FALSE, fig.width=20, fig.height=20, fig.align="center", cache=FALSE}
-# because yeast didn't work above, I'm leaving it out
+# removing yeast
 datasets_2 <- datasets[-grep("scerevisiae_gene_ensembl", datasets$dataset), ]
 
 library(dplyr)
 
 cutoff = 10
 
-for (i in 1:nrow(datasets_2)){
+for (i in 1:nrow(datasets_2)) {
   species <- datasets_2$dataset[i]
   
   go_enrich_BP_df <- as.data.frame(get(paste("go_enrich_BP", species, sep = "_"))) %>%
@@ -219,7 +219,7 @@ for (i in 1:nrow(datasets_2)){
   plot <- rbind(plot_BP, plot_MF, plot_CC)
   plot$Species <- paste(datasets_2$description[i])
 
-  if (i == 1){
+  if (i == 1) {
     plot_df <- plot
   } else {
     plot_df <- rbind(plot_df, plot)
@@ -275,7 +275,7 @@ wordcloud_function <- function(data = data,
   input <- tm_map(input, removeNumbers)
   input <- tm_map(input, stripWhitespace)
   
-  toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+  toSpace <- content_transformer(function(x , pattern ) gsub(pattern, " ", x))
   input <- tm_map(input, toSpace, "/")
   input <- tm_map(input, toSpace, "@")
   input <- tm_map(input, toSpace, "\\|")
@@ -287,28 +287,28 @@ wordcloud_function <- function(data = data,
   
   tdm <- TermDocumentMatrix(input)
   m <- as.matrix(tdm)
-  v <- sort(rowSums(m),decreasing=TRUE)
-  d <- data.frame(word = names(v),freq=v)
+  v <- sort(rowSums(m),decreasing = TRUE)
+  d <- data.frame(word = names(v),freq = v)
   
   set.seed(1234)
-  wordcloud(words = d$word, freq = d$freq, min.freq = min.freq, scale=c(8,.2),
-            max.words=max.words, random.order=random.order, rot.per=0.15,
-            colors=brewer.pal(8, "Dark2"))
+  wordcloud(words = d$word, freq = d$freq, min.freq = min.freq, scale = c(8,.2),
+            max.words = max.words, random.order = random.order, rot.per = 0.15,
+            colors = brewer.pal(8, "Dark2"))
 }
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=25, fig.height=10, fig.align="center", cache=FALSE}
 layout(matrix(c(1:80), nrow = 4, byrow = FALSE), heights = c(0.1, 1))
 
-for (i in 1:nrow(datasets_2)){
+for (i in 1:nrow(datasets_2)) {
   species <- datasets_2$dataset[i]
   df_BP <- as.data.frame(get(paste("go_enrich_BP", species, sep = "_")))
   df_MF <- as.data.frame(get(paste("go_enrich_MF", species, sep = "_")))
   df_CC <- as.data.frame(get(paste("go_enrich_CC", species, sep = "_")))
   
-  par(mar=rep(0, 4))
+  par(mar = rep(0, 4))
   plot.new()
-  text(x=0.5, y=0.5, paste0(datasets_2$description[i]), cex = 2)
+  text(x = 0.5, y = 0.5, paste0(datasets_2$description[i]), cex = 2)
   wordcloud_function(data = df_BP$Description)
   wordcloud_function(data = df_MF$Description)
   wordcloud_function(data = df_CC$Description)
@@ -324,7 +324,7 @@ for (i in 1:nrow(datasets_2)){
 go_list_BP <- lapply(datasets_2$dataset, function(x) NULL)
 names(go_list_BP) <- paste(datasets_2$dataset)
 
-for (species in datasets_2$dataset){
+for (species in datasets_2$dataset) {
   df_BP <- as.data.frame(get(paste("go_enrich_BP", species, sep = "_")))
   go_list_BP[[species]] <- df_BP$ID
 }
@@ -342,7 +342,7 @@ common_gos_BP <- as.data.frame(go_enrich_BP_cfamiliaris_gene_ensembl) %>%
 go_list_MF <- lapply(datasets_2$dataset, function(x) NULL)
 names(go_list_MF) <- paste(datasets_2$dataset)
 
-for (species in datasets_2$dataset){
+for (species in datasets_2$dataset) {
   df_MF <- as.data.frame(get(paste("go_enrich_MF", species, sep = "_")))
   go_list_MF[[species]] <- df_MF$ID
 }
@@ -357,7 +357,7 @@ common_gos_MF <- as.data.frame(go_enrich_MF_cfamiliaris_gene_ensembl) %>%
 go_list_CC <- lapply(datasets_2$dataset, function(x) NULL)
 names(go_list_CC) <- paste(datasets_2$dataset)
 
-for (species in datasets_2$dataset){
+for (species in datasets_2$dataset) {
   df_CC <- as.data.frame(get(paste("go_enrich_CC", species, sep = "_")))
   go_list_CC[[species]] <- df_CC$ID
 }
@@ -370,7 +370,7 @@ common_gos_CC <- as.data.frame(go_enrich_CC_cfamiliaris_gene_ensembl) %>%
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=20, fig.height=8, fig.align="center", cache=FALSE}
-for (i in 1:nrow(datasets_2)){
+for (i in 1:nrow(datasets_2)) {
   species <- datasets_2$dataset[i]
   
   go_enrich_BP_df <- as.data.frame(get(paste("go_enrich_BP", species, sep = "_"))) %>%
@@ -397,7 +397,7 @@ for (i in 1:nrow(datasets_2)){
   plot <- rbind(go_enrich_BP_df, go_enrich_MF_df, go_enrich_CC_df)
   plot$Species <- paste(datasets_2$description[i])
 
-  if (i == 1){
+  if (i == 1) {
     plot_df <- plot
   } else {
     plot_df <- rbind(plot_df, plot)
@@ -445,53 +445,82 @@ getAmigoTree(goIDs, set3, filename = "common_gos_CC", picType = "png", modeType 
 <br>
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=25, fig.height=25, fig.align="center", cache=FALSE}
+for (i in 1:nrow(datasets_2)) {
+  species <- datasets_2$dataset[i]
+  df_BP <- as.data.frame(get(paste("go_enrich_BP", species, sep = "_")))
+  df_BP <- df_BP[1:10, 1, drop = FALSE]
+  df_BP$species <- datasets_2$description[i]
+  
+  if (i == 1) {
+    df_BP_all <- df_BP
+  } else {
+    df_BP_all <- rbind(df_BP_all, df_BP)
+  }
+}
+
+length(unique(df_BP_all$ID))
+
+library(tidyr)
+df_BP_all$value <- 1
+df_BP_all <- spread(df_BP_all, species, value)
+
+go_sums <- data.frame(ID = df_BP_all$ID,
+                      sum = rowSums(is.na(df_BP_all[, -1])))
+
+# GO in all species
+
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=25, fig.height=25, fig.align="center", cache=FALSE}
 library(GO.db)
 
 df_BP <- as.data.frame(go_enrich_BP_hsapiens_gene_ensembl)
 
+# GO parents list
 ontology <- as.list(GOBPPARENTS)
-goIds <- unique(df_BP$ID)[1:100]
-goIds <- goIds[goIds %in% names(ontology)]
 
-adjList <- matrix(nrow=0, ncol=3)
+goChilds <- unique(df_BP$ID)[1:100]
+goChilds <- goChilds[goChilds %in% names(ontology)]
+
+adjList <- matrix(nrow = 0, ncol = 3)
 colnames(adjList) <- c("parent", "rel", "child")
-goChilds <- goIds
 
-# Find parents (calculate adjacency)
-goChilds <- goChilds[which(goChilds!="all")]
+# Find parents
+goChilds <- goChilds[which(goChilds != "all")]
         
 goFamilyList <- lapply(ontology[goChilds], function(x) data.frame(parent = x, rel = names(x)))
 adjList <- rbind(adjList, as.matrix(cbind(do.call(rbind, goFamilyList), child = rep(names(goFamilyList), sapply(goFamilyList, nrow)))))
-        
-# Next children
-goChilds <- unique(as.character(adjList[which(!adjList[,"parent"] %in% adjList[,"child"]), "parent"]))    
 
-adjList <- adjList[which(adjList[,1] != "all"), , drop=FALSE]
-adjList <- adjList[, c("child","parent", "rel"), drop=FALSE]
+# Next parents
+goParents <- unique(as.character(adjList[which(!adjList[,"parent"] %in% adjList[,"child"]), "parent"]))    
+goFamilyList_2 <- lapply(ontology[goParents], function(x) data.frame(parent = x, rel = names(x)))
+adjList <- rbind(adjList, as.matrix(cbind(do.call(rbind, goFamilyList_2), child = rep(names(goFamilyList_2), sapply(goFamilyList_2, nrow)))))
+
+adjList <- adjList[which(adjList[,1] != "all"), , drop = FALSE]
+adjList <- adjList[, c("child","parent", "rel"), drop = FALSE]
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=25, fig.height=25, fig.align="center", cache=FALSE}
 library(igraph)
 
-goGraph <- graph.edgelist(adjList[, c("parent", "child"), drop=FALSE], directed=TRUE)
+goGraph <- graph.edgelist(adjList[, c("parent", "child"), drop = FALSE], directed = TRUE)
 goGraph <- set.edge.attribute(goGraph, "type", value = adjList[,"rel"])
 
-library(Hmisc)
 goTerms <- sapply(V(goGraph)$name, function(x)
         {
-            term <- capitalize(GOTERM[[x]]@Term)
+            term <- GOTERM[[x]]@Term
             
                 term <- gsub("( process)$", " pr.", term)
                 term <- gsub(" development ", " dev. ", term)
-                term <- gsub("( development)$", " dev.", term, perl=TRUE)
+                term <- gsub("( development)$", " dev.", term, perl = TRUE)
                 term <- gsub("Development ", "Dev. ", term)
             
             # split in two lines
-            spaceLoc <- gregexpr(" ", term, fixed=TRUE)[[1]]
-            if((spaceLoc[1]!=-1) && (length(spaceLoc)>1))
+            spaceLoc <- gregexpr(" ", term, fixed = TRUE)[[1]]
+            if ((spaceLoc[1] != -1) && (length(spaceLoc) > 1))
             {
                 spaceLoc <- spaceLoc[ceiling(length(spaceLoc)/2)]
-                term <- paste(substr(term, 1, spaceLoc-1), substr(term, spaceLoc+1, nchar(term)), sep="\n")
+                term <- paste(substr(term, 1, spaceLoc - 1), substr(term, spaceLoc + 1, nchar(term)), sep = "\n")
             }
 
             term
@@ -499,15 +528,17 @@ goTerms <- sapply(V(goGraph)$name, function(x)
 
 goTerms_df <- as.data.frame(goTerms)
 
-goTerms_df$color <- ifelse(rownames(goTerms_df) %in% goIds, "red", "skyblue2")
+goTerms_df$color <- ifelse(rownames(goTerms_df) %in% goChilds, "red", "skyblue2")
 
 V(goGraph)$color <- goTerms_df$color
 V(goGraph)$label <- goTerms
 
-E(goGraph)$color <- ifelse(E(goGraph)$type == "is_a", "slategrey",
+Ecolor <- ifelse(E(goGraph)$type == "is_a", "slategrey",
                            ifelse(E(goGraph)$type == "part_of", "springgreen4",
                            ifelse(E(goGraph)$type == "regulates", "tomato",
                            ifelse(E(goGraph)$type == "negatively_regulates", "orange", "greenyellow"))))
+
+#E(goGraph)$color <- Ecolor
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=25, fig.height=25, fig.align="center", cache=FALSE}
