@@ -1,0 +1,49 @@
+---
+title: "World Gender Statistics"
+author: "Dr. Shirin Glander"
+date: '`r Sys.Date()`'
+output:
+  prettydoc::html_pretty:
+    theme: tactile
+    highlight: github
+---
+
+https://www.kaggle.com/theworldbank/world-gender-statistics
+
+This dataset was downloaded from The World Bank's Open Data project: http://data.worldbank.org/
+
+### Data.csv
+
+- Country.Name: the name of the country
+- Country.Code: the country's code
+- Indicator.Name: the name of the variable that this row represents
+- Indicator.Code: a unique id for the variable
+- 1960 - 2016: one column EACH for the value of the variable in each year it was available
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+dataset <- read.csv("Data.csv")
+dataset_subs <- dataset[grep(".FE|.MA", dataset$Indicator.Code), ]
+head(dataset_subs)
+
+dataset_fem <- dataset[grep("female|Women", dataset$Indicator.Name), ]
+dataset_fem$Indicator.Code <- gsub(".FE", "", dataset_fem$Indicator.Code)
+
+dataset_male <- dataset[-grep("female|Women", dataset$Indicator.Name), ]
+dataset_male$Indicator.Code <- gsub(".FE", "", dataset_male$Indicator.Code)
+
+# unique country codes
+length(unique(dataset$Country.Code))
+
+# Indicators
+dataset_fem$Indicator.Name
+
+library(tidyr)
+test_f <- dataset_fem[grep(dataset_fem$Indicator.Code[1], dataset_fem$Indicator.Code), ] %>%
+  gather(year, value, X1960:X2016)
+test_f$year <- as.character(gsub("X", "", test_f$year))
+test_f$Indicator.Code <- as.factor(test_f$Indicator.Code)
+str(test_f)
+
+library(ggplot2)
+ggplot(subset(test_f, Country.Code %in% c("ARB", "CSS", "CEB")), aes(x = year, y = value, color = Country.Code)) + geom_point()
+```
