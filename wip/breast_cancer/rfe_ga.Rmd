@@ -33,7 +33,7 @@ The data I am going to use to explore feature selection methods is the Breast Ca
 
 > W.H. Wolberg, W.N. Street, D.M. Heisey, and O.L. Mangasarian. Computer-derived nuclear features distinguish malignant from benign breast cytology. Human Pathology, 26:792--796, 1995.
 
-Included are three datasets. The features in these datasets characterise cell nucleus properties and were generated from image analysis of [fine needle aspirates (FNA)](https://en.wikipedia.org/wiki/Fine-needle_aspiration) of breast masses.
+Included are three datasets. The features in these datasets characterise cell nucleus properties and were generated from image analysis of [fine needle aspirates (FNA)](https://en.wikipedia.org/wiki/Fine-needle_aspiration) of breast masses. The data was downloaded from the [UC Irvine Machine Learning Repository](http://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+%28Diagnostic%29).
 
 The first datasets encompasses only 9 features, the other two datasets have 30 and 33 features. Here, I want to explore the effect feature selection on model prediction.
 
@@ -185,8 +185,6 @@ my_theme <- function(base_size = 12, base_family = "sans"){
     strip.text = element_text(face = "bold", size = 12, color = "black"),
     legend.position = "right",
     legend.justification = "top", 
-    legend.box = "horizontal",
-    legend.box.background = element_rect(colour = "grey50"),
     legend.background = element_blank(),
     panel.border = element_rect(color = "grey", fill = NA, size = 0.5)
   )
@@ -333,23 +331,52 @@ feature_imp <- function(model, title) {
 }
 ```
 
-```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 5, fig.height = 3, fig.align = "center"}
+```{r echo = TRUE, eval=FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 5, fig.height = 3, fig.align = "center"}
 # train the model
 set.seed(27)
-model_1 <- train(classes ~ ., data = bc_data, method = "rf", preProcess = c("scale", "center"), trControl = control)
-p1 <- feature_imp(model_1, title = "Breast cancer dataset 1")
+imp_1 <- train(classes ~ ., data = bc_data, method = "rf", preProcess = c("scale", "center"), trControl = control)
+```
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 5, fig.height = 3, fig.align = "center"}
+load("imp_1.RData")
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 5, fig.height = 3, fig.align = "center"}
+imp_1
+#str(imp_1$modelInfo)
+#str(imp_1$finalModel)
+
+p1 <- feature_imp(imp_1, title = "Breast cancer dataset 1")
+```
+
+```{r echo = TRUE, eval=FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 5, fig.height = 3, fig.align = "center"}
 set.seed(27)
-model_2 <- train(diagnosis ~ ., data = bc_data_2[, -1], method = "rf", preProcess = c("scale", "center"), trControl = control)
-p2 <- feature_imp(model_2, title = "Breast cancer dataset 2")
+imp_2 <- train(diagnosis ~ ., data = bc_data_2[, -1], method = "rf", preProcess = c("scale", "center"), trControl = control)
+```
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 5, fig.height = 3, fig.align = "center"}
+load("imp_2.RData")
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 5, fig.height = 3, fig.align = "center"}
+imp_2
+
+p2 <- feature_imp(imp_2, title = "Breast cancer dataset 2")
+```
+
+```{r echo = TRUE, eval=FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 5, fig.height = 3, fig.align = "center"}
 set.seed(27)
-model_3 <- train(outcome ~ ., data = bc_data_3, method = "rf", preProcess = c("scale", "center"), trControl = control)
-p3 <- feature_imp(model_3, title = "Breast cancer dataset 3")
+imp_3 <- train(outcome ~ ., data = bc_data_3, method = "rf", preProcess = c("scale", "center"), trControl = control)
+```
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 5, fig.height = 3, fig.align = "center"}
+load("imp_3.RData")
+```
+
+```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 5, fig.height = 3, fig.align = "center"}
+imp_3
+
+p3 <- feature_imp(imp_3, title = "Breast cancer dataset 3")
 ```
 
 ```{r echo = TRUE, message = FALSE, warning = FALSE, cache=FALSE, fig.width = 15, fig.height = 8, fig.align = "center"}
