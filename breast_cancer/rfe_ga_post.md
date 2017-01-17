@@ -359,8 +359,8 @@ pca_func <- function(data, groups, title, print_ellipse = TRUE) {
       labs(title = title,
            color = "",
            fill = "",
-           x = paste0("PC1: ", round(pcaOutput$pov[1], digits = 2), "% variance"),
-           y = paste0("PC2: ", round(pcaOutput$pov[2], digits = 2), "% variance"))
+           x = paste0("PC1: ", round(pcaOutput$pov[1], digits = 2) * 100, "% variance"),
+           y = paste0("PC2: ", round(pcaOutput$pov[2], digits = 2) * 100, "% variance"))
     
   } else {
     
@@ -373,8 +373,8 @@ pca_func <- function(data, groups, title, print_ellipse = TRUE) {
         labs(title = title,
              color = "",
              fill = "",
-             x = paste0("PC1: ", round(pcaOutput$pov[1], digits = 2), "% variance"),
-             y = paste0("PC2: ", round(pcaOutput$pov[2], digits = 2), "% variance"))
+             x = paste0("PC1: ", round(pcaOutput$pov[1], digits = 2) * 100, "% variance"),
+             y = paste0("PC2: ", round(pcaOutput$pov[2], digits = 2) * 100, "% variance"))
       
     } else {
       
@@ -384,8 +384,8 @@ pca_func <- function(data, groups, title, print_ellipse = TRUE) {
         labs(title = title,
              color = "",
              fill = "",
-             x = paste0("PC1: ", round(pcaOutput$pov[1], digits = 2), "% variance"),
-             y = paste0("PC2: ", round(pcaOutput$pov[2], digits = 2), "% variance"))
+             x = paste0("PC1: ", round(pcaOutput$pov[1], digits = 2) * 100, "% variance"),
+             y = paste0("PC2: ", round(pcaOutput$pov[2], digits = 2) * 100, "% variance"))
       
     }
   }
@@ -639,10 +639,12 @@ highlyCor <- colnames(bc_data_train[, -1])[findCorrelation(corMatMy, cutoff = 0.
 
     ## Compare row 2  and column  3 with corr  0.913 
     ##   Means:  0.716 vs 0.601 so flagging column 2 
-    ## Compare row 3  and column  6 with corr  0.741 
+    ## Compare row 3  and column  7 with corr  0.725 
     ##   Means:  0.677 vs 0.579 so flagging column 3 
-    ## Compare row 6  and column  7 with corr  0.706 
-    ##   Means:  0.602 vs 0.545 so flagging column 6 
+    ## Compare row 7  and column  6 with corr  0.707 
+    ##   Means:  0.601 vs 0.544 so flagging column 7 
+    ## Compare row 6  and column  4 with corr  0.719 
+    ##   Means:  0.58 vs 0.526 so flagging column 6 
     ## All correlations <= 0.7
 
 ``` r
@@ -651,7 +653,7 @@ highlyCor
 ```
 
     ## [1] "uniformity_of_cell_size"  "uniformity_of_cell_shape"
-    ## [3] "bare_nuclei"
+    ## [3] "bland_chromatin"          "bare_nuclei"
 
 ``` r
 #then we remove these variables
@@ -750,7 +752,7 @@ highlyCor <- colnames(bc_data_3_train[, -1])[findCorrelation(corMatMy, cutoff = 
 ```
 
     ## Compare row 8  and column  9 with corr  0.898 
-    ##   Means:  0.425 vs 0.286 so flagging column 8 
+    ##   Means:  0.425 vs 0.285 so flagging column 8 
     ## Compare row 9  and column  7 with corr  0.714 
     ##   Means:  0.39 vs 0.277 so flagging column 9 
     ## Compare row 7  and column  29 with corr  0.753 
@@ -758,19 +760,19 @@ highlyCor <- colnames(bc_data_3_train[, -1])[findCorrelation(corMatMy, cutoff = 
     ## Compare row 4  and column  2 with corr  0.996 
     ##   Means:  0.348 vs 0.264 so flagging column 4 
     ## Compare row 2  and column  5 with corr  0.993 
-    ##   Means:  0.33 vs 0.259 so flagging column 2 
+    ##   Means:  0.329 vs 0.259 so flagging column 2 
     ## Compare row 5  and column  24 with corr  0.921 
-    ##   Means:  0.304 vs 0.255 so flagging column 5 
+    ##   Means:  0.303 vs 0.254 so flagging column 5 
     ## Compare row 24  and column  22 with corr  0.985 
-    ##   Means:  0.272 vs 0.252 so flagging column 24 
+    ##   Means:  0.271 vs 0.252 so flagging column 24 
     ## Compare row 11  and column  31 with corr  0.83 
     ##   Means:  0.341 vs 0.247 so flagging column 11 
     ## Compare row 22  and column  15 with corr  0.773 
-    ##   Means:  0.24 vs 0.242 so flagging column 15 
+    ##   Means:  0.239 vs 0.242 so flagging column 15 
     ## Compare row 22  and column  25 with corr  0.989 
-    ##   Means:  0.217 vs 0.242 so flagging column 25 
+    ##   Means:  0.216 vs 0.242 so flagging column 25 
     ## Compare row 14  and column  12 with corr  0.975 
-    ##   Means:  0.256 vs 0.243 so flagging column 14 
+    ##   Means:  0.257 vs 0.243 so flagging column 14 
     ## Compare row 31  and column  28 with corr  0.71 
     ##   Means:  0.328 vs 0.238 so flagging column 31 
     ## Compare row 18  and column  17 with corr  0.812 
@@ -1181,22 +1183,23 @@ venn
     ## 000   0   0   0  0
     ## 001   0   0   0  1
     ## 010   1   0   1  0
-    ## 011   2   0   1  1
+    ## 011   3   0   1  1
     ## 100   0   1   0  0
     ## 101   0   1   0  1
     ## 110   0   1   1  0
-    ## 111   6   1   1  1
+    ## 111   5   1   1  1
     ## attr(,"intersections")
     ## attr(,"intersections")$`cor:rfe:ga`
     ## [1] "clump_thickness"             "marginal_adhesion"          
-    ## [3] "single_epithelial_cell_size" "bland_chromatin"            
-    ## [5] "normal_nucleoli"             "mitosis"                    
+    ## [3] "single_epithelial_cell_size" "normal_nucleoli"            
+    ## [5] "mitosis"                    
     ## 
     ## attr(,"intersections")$rfe
     ## [1] "uniformity_of_cell_size"
     ## 
     ## attr(,"intersections")$`rfe:ga`
     ## [1] "uniformity_of_cell_shape" "bare_nuclei"             
+    ## [3] "bland_chromatin"         
     ## 
     ## attr(,"class")
     ## [1] "venn"
@@ -1813,25 +1816,24 @@ sessionInfo()
     ##  [8] datasets  methods   base     
     ## 
     ## other attached packages:
-    ##  [1] gplots_3.0.1         dplyr_0.5.0          plyr_1.8.4          
-    ##  [4] corrplot_0.77        randomForest_4.6-12  doParallel_1.0.10   
-    ##  [7] iterators_1.0.8      foreach_1.4.3        caret_6.0-73        
-    ## [10] lattice_0.20-34      tidyr_0.6.0          gridExtra_2.2.1     
-    ## [13] pcaGoPromoter_1.18.0 Biostrings_2.42.1    XVector_0.14.0      
-    ## [16] IRanges_2.8.1        S4Vectors_0.12.1     BiocGenerics_0.20.0 
-    ## [19] ellipse_0.3-8        ggplot2_2.2.1        mice_2.25           
-    ## [22] Rcpp_0.12.8         
+    ##  [1] gplots_3.0.1         dplyr_0.5.0          corrplot_0.77       
+    ##  [4] randomForest_4.6-12  doParallel_1.0.10    iterators_1.0.8     
+    ##  [7] foreach_1.4.3        caret_6.0-73         lattice_0.20-34     
+    ## [10] tidyr_0.6.0          gridExtra_2.2.1      pcaGoPromoter_1.18.0
+    ## [13] Biostrings_2.42.1    XVector_0.14.0       IRanges_2.8.1       
+    ## [16] S4Vectors_0.12.1     BiocGenerics_0.20.0  ellipse_0.3-8       
+    ## [19] ggplot2_2.2.1        mice_2.25            Rcpp_0.12.8         
     ## 
     ## loaded via a namespace (and not attached):
     ##  [1] gtools_3.5.0         class_7.3-14         assertthat_0.1      
     ##  [4] rprojroot_1.1        digest_0.6.11        R6_2.2.0            
-    ##  [7] backports_1.0.4      MatrixModels_0.4-1   RSQLite_1.1-1       
-    ## [10] evaluate_0.10        e1071_1.6-7          zlibbioc_1.20.0     
-    ## [13] lazyeval_0.2.0       gdata_2.17.0         minqa_1.2.4         
-    ## [16] SparseM_1.74         car_2.1-4            nloptr_1.0.4        
-    ## [19] rpart_4.1-10         Matrix_1.2-7.1       rmarkdown_1.3       
-    ## [22] labeling_0.3         splines_3.3.2        lme4_1.1-12         
-    ## [25] stringr_1.1.0        munsell_0.4.3        compiler_3.3.2      
+    ##  [7] plyr_1.8.4           backports_1.0.4      MatrixModels_0.4-1  
+    ## [10] RSQLite_1.1-1        evaluate_0.10        e1071_1.6-7         
+    ## [13] zlibbioc_1.20.0      lazyeval_0.2.0       gdata_2.17.0        
+    ## [16] minqa_1.2.4          SparseM_1.74         car_2.1-4           
+    ## [19] nloptr_1.0.4         rpart_4.1-10         Matrix_1.2-7.1      
+    ## [22] rmarkdown_1.3        labeling_0.3         splines_3.3.2       
+    ## [25] lme4_1.1-12          stringr_1.1.0        munsell_0.4.3       
     ## [28] mgcv_1.8-16          htmltools_0.3.5      nnet_7.3-12         
     ## [31] tibble_1.2           codetools_0.2-15     bitops_1.0-6        
     ## [34] MASS_7.3-45          ModelMetrics_1.1.0   nlme_3.1-128        
