@@ -43,11 +43,14 @@ gdf[-gdf.seqid.isin(chrs)].length.sum() / gdf.length.sum()
 gdf[(gdf['type'] == 'supercontig')].length.sum() / gdf.length.sum()
 
 edf = df[df.source.isin(['ensembl', 'havana', 'ensembl_havana'])]
+edf.info()
+edf.shape
 edf.sample(10)
 
 ndf = edf[edf.type == 'gene']
 ndf = ndf.copy()
 ndf.sample(10).attributes.values
+ndf.shape
 
 import re
 
@@ -92,3 +95,34 @@ import matplotlib as plt
 
 ndf.length.plot(kind='hist', bins=50, logy=True)
 plt.show()
+
+ndf[ndf.length > 2e6].sort_values('length').ix[::-1]
+
+ndf.sort_values('length').head()
+
+ndf = ndf[ndf.seqid.isin(chrs)]
+chr_gene_counts = ndf.groupby('seqid').count().ix[:, 0].sort_values().ix[::-1]
+chr_gene_counts
+
+df[(df.type == 'gene') & (df.seqid == 'MT')]
+
+gdf = gdf[gdf.seqid.isin(chrs)]
+gdf.drop(['start', 'end', 'score', 'strand', 'phase' ,'attributes'], axis=1, inplace=True)
+gdf.sort_values('length').ix[::-1]
+
+cdf = chr_gene_counts.to_frame(name='gene_count').reset_index()
+cdf.head(2)
+
+merged = gdf.merge(cdf, on='seqid')
+merged
+
+merged[['length', 'gene_count']].corr()
+
+ax = merged[['length', 'gene_count']].sort_values('length').plot(x='length', y='gene_count', style='o-')
+# add some margin to both ends of x axis
+xlim = ax.get_xlim()
+margin = xlim[0] * 0.1
+ax.set_xlim([xlim[0] - margin, xlim[1] + margin])
+# Label each point on the graph
+for (s, x, y) in merged[['seqid', 'length', 'gene_count']].sort_values('length').values:
+    ax.text(x, y - 100, str(s))
