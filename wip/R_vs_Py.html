@@ -81,9 +81,9 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 
 <p>I am an avid R user and rarely use anything else for data analysis and visualisation.</p>
-<p>I wanted to test whether my bias for using R is founded in good reason or whether Python might be faster/ easier for some cases.</p>
+<p>I wanted to see how R and Python fare in a one-to-one comparison, i.e. whether one might be faster/ easier to use than the other.</p>
 <p>Therefore, I am following <a href="https://www.toptal.com/python/comprehensive-introduction-your-genome-scipy">Zhuyi Xue’s “A Comprehensive Introduction To Your Genome With the SciPy Stack”</a> (with some minor tweaks here and there) to compare his analysis with how I would run it in R. I want to know whether one or the other tool is better suited to this type of analysis.</p>
-<p>He gives a nice introduction to the data, so I will not repeat it here but focus on the comparison with R.</p>
+<p>He gives a nice introduction to the data, so I will not repeat it here but focus on the comparison between the Python code with R.</p>
 <p>For R, I am working with RStudio, for Python with Anaconda and Spyder.</p>
 <p>While the code could be replicated with base R, I find it more elegant to use dplyr and ggplot2.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(dplyr)
@@ -91,6 +91,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <div id="reading-in-data" class="section level3">
 <h3>Reading in data</h3>
 <p>Reading in data as csv files is straight forward in both R and Python with the exception that R opens compressed files without having to specify the compression format as in Python/pandas.</p>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python"><span class="im">import</span> pandas <span class="im">as</span> pd
 
 df <span class="op">=</span> pd.read_csv(<span class="st">'../../Homo_sapiens.GRCh38.85.gff3.gz'</span>, 
@@ -101,6 +102,7 @@ df <span class="op">=</span> pd.read_csv(<span class="st">'../../Homo_sapiens.GR
                          header <span class="op">=</span> <span class="va">None</span>, 
                          names <span class="op">=</span> [<span class="st">'seqid'</span>, <span class="st">'source'</span>, <span class="st">'type'</span>, <span class="st">'start'</span>, <span class="st">'end'</span>, <span class="st">'score'</span>, <span class="st">'strand'</span>, <span class="st">'phase'</span>, <span class="st">'attributes'</span>])
 df.head()</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">df &lt;-<span class="st"> </span><span class="kw">read.csv</span>(<span class="st">&quot;../../Homo_sapiens.GRCh38.85.gff3.gz&quot;</span>, 
                <span class="dt">header =</span> <span class="ot">FALSE</span>, 
                <span class="dt">sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>, 
@@ -127,7 +129,9 @@ df.head()</code></pre></div>
 <ul>
 <li>listing unique strings of “seqid” column</li>
 </ul>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">df.seqid.unique() <span class="co"># alternatively: df['seqid'].unique()</span></code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">unique</span>(df$seqid)</code></pre></div>
 <pre><code>##   [1] 1          10         11         12         13         14        
 ##   [7] 15         16         17         18         19         2         
@@ -166,13 +170,17 @@ df.head()</code></pre></div>
 <ul>
 <li>how many unique seqids are there?</li>
 </ul>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">df.seqid.unique().shape</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">length</span>(<span class="kw">unique</span>(df$seqid))</code></pre></div>
 <pre><code>## [1] 194</code></pre>
 <ul>
 <li>counting occurrences of items in the “source” column</li>
 </ul>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">df.source.value_counts()</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># table(df$source) is per default ordered alphabetically, if we want it ordered by decreasing counts, like with Python:</span>
 <span class="kw">sort</span>(<span class="kw">table</span>(df$source), <span class="dt">decreasing =</span> <span class="ot">TRUE</span>)</code></pre></div>
 <pre><code>## 
@@ -185,10 +193,12 @@ df.head()</code></pre></div>
 <ul>
 <li>subsetting a dataframe</li>
 </ul>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">gdf <span class="op">=</span> df[df.source <span class="op">==</span> <span class="st">'GRCh38'</span>]
 
 gdf.shape
 gdf.sample(<span class="dv">10</span>)</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">gdf &lt;-<span class="st"> </span><span class="kw">subset</span>(df, source ==<span class="st"> &quot;GRCh38&quot;</span>)
 
 <span class="co"># get number of rows and columns</span>
@@ -197,35 +207,37 @@ gdf.sample(<span class="dv">10</span>)</code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># randomly sample 10 rows for observation</span>
 <span class="kw">sample_n</span>(gdf, <span class="dv">10</span>)</code></pre></div>
 <pre><code>##              seqid source        type start       end score strand phase
-## 2511499 KI270392.1 GRCh38 supercontig     1       971     .      .     .
-## 2510978 GL000220.1 GRCh38 supercontig     1    161802     .      .     .
-## 2511569 KI270579.1 GRCh38 supercontig     1     31033     .      .     .
-## 1705856          3 GRCh38  chromosome     1 198295559     .      .     .
-## 2510821 GL000205.2 GRCh38 supercontig     1    185591     .      .     .
-## 2511546 KI270467.1 GRCh38 supercontig     1      3920     .      .     .
-## 2511454 GL000226.1 GRCh38 supercontig     1     15008     .      .     .
-## 2511479 KI270366.1 GRCh38 supercontig     1      8320     .      .     .
-## 2511563 KI270530.1 GRCh38 supercontig     1      2168     .      .     .
-## 2513707 KI270741.1 GRCh38 supercontig     1    157432     .      .     .
+## 2511579 KI270591.1 GRCh38 supercontig     1      5796     .      .     .
+## 1364642          2 GRCh38  chromosome     1 242193529     .      .     .
+## 2511585 KI270707.1 GRCh38 supercontig     1     32032     .      .     .
+## 2511494 KI270387.1 GRCh38 supercontig     1      1537     .      .     .
+## 2510940 GL000218.1 GRCh38 supercontig     1    161147     .      .     .
+## 2511516 KI270435.1 GRCh38 supercontig     1     92983     .      .     .
+## 2511471 KI270335.1 GRCh38 supercontig     1      1048     .      .     .
+## 2512382 KI270725.1 GRCh38 supercontig     1    172810     .      .     .
+## 2512199 KI270716.1 GRCh38 supercontig     1    153799     .      .     .
+## 2511589 KI270709.1 GRCh38 supercontig     1     66860     .      .     .
 ##                                                                  attributes
-## 2511499        ID=supercontig:KI270392.1;Alias=chrUn_KI270392v1,NT_187485.1
-## 2510978        ID=supercontig:GL000220.1;Alias=chrUn_GL000220v1,NT_167214.1
-## 2511569        ID=supercontig:KI270579.1;Alias=chrUn_KI270579v1,NT_187450.1
-## 1705856                  ID=chromosome:3;Alias=CM000665.2,chr3,NC_000003.12
-## 2510821 ID=supercontig:GL000205.2;Alias=chr17_GL000205v2_random,NT_113930.2
-## 2511546        ID=supercontig:KI270467.1;Alias=chrUn_KI270467v1,NT_187423.1
-## 2511454        ID=supercontig:GL000226.1;Alias=chrUn_GL000226v1,NT_167220.1
-## 2511479        ID=supercontig:KI270366.1;Alias=chrUn_KI270366v1,NT_187470.1
-## 2511563        ID=supercontig:KI270530.1;Alias=chrUn_KI270530v1,NT_187441.1
-## 2513707        ID=supercontig:KI270741.1;Alias=chrUn_KI270741v1,NT_187497.1</code></pre>
+## 2511579        ID=supercontig:KI270591.1;Alias=chrUn_KI270591v1,NT_187457.1
+## 1364642                  ID=chromosome:2;Alias=CM000664.2,chr2,NC_000002.12
+## 2511585  ID=supercontig:KI270707.1;Alias=chr1_KI270707v1_random,NT_187362.1
+## 2511494        ID=supercontig:KI270387.1;Alias=chrUn_KI270387v1,NT_187475.1
+## 2510940        ID=supercontig:GL000218.1;Alias=chrUn_GL000218v1,NT_113889.1
+## 2511516        ID=supercontig:KI270435.1;Alias=chrUn_KI270435v1,NT_187424.1
+## 2511471        ID=supercontig:KI270335.1;Alias=chrUn_KI270335v1,NT_187462.1
+## 2512382 ID=supercontig:KI270725.1;Alias=chr14_KI270725v1_random,NT_187380.1
+## 2512199  ID=supercontig:KI270716.1;Alias=chr2_KI270716v1_random,NT_187371.1
+## 2511589  ID=supercontig:KI270709.1;Alias=chr1_KI270709v1_random,NT_187364.1</code></pre>
 <p>Viewing 10 random lines is more straight forward in Python but in R I’d usually use head() to get an idea of a dataframe.</p>
 <ul>
 <li>calculate the sum of seqid lengths</li>
 </ul>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">gdf <span class="op">=</span> gdf.copy()
 gdf[<span class="st">'length'</span>] <span class="op">=</span> gdf.end <span class="op">-</span> gdf.start <span class="op">+</span> <span class="dv">1</span>
 
 gdf.length.<span class="bu">sum</span>()</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">gdf$length &lt;-<span class="st"> </span>gdf$end -<span class="st"> </span>gdf$start +<span class="st"> </span><span class="dv">1</span>
 
 <span class="kw">sum</span>(gdf$length)</code></pre></div>
@@ -234,59 +246,52 @@ gdf.length.<span class="bu">sum</span>()</code></pre></div>
 <ul>
 <li>calculate the proportio of the genome that is not on main chromosome assemblies</li>
 </ul>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">chrs <span class="op">=</span> [<span class="bu">str</span>(_) <span class="cf">for</span> _ <span class="op">in</span> <span class="bu">range</span>(<span class="dv">1</span>, <span class="dv">23</span>)] <span class="op">+</span> [<span class="st">'X'</span>, <span class="st">'Y'</span>, <span class="st">'MT'</span>]
 gdf[<span class="op">-</span>gdf.seqid.isin(chrs)].length.<span class="bu">sum</span>() <span class="op">/</span> gdf.length.<span class="bu">sum</span>()
 
 <span class="co"># or</span>
 gdf[(gdf[<span class="st">'type'</span>] <span class="op">==</span> <span class="st">'supercontig'</span>)].length.<span class="bu">sum</span>() <span class="op">/</span> gdf.length.<span class="bu">sum</span>()</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">chrs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>:<span class="dv">23</span>, <span class="st">&quot;X&quot;</span>, <span class="st">&quot;Y&quot;</span>, <span class="st">&quot;MT&quot;</span>)
 <span class="kw">sum</span>(<span class="kw">subset</span>(gdf, !seqid %in%<span class="st"> </span>chrs)$length) /<span class="st"> </span><span class="kw">sum</span>(gdf$length)</code></pre></div>
 <pre><code>## [1] 0.003702192</code></pre>
 </div>
 <div id="how-many-genes-are-there" class="section level4">
 <h4>How Many Genes Are There?</h4>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">edf <span class="op">=</span> df[df.source.isin([<span class="st">'ensembl'</span>, <span class="st">'havana'</span>, <span class="st">'ensembl_havana'</span>])]
 edf.shape
 
 edf.sample(<span class="dv">10</span>)
 edf.<span class="bu">type</span>.value_counts()</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">edf &lt;-<span class="st"> </span><span class="kw">subset</span>(df, source %in%<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;ensembl&quot;</span>, <span class="st">&quot;havana&quot;</span>, <span class="st">&quot;ensembl_havana&quot;</span>))
 <span class="kw">dim</span>(edf)</code></pre></div>
 <pre><code>## [1] 2414370       9</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">sample_n</span>(edf, <span class="dv">10</span>)</code></pre></div>
-<pre><code>##         seqid         source           type     start       end score
-## 148298      1 ensembl_havana           exon 153345169 153345382     .
-## 1512701     2         havana           exon 200920993 200921738     .
-## 411084     11 ensembl_havana            CDS  65863410  65863502     .
-## 711860     14 ensembl_havana            CDS  55652850  55652940     .
-## 396717     11 ensembl_havana           exon  62765182  62765232     .
-## 1044747    17        ensembl            CDS  29086438  29086577     .
-## 2491586     9         havana five_prime_UTR 129835446 129835499     .
-## 1413159     2 ensembl_havana            CDS  69245225  69245485     .
-## 250431     10         havana            CDS  24601978  24602103     .
-## 106569      1 ensembl_havana            CDS  89995258  89995273     .
-##         strand phase
-## 148298       -     .
-## 1512701      -     .
-## 411084       +     1
-## 711860       +     1
-## 396717       +     .
-## 1044747      -     0
-## 2491586      +     .
-## 1413159      +     0
-## 250431       -     0
-## 106569       +     0
-##                                                                                                                                                   attributes
-## 148298    Parent=transcript:ENST00000359650;Name=ENSE00001409622;constitutive=0;ensembl_end_phase=2;ensembl_phase=1;exon_id=ENSE00001409622;rank=4;version=1
-## 1512701 Parent=transcript:ENST00000487853;Name=ENSE00001829603;constitutive=0;ensembl_end_phase=-1;ensembl_phase=-1;exon_id=ENSE00001829603;rank=1;version=1
-## 411084                                                                   ID=CDS:ENSP00000307853;Parent=transcript:ENST00000308110;protein_id=ENSP00000307853
-## 711860                                                                   ID=CDS:ENSP00000378725;Parent=transcript:ENST00000395314;protein_id=ENSP00000378725
-## 396717    Parent=transcript:ENST00000301788;Name=ENSE00003502799;constitutive=0;ensembl_end_phase=0;ensembl_phase=0;exon_id=ENSE00003502799;rank=4;version=1
-## 1044747                                                                  ID=CDS:ENSP00000486682;Parent=transcript:ENST00000628822;protein_id=ENSP00000486682
-## 2491586                                                                                                                    Parent=transcript:ENST00000372429
-## 1413159                                                                  ID=CDS:ENSP00000301945;Parent=transcript:ENST00000303714;protein_id=ENSP00000301945
-## 250431                                                                   ID=CDS:ENSP00000490396;Parent=transcript:ENST00000636789;protein_id=ENSP00000490396
-## 106569                                                                   ID=CDS:ENSP00000340796;Parent=transcript:ENST00000340281;protein_id=ENSP00000340796</code></pre>
+<pre><code>##         seqid         source type     start       end score strand phase
+## 1519629     2 ensembl_havana  CDS 206596051 206596162     .      +     0
+## 133393      1         havana  CDS 145618320 145618423     .      +     0
+## 206553      1 ensembl_havana exon 207767013 207767195     .      +     .
+## 1547373     2         havana exon 233819902 233820056     .      +     .
+## 421212     11 ensembl_havana exon  68347847  68348243     .      +     .
+## 196673      1 ensembl_havana exon 201997319 201997554     .      +     .
+## 594995     12         havana exon 102061248 102061346     .      -     .
+## 1924108     4         havana gene 100660279 100675113     .      -     .
+## 992653     17         havana  CDS   1058745   1058867     .      -     0
+## 1001846    17         havana  CDS   4731776   4731906     .      +     2
+##                                                                                                                                                                                                                                                              attributes
+## 1519629                                                                                                                                                                             ID=CDS:ENSP00000264377;Parent=transcript:ENST00000264377;protein_id=ENSP00000264377
+## 133393                                                                                                                                                                              ID=CDS:ENSP00000434495;Parent=transcript:ENST00000534502;protein_id=ENSP00000434495
+## 206553                                                                                                               Parent=transcript:ENST00000322918;Name=ENSE00001167601;constitutive=0;ensembl_end_phase=1;ensembl_phase=1;exon_id=ENSE00001167601;rank=6;version=1
+## 1547373                                                                                                             Parent=transcript:ENST00000389758;Name=ENSE00001506849;constitutive=0;ensembl_end_phase=2;ensembl_phase=0;exon_id=ENSE00001506849;rank=31;version=1
+## 421212                                                                                                               Parent=transcript:ENST00000294304;Name=ENSE00000991969;constitutive=0;ensembl_end_phase=2;ensembl_phase=1;exon_id=ENSE00000991969;rank=2;version=3
+## 196673                                                                                                             Parent=transcript:ENST00000471105;Name=ENSE00003458668;constitutive=0;ensembl_end_phase=-1;ensembl_phase=-1;exon_id=ENSE00003458668;rank=4;version=1
+## 594995                                                                                                             Parent=transcript:ENST00000541569;Name=ENSE00003572913;constitutive=0;ensembl_end_phase=-1;ensembl_phase=-1;exon_id=ENSE00003572913;rank=2;version=1
+## 1924108 ID=gene:ENSG00000250223;Name=LINC01216;biotype=sense_intronic;description=long intergenic non-protein coding RNA 1216 [Source:HGNC Symbol%3BAcc:HGNC:41418];gene_id=ENSG00000250223;havana_gene=OTTHUMG00000161053;havana_version=2;logic_name=havana;version=1
+## 992653                                                                                                                                                                              ID=CDS:ENSP00000458294;Parent=transcript:ENST00000574544;protein_id=ENSP00000458294
+## 1001846                                                                                                                                                                             ID=CDS:ENSP00000460400;Parent=transcript:ENST00000575284;protein_id=ENSP00000460400</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">sort</span>(<span class="kw">table</span>(edf$type), <span class="dt">decreasing =</span> <span class="ot">TRUE</span>)</code></pre></div>
 <pre><code>## 
 ##                          exon                           CDS 
@@ -321,22 +326,24 @@ edf.<span class="bu">type</span>.value_counts()</code></pre></div>
 ##                             0                             0 
 ##                   supercontig 
 ##                             0</code></pre>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">ndf <span class="op">=</span> edf[edf.<span class="bu">type</span> <span class="op">==</span> <span class="st">'gene'</span>]
 ndf <span class="op">=</span> ndf.copy()
 ndf.sample(<span class="dv">10</span>).attributes.values
 ndf.shape</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">ndf &lt;-<span class="st"> </span><span class="kw">subset</span>(edf, type ==<span class="st"> &quot;gene&quot;</span>)
 <span class="kw">sample_n</span>(ndf, <span class="dv">10</span>)$attributes</code></pre></div>
-<pre><code>##  [1] ID=gene:ENSG00000265206;Name=MIR142;biotype=antisense;description=microRNA 142 [Source:HGNC Symbol%3BAcc:HGNC:31529];gene_id=ENSG00000265206;havana_gene=OTTHUMG00000178925;havana_version=1;logic_name=ensembl_havana_gene;version=4                             
-##  [2] ID=gene:ENSG00000181511;Name=RP4-655L22.4;biotype=processed_pseudogene;gene_id=ENSG00000181511;havana_gene=OTTHUMG00000022306;havana_version=1;logic_name=havana;version=5                                                                                        
-##  [3] ID=gene:ENSG00000256843;Name=RP11-467L13.4;biotype=processed_pseudogene;gene_id=ENSG00000256843;havana_gene=OTTHUMG00000169237;havana_version=2;logic_name=havana;version=1                                                                                       
-##  [4] ID=gene:ENSG00000158470;Name=B4GALT5;biotype=protein_coding;description=beta-1%2C4-galactosyltransferase 5 [Source:HGNC Symbol%3BAcc:HGNC:928];gene_id=ENSG00000158470;havana_gene=OTTHUMG00000033086;havana_version=3;logic_name=ensembl_havana_gene;version=5   
-##  [5] ID=gene:ENSG00000278722;Name=RP11-95F22.1;biotype=antisense;gene_id=ENSG00000278722;havana_gene=OTTHUMG00000188188;havana_version=1;logic_name=havana;version=1                                                                                                   
-##  [6] ID=gene:ENSG00000186924;Name=KRTAP22-1;biotype=protein_coding;description=keratin associated protein 22-1 [Source:HGNC Symbol%3BAcc:HGNC:18947];gene_id=ENSG00000186924;havana_gene=OTTHUMG00000057778;havana_version=2;logic_name=ensembl_havana_gene;version=3  
-##  [7] ID=gene:ENSG00000254595;Name=CTD-2010I16.1;biotype=processed_pseudogene;gene_id=ENSG00000254595;havana_gene=OTTHUMG00000165733;havana_version=1;logic_name=havana;version=1                                                                                       
-##  [8] ID=gene:ENSG00000250613;Name=RP11-136I13.1;biotype=processed_pseudogene;gene_id=ENSG00000250613;havana_gene=OTTHUMG00000160015;havana_version=1;logic_name=havana;version=1                                                                                       
-##  [9] ID=gene:ENSG00000160058;Name=BSDC1;biotype=protein_coding;description=BSD domain containing 1 [Source:HGNC Symbol%3BAcc:HGNC:25501];gene_id=ENSG00000160058;havana_gene=OTTHUMG00000007588;havana_version=7;logic_name=ensembl_havana_gene;version=18             
-## [10] ID=gene:ENSG00000204740;Name=MALRD1;biotype=protein_coding;description=MAM and LDL receptor class A domain containing 1 [Source:HGNC Symbol%3BAcc:HGNC:24331];gene_id=ENSG00000204740;havana_gene=OTTHUMG00000017779;havana_version=6;logic_name=havana;version=10
+<pre><code>##  [1] ID=gene:ENSG00000177272;Name=KCNA3;biotype=protein_coding;description=potassium voltage-gated channel subfamily A member 3 [Source:HGNC Symbol%3BAcc:HGNC:6221];gene_id=ENSG00000177272;havana_gene=OTTHUMG00000034493;havana_version=1;logic_name=ensembl_havana_gene;version=8
+##  [2] ID=gene:ENSG00000237549;Name=AC092570.3;biotype=processed_pseudogene;gene_id=ENSG00000237549;havana_gene=OTTHUMG00000155389;havana_version=1;logic_name=havana;version=1                                                                                                        
+##  [3] ID=gene:ENSG00000221886;Name=ZBED8;biotype=protein_coding;description=zinc finger BED-type containing 8 [Source:HGNC Symbol%3BAcc:HGNC:30804];gene_id=ENSG00000221886;havana_gene=OTTHUMG00000163554;havana_version=1;logic_name=ensembl_havana_gene;version=3                  
+##  [4] ID=gene:ENSG00000238143;Name=RP11-70K10.2;biotype=processed_pseudogene;gene_id=ENSG00000238143;havana_gene=OTTHUMG00000020372;havana_version=1;logic_name=havana;version=1                                                                                                      
+##  [5] ID=gene:ENSG00000180425;Name=C11orf71;biotype=protein_coding;description=chromosome 11 open reading frame 71 [Source:HGNC Symbol%3BAcc:HGNC:25937];gene_id=ENSG00000180425;havana_gene=OTTHUMG00000168247;havana_version=2;logic_name=ensembl_havana_gene;version=10            
+##  [6] ID=gene:ENSG00000112245;Name=PTP4A1;biotype=protein_coding;description=protein tyrosine phosphatase type IVA%2C member 1 [Source:HGNC Symbol%3BAcc:HGNC:9634];gene_id=ENSG00000112245;havana_gene=OTTHUMG00000014949;havana_version=3;logic_name=ensembl_havana_gene;version=9  
+##  [7] ID=gene:ENSG00000240409;Name=MTATP8P1;biotype=unprocessed_pseudogene;description=mitochondrially encoded ATP synthase 8 pseudogene 1 [Source:HGNC Symbol%3BAcc:HGNC:44571];gene_id=ENSG00000240409;havana_gene=OTTHUMG00000002473;havana_version=1;logic_name=havana;version=1  
+##  [8] ID=gene:ENSG00000244585;Name=RPL12P33;biotype=processed_pseudogene;description=ribosomal protein L12 pseudogene 33 [Source:HGNC Symbol%3BAcc:HGNC:35696];gene_id=ENSG00000244585;havana_gene=OTTHUMG00000169146;havana_version=1;logic_name=havana;version=1                    
+##  [9] ID=gene:ENSG00000213934;Name=HBG1;biotype=protein_coding;description=hemoglobin subunit gamma 1 [Source:HGNC Symbol%3BAcc:HGNC:4831];gene_id=ENSG00000213934;havana_gene=OTTHUMG00000066681;havana_version=2;logic_name=ensembl_havana_gene;version=6                           
+## [10] ID=gene:ENSG00000225361;Name=PPP1R26-AS1;biotype=antisense;description=PPP1R26 antisense RNA 1 [Source:HGNC Symbol%3BAcc:HGNC:48717];gene_id=ENSG00000225361;havana_gene=OTTHUMG00000020905;havana_version=3;logic_name=havana;version=3                                        
 ## 1623077 Levels: ID=CDS:ENSP00000000233;Parent=transcript:ENST00000000233;protein_id=ENSP00000000233 ...</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">dim</span>(ndf)</code></pre></div>
 <pre><code>## [1] 42470     9</code></pre>
@@ -344,6 +351,7 @@ ndf.shape</code></pre></div>
 <li>extracting gene information from attributes field</li>
 </ul>
 <p>I don’t know if there is an easier way in Python but in R we don’t need to create a helper function around it. We can simply use gsub()…</p>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python"><span class="im">import</span> re
 
 RE_GENE_NAME <span class="op">=</span> re.<span class="bu">compile</span>(<span class="vs">r'Name=(?P&lt;gene_name&gt;.+?);'</span>)
@@ -376,6 +384,7 @@ ndf[<span class="st">'desc'</span>] <span class="op">=</span> ndf.attributes.<sp
 
 ndf.drop(<span class="st">'attributes'</span>, axis<span class="op">=</span><span class="dv">1</span>, inplace<span class="op">=</span><span class="va">True</span>)
 ndf.head()</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">ndf$gene_name &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;(.*Name=)(.*?)(;biotype.*)&quot;</span>, <span class="st">&quot;</span><span class="ch">\\</span><span class="st">2&quot;</span>, ndf$attributes)
 ndf$gene_id &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;(ID=gene:)(.*?)(;Name.*)&quot;</span>, <span class="st">&quot;</span><span class="ch">\\</span><span class="st">2&quot;</span>, ndf$attributes)
 ndf$desc &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;(.*description=)(.*?)(;.*)&quot;</span>, <span class="st">&quot;</span><span class="ch">\\</span><span class="st">2&quot;</span>, ndf$attributes)
@@ -418,12 +427,14 @@ ndf &lt;-<span class="st"> </span><span class="kw">subset</span>(ndf, <span clas
 ## 119                                                                                                   
 ## 122                                                                                                   
 ## 167</code></pre>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">ndf.shape
 ndf.gene_id.unique().shape
 ndf.gene_name.unique().shape
 
 count_df <span class="op">=</span> ndf.groupby(<span class="st">'gene_name'</span>).count().ix[:, <span class="dv">0</span>].sort_values().ix[::<span class="op">-</span><span class="dv">1</span>]
 count_df.head(<span class="dv">10</span>)</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">dim</span>(ndf)</code></pre></div>
 <pre><code>## [1] 42470    11</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">length</span>(<span class="kw">unique</span>(ndf$gene_id))</code></pre></div>
@@ -433,23 +444,29 @@ count_df.head(<span class="dv">10</span>)</code></pre></div>
 </div>
 <div id="how-long-is-a-typical-gene" class="section level4">
 <h4>How Long Is a Typical Gene?</h4>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">ndf[<span class="st">'length'</span>] <span class="op">=</span> ndf.end <span class="op">-</span> ndf.start <span class="op">+</span> <span class="dv">1</span>
 ndf.length.describe()</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">ndf$length &lt;-<span class="st"> </span>ndf$end -<span class="st"> </span>ndf$start +<span class="st"> </span><span class="dv">1</span>
 <span class="kw">summary</span>(ndf$length)</code></pre></div>
 <pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 ##       8     884    5170   35830   30550 2305000</code></pre>
 <p>R’s summary() is not exactly the same as Python’s describe() but it’s close enough.</p>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python"><span class="im">import</span> matplotlib <span class="im">as</span> plt
 
 ndf.length.plot(kind<span class="op">=</span><span class="st">'hist'</span>, bins<span class="op">=</span><span class="dv">50</span>, logy<span class="op">=</span><span class="va">True</span>)
 plt.show()</code></pre></div>
 <p>In base R you can’t really plot a histogram with logarithmic y-axis scales (and it isn’t recommended either because 0 will become -Inf) but you can do it easily with ggplot2.</p>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">ggplot</span>(ndf, <span class="kw">aes</span>(<span class="dt">x =</span> length)) +<span class="st"> </span>
 <span class="st">  </span><span class="kw">geom_histogram</span>(<span class="dt">bins =</span> <span class="dv">50</span>, <span class="dt">fill =</span> <span class="st">&quot;blue&quot;</span>) +<span class="st"> </span>
 <span class="st">  </span><span class="kw">scale_y_log10</span>()</code></pre></div>
 <p><img src="data:image/png;base64,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MElAATqJwwwBAgQIECBAgEDWAgrQrIX1T4AAAQIECBAgMElAATqJwwwBAgQIECBAgEDWAgNZ76Cq/Q8NrUgJfery4eGRlG0tJkCAAAECBAiUT8AR0PLlVEQECBAgQIAAgVwLKEBznR6DI0CAAAECBAiUT0ABWr6ciogAAQIECBAgkGsBBWiu02NwBAgQIECAAIHyCShAy5dTEREgQIAAAQIEci2gAM11egyOAAECBAgQIFA+AQVo+XIqIgIECBAgQIBArgUUoLlOj8ERIECAAAECBMonoAAtX05FRIAAAQIECBDItYACNNfpMTgCBAgQIECAQPkEFKDly6mICBAgQIAAAQK5FlCA5jo9BkeAAAECBAgQKJ+AArR8ORURAQIECBAgQCDXAgrQXKfH4AgQIECAAAEC5RNQgJYvpyIiQIAAAQIECORaQAGa6/QYHAECBAgQIECgfAIK0PLlVEQECBAgQIAAgVwLKEBznR6DI0CAAAECBAiUT0ABWr6ciogAAQIECBAgkGsBBWiu02NwBAgQIECAAIHyCShAy5dTEREgQIAAAQIEci2gAM11egyOAAECBAgQIFA+AQVo+XIqIgIECBAgQIBArgUUoLlOj8ERIECAAAECBMonoAAtX05FRIAAAQIECBDItYACNNfpMTgCBAgQIECAQPkEFKDly6mICBAgQIAAAQK5FlCA5jo9BkeAAAECBAgQKJ+AArR8ORURAQIECBAgQCDXAgrQXKfH4AgQIECAAAEC5RNQgJYvpyIiQIAAAQIECORaQAGa6/QYHAECBAgQIECgfAIK0PLlVEQECBAgQIAAgVwLKEBznR6DI0CAAAECBAiUT0ABWr6ciogAAQIECBAgkGsBBWiu02NwBAgQIECAAIHyCShAy5dTEREgQIAAAQIEci2gAM11egyOAAECBAgQIFA+AQVo+XIqIgIECBAgQIBArgUUoLlOj8ERIECAAAECBMon0Dc2PpUvrKkR7dixY+rCDJcMDs5rufft27s7tpYH1uaGs2fPDrt3726zdXGa9ff3hxhrt59bvRCKscZfFXv37u3F7ru2z76+vjB37tywa9euSsQa87pnz56u+fZqRzGno6OjlYi1Kr9/Y5zx9Rpfq2WfiprT+Ltl4cKFqekZSF1TshXPPvtslyNa0fL+uj+2lofW1oZLly4NGzduTAqWtjooSKPBwcEQYy1b/vbHP3/+/OQP+M6dO/e3ujTLYkF2yCGHhC1btoQqxBrzunnz5tLkLy2QmNP4RrEKsS5btqwSv5OWLFkSBgYGKhFrUf+mxjd+zSan4JvpWEeAAAECBAgQINBxAQVox0l1SIAAAQIECBAg0ExAAdpMxzoCBAgQIECAAIGOCyhAO06qQwIECBAgQIAAgWYCCtBmOtYRIECAAAECBAh0XEAB2nFSHRIgQIAAAQIECDQTUIA207GOAAECBAgQIECg4wIK0I6T6pAAAQIECBAgQKCZgAK0mY51BAgQIECAAAECHRdQgHacVIcECBAgQIAAAQLNBBSgzXSsI0CAAAECBAgQ6LiAArTjpDokQIAAAQIECBBoJqAAbaZjHQECBAgQIECAQMcFBjreow6nLTA0tKLlNsPDIy1va0MCBAgQIECAQB4FHAHNY1aMiQABAgQIECBQYgEFaImTKzQCBAgQIECAQB4FFKB5zIoxESBAgAABAgRKLKAALXFyhUaAAAECBAgQyKOAAjSPWTEmAgQIECBAgECJBRSgJU6u0AgQIECAAAECeRRQgOYxK8ZEgAABAgQIECixgAK0xMkVGgECBAgQIEAgjwIK0DxmxZgIECBAgAABAiUWUICWOLlCI0CAAAECBAjkUUABmsesGBMBAgQIECBAoMQCCtASJ1doBAgQIECAAIE8CihA85gVYyJAgAABAgQIlFhAAVri5AqNAAECBAgQIJBHAQVoHrNiTAQIECBAgACBEgsoQEucXKERIECAAAECBPIooADNY1aMiQABAgQIECBQYgEFaImTKzQCBAgQIECAQB4FFKB5zIoxESBAgAABAgRKLKAALXFyhUaAAAECBAgQyKOAAjSPWTEmAgQIECBAgECJBRSgJU6u0AgQIECAAAECeRRQgOYxK8ZEgAABAgQIECixgAK0xMkVGgECBAgQIEAgjwIK0DxmxZgIECBAgAABAiUWUICWOLlCI0CAAAECBAjkUUABmsesGBMBAgQIECBAoMQCCtASJ1doBAgQIECAAIE8CihA85gVYyJAgAABAgQIlFhAAVri5AqNAAECBAgQIJBHAQVoHrNiTAQIECBAgACBEgsoQEucXKERIECAAAECBPIooADNY1aMiQABAgQIECBQYgEFaImTKzQCBAgQIECAQB4FFKB5zIoxESBAgAABAgRKLKAA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gAABAqUQaPkIaLzl0jvf+c6wbt265IjnRRddFN74xjeGj3/8464BLcVTQRAECBAgQIAAge4ItFyArly5Mvzwhz8MP//zP5+MbHBwMFx77bXJNaCrVq3qzmjthQABAgQIECBAoPACLZ2C37VrV/jqV78a/ud//icMDQ0lQcdPxl944YVh8+bNybcj/fqv/3rhMQRAgAABAgQIECCQvUBLR0DjPT93796d3Hy+cUibNm0K69evb1xsngABAgQIECBAgMB+BVoqQGfPnh1+6Zd+KVx++eXJNyHVeoo3p4/XgMav4zQRIECAAAECBAgQaEWgpQI0dnTjjTeGeO/PI488MixZsiTEa0BPOeWU5P6g8duQTAQIECBAgAABAgRaEWjpGtDYUbzv5+23357cgunee+8N8RrQl7zkJeG4445rZT+2IUCAAAECBAgQIJAItFyAxq1j0Xnssccm//gRIECAAAECBAgQaEeg5VPw7XSuDQECBAgQIECAAIFGgWkdAW1sXKT5xYsXF2m4xtpBgaxyPzDw3Msnq/47SDDjrmKsY2NjYe7cuTPuK88dxDt+xGn+/PmViDV+wLQWc57zMtOxxRjnzJkTqvJarUKc8bkbz8pWJdZFixbN9GXQ9fajo6NN91mZAnTr1q1NITq/ckHnu9RjWwILF7aei6eeerrlfcybNy8pUrr/3Gp5iB3bMMa6d+/eEO8JXOapv78/KT7jBy6rEGvMZVWev/FWglWINb5ZrEKcsfisSqzx99K2bduSgwBF+v0b3yQ0mypTgB6oEm+GZF11BKbzPIkFWZym06aokvHoZ4y3CrHGHFUl1qrEGXMan8NVeP5WKc4qxRqfuzHeIk21s4RpY3YNaJqM5QQIECBAgAABApkIKEAzYdUpAQIECBAgQIBAmoACNE3GcgIECBAgQIAAgUwEFKCZsOqUAAECBAgQIEAgTUABmiZjOQECBAgQIECAQCYCCtBMWHVKgAABAgQIECCQJqAATZOxnAABAgQIECBAIBMBBWgmrDolQIAAAQIECBBIE1CApslYToAAAQIECBAgkImAAjQTVp0SIECAAAECBAikCShA02QsJ0CAAAECBAgQyERAAZoJq04JECBAgAABAgTSBAbSVlhOoIoCQ0MrWg772Wc3tLytDQkQIECAAIF9Ao6A7rPwiAABAgQIECBAoAsCCtAuINsF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" /><!-- --></p>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">ndf[ndf.length <span class="op">&gt;</span> <span class="fl">2e6</span>].sort_values(<span class="st">'length'</span>).ix[::<span class="op">-</span><span class="dv">1</span>]</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">ndf %&gt;%
 <span class="st">  </span><span class="kw">filter</span>(length &gt;<span class="st"> </span><span class="fl">2e6</span>) %&gt;%
 <span class="st">  </span><span class="kw">arrange</span>(<span class="kw">desc</span>(length))</code></pre></div>
@@ -481,7 +498,9 @@ plt.show()</code></pre></div>
 ## 4 2172911
 ## 5 2059620
 ## 6 2057829</code></pre>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">ndf.sort_values(<span class="st">'length'</span>).head()</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">head</span>(<span class="kw">arrange</span>(ndf, length))</code></pre></div>
 <pre><code>##   seqid source type     start       end score strand phase    gene_name
 ## 1    14 havana gene  22438547  22438554     .      +     .        TRDD1
@@ -514,9 +533,11 @@ plt.show()</code></pre></div>
 </div>
 <div id="gene-distribution-among-chromosomes" class="section level4">
 <h4>Gene Distribution Among Chromosomes</h4>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">ndf <span class="op">=</span> ndf[ndf.seqid.isin(chrs)]
 chr_gene_counts <span class="op">=</span> ndf.groupby(<span class="st">'seqid'</span>).count().ix[:, <span class="dv">0</span>].sort_values().ix[::<span class="op">-</span><span class="dv">1</span>]
 chr_gene_counts</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">ndf$seqid &lt;-<span class="st"> </span><span class="kw">as.character</span>(ndf$seqid) <span class="co"># as factors it will subset the dataframe but keep the factor levels</span>
 ndf &lt;-<span class="st"> </span><span class="kw">subset</span>(ndf, seqid %in%<span class="st"> </span>chrs)
 chr_gene_counts &lt;-<span class="st"> </span><span class="kw">sort</span>(<span class="kw">table</span>(ndf$seqid), <span class="dt">decreasing =</span> <span class="ot">TRUE</span>)
@@ -526,7 +547,9 @@ chr_gene_counts</code></pre></div>
 ## 3902 2806 2561 2412 2280 2204 2154 2140 2106 2002 1881 1852 1751 1659 1628 
 ##   10   15   14   22   20   13   18   21    Y 
 ## 1600 1476 1449  996  965  872  766  541  436</code></pre>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">df[(df.<span class="bu">type</span> <span class="op">==</span> <span class="st">'gene'</span>) <span class="op">&amp;</span> (df.seqid <span class="op">==</span> <span class="st">'MT'</span>)]</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">subset</span>(df, type ==<span class="st"> &quot;gene&quot;</span> &amp;<span class="st"> </span>seqid ==<span class="st"> &quot;MT&quot;</span>)</code></pre></div>
 <pre><code>##         seqid source type start   end score strand phase
 ## 2514004    MT  insdc gene   648  1601     .      +     .
@@ -560,9 +583,11 @@ chr_gene_counts</code></pre></div>
 ## 2514105   ID=gene:ENSG00000198786;Name=MT-ND5;biotype=protein_coding;description=mitochondrially encoded NADH:ubiquinone oxidoreductase core subunit 5 [Source:HGNC Symbol%3BAcc:HGNC:7461];gene_id=ENSG00000198786;logic_name=mt_genbank_import;version=2
 ## 2514109   ID=gene:ENSG00000198695;Name=MT-ND6;biotype=protein_coding;description=mitochondrially encoded NADH:ubiquinone oxidoreductase core subunit 6 [Source:HGNC Symbol%3BAcc:HGNC:7462];gene_id=ENSG00000198695;logic_name=mt_genbank_import;version=2
 ## 2514116                                    ID=gene:ENSG00000198727;Name=MT-CYB;biotype=protein_coding;description=mitochondrially encoded cytochrome b [Source:HGNC Symbol%3BAcc:HGNC:7427];gene_id=ENSG00000198727;logic_name=mt_genbank_import;version=2</code></pre>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">gdf <span class="op">=</span> gdf[gdf.seqid.isin(chrs)]
 gdf.drop([<span class="st">'start'</span>, <span class="st">'end'</span>, <span class="st">'score'</span>, <span class="st">'strand'</span>, <span class="st">'phase'</span> ,<span class="st">'attributes'</span>], axis<span class="op">=</span><span class="dv">1</span>, inplace<span class="op">=</span><span class="va">True</span>)
 gdf.sort_values(<span class="st">'length'</span>).ix[::<span class="op">-</span><span class="dv">1</span>]</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">gdf$seqid &lt;-<span class="st"> </span><span class="kw">as.character</span>(gdf$seqid) <span class="co"># as factors it will subset the dataframe but keep the factor levels</span>
 gdf &lt;-<span class="st"> </span><span class="kw">subset</span>(gdf, <span class="kw">as.character</span>(seqid) %in%<span class="st"> </span>chrs) %&gt;%
 <span class="st">  </span><span class="kw">select</span>(-(start:attributes))
@@ -593,10 +618,12 @@ gdf &lt;-<span class="st"> </span><span class="kw">subset</span>(gdf, <span clas
 ## 23    22 GRCh38 chromosome  50818468
 ## 24    21 GRCh38 chromosome  46709983
 ## 25    MT GRCh38 chromosome     16569</code></pre>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">cdf <span class="op">=</span> chr_gene_counts.to_frame(name<span class="op">=</span><span class="st">'gene_count'</span>).reset_index()
 cdf.head(<span class="dv">2</span>)
 
 merged <span class="op">=</span> gdf.merge(cdf, on<span class="op">=</span><span class="st">'seqid'</span>)</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">cdf &lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(chr_gene_counts)
 <span class="kw">colnames</span>(cdf) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;seqid&quot;</span>, <span class="st">&quot;gene_count&quot;</span>)
 <span class="kw">head</span>(cdf, <span class="dt">n =</span> <span class="dv">2</span>)</code></pre></div>
@@ -630,11 +657,14 @@ merged</code></pre></div>
 ## 22     9 GRCh38 chromosome 138394717       1659
 ## 23     X GRCh38 chromosome 156040895       1852
 ## 24     Y GRCh38 chromosome  54106423        436</code></pre>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">merged[[<span class="st">'length'</span>, <span class="st">'gene_count'</span>]].corr()</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">cor</span>(merged[, <span class="kw">c</span>(<span class="st">&quot;length&quot;</span>, <span class="st">&quot;gene_count&quot;</span>)])</code></pre></div>
 <pre><code>##               length gene_count
 ## length     1.0000000  0.7282208
 ## gene_count 0.7282208  1.0000000</code></pre>
+<p><em>Python:</em></p>
 <div class="sourceCode"><pre class="sourceCode python"><code class="sourceCode python">ax <span class="op">=</span> merged[[<span class="st">'length'</span>, <span class="st">'gene_count'</span>]].sort_values(<span class="st">'length'</span>).plot(x<span class="op">=</span><span class="st">'length'</span>, y<span class="op">=</span><span class="st">'gene_count'</span>, style<span class="op">=</span><span class="st">'o-'</span>)
 <span class="co"># add some margin to both ends of x axis</span>
 xlim <span class="op">=</span> ax.get_xlim()
@@ -643,6 +673,7 @@ ax.set_xlim([xlim[<span class="dv">0</span>] <span class="op">-</span> margin, x
 <span class="co"># Label each point on the graph</span>
 <span class="cf">for</span> (s, x, y) <span class="op">in</span> merged[[<span class="st">'seqid'</span>, <span class="st">'length'</span>, <span class="st">'gene_count'</span>]].sort_values(<span class="st">'length'</span>).values:
     ax.text(x, y <span class="op">-</span> <span class="dv">100</span>, <span class="bu">str</span>(s))</code></pre></div>
+<p><em>R:</em></p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">merged[, <span class="kw">c</span>(<span class="st">&quot;seqid&quot;</span>, <span class="st">&quot;length&quot;</span>, <span class="st">&quot;gene_count&quot;</span>)] %&gt;%
 <span class="st">  </span><span class="kw">arrange</span>(<span class="kw">desc</span>(length)) %&gt;%
 <span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">x =</span> length, <span class="dt">y =</span> gene_count, <span class="dt">label =</span> seqid)) +

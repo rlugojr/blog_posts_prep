@@ -10,11 +10,11 @@ output:
 
 I am an avid R user and rarely use anything else for data analysis and visualisation.
 
-I wanted to test whether my bias for using R is founded in good reason or whether Python might be faster/ easier for some cases.
+I wanted to see how R and Python fare in a one-to-one comparison, i.e. whether one might be faster/ easier to use than the other.
 
 Therefore, I am following [Zhuyi Xue's "A Comprehensive Introduction To Your Genome With the SciPy Stack"](https://www.toptal.com/python/comprehensive-introduction-your-genome-scipy) (with some minor tweaks here and there) to compare his analysis with how I would run it in R. I want to know whether one or the other tool is better suited to this type of analysis.
 
-He gives a nice introduction to the data, so I will not repeat it here but focus on the comparison with R.
+He gives a nice introduction to the data, so I will not repeat it here but focus on the comparison between the Python code with R.
 
 For R, I am working with RStudio, for Python with Anaconda and Spyder.
 
@@ -30,6 +30,8 @@ library(ggplot2)
 
 Reading in data as csv files is straight forward in both R and Python with the exception that R opens compressed files without having to specify the compression format as in Python/pandas.
 
+*Python:*
+
 ```{python eval = FALSE}
 import pandas as pd
 
@@ -42,6 +44,8 @@ df = pd.read_csv('../../Homo_sapiens.GRCh38.85.gff3.gz',
                          names = ['seqid', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes'])
 df.head()
 ```
+
+*R:*
 
 ```{r cache=TRUE}
 df <- read.csv("../../Homo_sapiens.GRCh38.85.gff3.gz", 
@@ -56,9 +60,13 @@ head(df)
 
 - listing unique strings of "seqid" column
 
+*Python:*
+
 ```{python eval=FALSE}
 df.seqid.unique() # alternatively: df['seqid'].unique()
 ```
+
+*R:*
 
 ```{r}
 unique(df$seqid)
@@ -66,9 +74,13 @@ unique(df$seqid)
 
 - how many unique seqids are there?
 
+*Python:*
+
 ```{python eval=FALSE}
 df.seqid.unique().shape
 ```
+
+*R:*
 
 ```{r}
 length(unique(df$seqid))
@@ -76,9 +88,13 @@ length(unique(df$seqid))
 
 - counting occurrences of items in the "source" column
 
+*Python:*
+
 ```{python eval=FALSE}
 df.source.value_counts()
 ```
+
+*R:*
 
 ```{r}
 # table(df$source) is per default ordered alphabetically, if we want it ordered by decreasing counts, like with Python:
@@ -89,12 +105,16 @@ sort(table(df$source), decreasing = TRUE)
 
 - subsetting a dataframe
 
+*Python:*
+
 ```{python eval=FALSE}
 gdf = df[df.source == 'GRCh38']
 
 gdf.shape
 gdf.sample(10)
 ```
+
+*R:*
 
 ```{r}
 gdf <- subset(df, source == "GRCh38")
@@ -110,12 +130,16 @@ Viewing 10 random lines is more straight forward in Python but in R I'd usually 
 
 - calculate the sum of seqid lengths
 
+*Python:*
+
 ```{python eval=FALSE}
 gdf = gdf.copy()
 gdf['length'] = gdf.end - gdf.start + 1
 
 gdf.length.sum()
 ```
+
+*R:*
 
 ```{r}
 gdf$length <- gdf$end - gdf$start + 1
@@ -127,6 +151,8 @@ In R we don't need to copy the dataframe first.
 
 - calculate the proportio of the genome that is not on main chromosome assemblies
 
+*Python:*
+
 ```{python eval=FALSE}
 chrs = [str(_) for _ in range(1, 23)] + ['X', 'Y', 'MT']
 gdf[-gdf.seqid.isin(chrs)].length.sum() / gdf.length.sum()
@@ -135,12 +161,16 @@ gdf[-gdf.seqid.isin(chrs)].length.sum() / gdf.length.sum()
 gdf[(gdf['type'] == 'supercontig')].length.sum() / gdf.length.sum()
 ```
 
+*R:*
+
 ```{r}
 chrs <- c(1:23, "X", "Y", "MT")
 sum(subset(gdf, !seqid %in% chrs)$length) / sum(gdf$length)
 ```
 
 #### How Many Genes Are There?
+
+*Python:*
 
 ```{python eval=FALSE}
 edf = df[df.source.isin(['ensembl', 'havana', 'ensembl_havana'])]
@@ -150,6 +180,8 @@ edf.sample(10)
 edf.type.value_counts()
 ```
 
+*R:*
+
 ```{r}
 edf <- subset(df, source %in% c("ensembl", "havana", "ensembl_havana"))
 dim(edf)
@@ -158,12 +190,16 @@ sample_n(edf, 10)
 sort(table(edf$type), decreasing = TRUE)
 ```
 
+*Python:*
+
 ```{python eval=FALSE}
 ndf = edf[edf.type == 'gene']
 ndf = ndf.copy()
 ndf.sample(10).attributes.values
 ndf.shape
 ```
+
+*R:*
 
 ```{r}
 ndf <- subset(edf, type == "gene")
@@ -174,6 +210,8 @@ dim(ndf)
 - extracting gene information from attributes field
 
 I don't know if there is an easier way in Python but in R we don't need to create a helper function around it. We can simply use gsub()...
+
+*Python:*
 
 ```{python eval=FALSE}
 import re
@@ -210,6 +248,8 @@ ndf.drop('attributes', axis=1, inplace=True)
 ndf.head()
 ```
 
+*R:*
+
 ```{r}
 ndf$gene_name <- gsub("(.*Name=)(.*?)(;biotype.*)", "\\2", ndf$attributes)
 ndf$gene_id <- gsub("(ID=gene:)(.*?)(;Name.*)", "\\2", ndf$attributes)
@@ -222,6 +262,8 @@ ndf <- subset(ndf, select = -attributes)
 head(ndf, n = 10)
 ```
 
+*Python:*
+
 ```{python eval=FALSE}
 ndf.shape
 ndf.gene_id.unique().shape
@@ -231,6 +273,8 @@ count_df = ndf.groupby('gene_name').count().ix[:, 0].sort_values().ix[::-1]
 count_df.head(10)
 ```
 
+*R:*
+
 ```{r}
 dim(ndf)
 length(unique(ndf$gene_id))
@@ -239,10 +283,14 @@ length(unique(ndf$gene_name))
 
 #### How Long Is a Typical Gene?
 
+*Python:*
+
 ```{python eval=FALSE}
 ndf['length'] = ndf.end - ndf.start + 1
 ndf.length.describe()
 ```
+
+*R:*
 
 ```{r}
 ndf$length <- ndf$end - ndf$start + 1
@@ -250,6 +298,8 @@ summary(ndf$length)
 ```
 
 R's summary() is not exactly the same as Python's describe() but it's close enough.
+
+*Python:*
 
 ```{python eval=FALSE}
 import matplotlib as plt
@@ -260,15 +310,21 @@ plt.show()
 
 In base R you can't really plot a histogram with logarithmic y-axis scales (and it isn't recommended either because 0 will become -Inf) but you can do it easily with ggplot2.
 
+*R:*
+
 ```{r message=FALSE, warning=FALSE}
 ggplot(ndf, aes(x = length)) + 
   geom_histogram(bins = 50, fill = "blue") + 
   scale_y_log10()
 ```
 
+*Python:*
+
 ```{python eval=FALSE}
 ndf[ndf.length > 2e6].sort_values('length').ix[::-1]
 ```
+
+*R:*
 
 ```{r}
 ndf %>%
@@ -276,9 +332,13 @@ ndf %>%
   arrange(desc(length))
 ```
 
+*Python:*
+
 ```{python eval=FALSE}
 ndf.sort_values('length').head()
 ```
+
+*R:*
 
 ```{r}
 head(arrange(ndf, length))
@@ -286,11 +346,15 @@ head(arrange(ndf, length))
 
 #### Gene Distribution Among Chromosomes
 
+*Python:*
+
 ```{python eval=FALSE}
 ndf = ndf[ndf.seqid.isin(chrs)]
 chr_gene_counts = ndf.groupby('seqid').count().ix[:, 0].sort_values().ix[::-1]
 chr_gene_counts
 ```
+
+*R:*
 
 ```{r}
 ndf$seqid <- as.character(ndf$seqid) # as factors it will subset the dataframe but keep the factor levels
@@ -299,19 +363,27 @@ chr_gene_counts <- sort(table(ndf$seqid), decreasing = TRUE)
 chr_gene_counts
 ```
 
+*Python:*
+
 ```{python eval=FALSE}
 df[(df.type == 'gene') & (df.seqid == 'MT')]
 ```
 
+*R:*
+
 ```{r}
 subset(df, type == "gene" & seqid == "MT")
 ```
+
+*Python:*
 
 ```{python eval=FALSE}
 gdf = gdf[gdf.seqid.isin(chrs)]
 gdf.drop(['start', 'end', 'score', 'strand', 'phase' ,'attributes'], axis=1, inplace=True)
 gdf.sort_values('length').ix[::-1]
 ```
+
+*R:*
 
 ```{r}
 gdf$seqid <- as.character(gdf$seqid) # as factors it will subset the dataframe but keep the factor levels
@@ -320,13 +392,16 @@ gdf <- subset(gdf, as.character(seqid) %in% chrs) %>%
 arrange(gdf, desc(length))
 ```
 
+*Python:*
+
 ```{python eval=FALSE}
 cdf = chr_gene_counts.to_frame(name='gene_count').reset_index()
 cdf.head(2)
 
 merged = gdf.merge(cdf, on='seqid')
-
 ```
+
+*R:*
 
 ```{r}
 cdf <- as.data.frame(chr_gene_counts)
@@ -337,13 +412,19 @@ merged <- merge(gdf, cdf, by = "seqid")
 merged
 ```
 
+*Python:*
+
 ```{python eval=FALSE}
 merged[['length', 'gene_count']].corr()
 ```
 
+*R:*
+
 ```{r}
 cor(merged[, c("length", "gene_count")])
 ```
+
+*Python:*
 
 ```{python eval=FALSE}
 ax = merged[['length', 'gene_count']].sort_values('length').plot(x='length', y='gene_count', style='o-')
@@ -355,6 +436,8 @@ ax.set_xlim([xlim[0] - margin, xlim[1] + margin])
 for (s, x, y) in merged[['seqid', 'length', 'gene_count']].sort_values('length').values:
     ax.text(x, y - 100, str(s))
 ```
+
+*R:*
 
 ```{r}
 merged[, c("seqid", "length", "gene_count")] %>%
