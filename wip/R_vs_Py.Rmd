@@ -8,3 +8,10 @@ output:
     highlight: github
 ---
 
+I am very much biased towards R. So far, I've not felt that there was anything that I couldn't do in R but I realize that some might beg to differ. So, here, I want to compare a Python workflow with R and see if one is noteably better (faster, easier, more straight forward, etc.)
+
+I am running R with RStudio and Python (Miniconda 3) with Pyzo.
+
+https://www.toptal.com/python/comprehensive-introduction-your-genome-scipy
+
+
