@@ -7,6 +7,11 @@ install.packages("fivethirtyeight")
 
 library(fivethirtyeight)
 
+str(food_world_cup)
+
+str(nutrition_pvalues)
+head(nutrition_pvalues)
+
 library(dplyr)
 library(ggplot2)
 library(knitr)
