@@ -8,14 +8,6 @@ output:
     highlight: github
 ---
 
-<<<<<<< HEAD
-I am very much biased towards R. So far, I've not felt that there was anything that I couldn't do in R but I realize that some might beg to differ. So, here, I want to compare a Python workflow with R and see if one is noteably better (faster, easier, more straight forward, etc.)
-
-I am running R with RStudio and Python (Miniconda 3) with Pyzo.
-
-https://www.toptal.com/python/comprehensive-introduction-your-genome-scipy
-
-=======
 I am an avid R user and rarely use anything else for data analysis and visualisation.
 
 I wanted to see how R and Python fare in a one-to-one comparison, i.e. whether one might be faster/ easier to use than the other.
