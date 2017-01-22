@@ -47,3 +47,11 @@ str(test_f)
 library(ggplot2)
 ggplot(subset(test_f, Country.Code %in% c("ARB", "CSS", "CEB")), aes(x = year, y = value, color = Country.Code)) + geom_point()
 ```
+
+------------------
+
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, fig.align="center", cache=FALSE}
+sessionInfo()
+```

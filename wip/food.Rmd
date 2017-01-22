@@ -61,3 +61,11 @@ library(darch)
 ```
 
 https://cran.r-project.org/web/packages/deepnet/deepnet.pdf
+
+------------------
+
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, fig.align="center", cache=FALSE}
+sessionInfo()
+```
