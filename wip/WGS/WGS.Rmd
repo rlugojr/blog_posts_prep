@@ -25,27 +25,90 @@ dataset <- read.csv("Data.csv")
 dataset_subs <- dataset[grep(".FE|.MA", dataset$Indicator.Code), ]
 head(dataset_subs)
 
-dataset_fem <- dataset[grep("female|Women", dataset$Indicator.Name), ]
+dataset_fem <- dataset[grep("female", dataset$Indicator.Name), ]
+dataset_fem$Indicator.Name <- gsub("female", "", dataset_fem$Indicator.Name)
 dataset_fem$Indicator.Code <- gsub(".FE", "", dataset_fem$Indicator.Code)
+dataset_fem$gender <- "female"
 
-dataset_male <- dataset[-grep("female|Women", dataset$Indicator.Name), ]
+dataset_male <- dataset[-grep("male", dataset$Indicator.Name), ]
+dataset_male$Indicator.Name <- gsub("male", "", dataset_male$Indicator.Name)
 dataset_male$Indicator.Code <- gsub(".FE", "", dataset_male$Indicator.Code)
+dataset_male$gender <- "male"
 
-# unique country codes
-length(unique(dataset$Country.Code))
+indicators <- dataset_male$Indicator.Code[which(dataset_male$Indicator.Code %in% dataset_fem$Indicator.Code)]
 
-# Indicators
-dataset_fem$Indicator.Name
+dataset_fem <- dataset_fem[which(dataset_fem$Indicator.Code %in% indicators), ]
+dataset_male <- dataset_male[which(dataset_male$Indicator.Code %in% indicators), ]
 
-library(tidyr)
-test_f <- dataset_fem[grep(dataset_fem$Indicator.Code[1], dataset_fem$Indicator.Code), ] %>%
-  gather(year, value, X1960:X2016)
-test_f$year <- as.character(gsub("X", "", test_f$year))
-test_f$Indicator.Code <- as.factor(test_f$Indicator.Code)
-str(test_f)
+dataset_fem <- dataset_fem[which(dataset_fem$Country.Code %in% dataset_male$Country.Code), ]
+dataset_male <- dataset_male[which(dataset_male$Country.Code %in% dataset_fem$Country.Code), ]
 
-library(ggplot2)
-ggplot(subset(test_f, Country.Code %in% c("ARB", "CSS", "CEB")), aes(x = year, y = value, color = Country.Code)) + geom_point()
+library(dplyr)
+dataset_fem <- arrange(dataset_fem, Country.Code)
+dataset_male <- arrange(dataset_male, Country.Code)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+length(unique(dataset_fem$Indicator.Code)) == length(unique(dataset_male$Indicator.Code))
+
+for (code in unique(dataset_fem$Indicator.Code)) {
+  
+  fem <- dataset_fem[which(dataset_fem$Indicator.Code == code), ]
+  male <- dataset_male[which(dataset_male$Indicator.Code == code), ]
+
+  for (i in 1:nrow(fem)) {
+    
+    if (i == 1) {
+      
+      diff <- log2(male[i, 5:61] / fem[i, 5:61])
+      diff_table <- cbind(male[i, c(1:4)], diff)
+      
+    } else {
+      
+      diff <- log2(male[i, 5:61] / fem[i, 5:61])
+      diff_table <- rbind(diff_table, 
+                          cbind(male[i, c(1:4)], diff))
+      
+    }
+    
+  }
+}
+
+save(diff_table, file = "diff_table.RData")
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+wmap_countries <- readOGR(dsn=".", layer="ne_110m_admin_0_countries")
+wmap_countries_robin <- spTransform(wmap_countries, CRS("+proj=robin"))
+wmap_countries_robin_df <- fortify(wmap_countries_robin)
+wmap_countries_robin@data$id <- rownames(wmap_countries_robin@data)
+wmap_countries_robin_df_final <- join(wmap_countries_robin_df, wmap_countries_robin@data, by="id")
+wmap_countries_robin_df_final <- wmap_countries_robin_df_final[, c(1:2, 7, 19:20)]
+
+save(wmap_countries_robin_df_final, file = "wmap_countries_robin_df_final.RData")
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+load("diff_table.RData")
+load("wmap_countries_robin_df_final.RData")
+
+head(diff_table)
+head(wmap_countries_robin_df_final)
+
+
+code = "SL.EMP.VULN.ZS"
+year = "2014"
+
+diff_table_map <- diff_table[which(diff_table$Indicator.Code == code), c(1:3, which(colnames(diff_table) == paste0("X", year)))]
+colnames(diff_table_map)[ncol(diff_table_map)] <- "value"
+
+map <- left_join(wmap_countries_robin_df_final, diff_table_map, by = c("gu_a3" = "Country.Code"))
+
+ggplot(map) +
+  coord_equal() +
+  theme_opts +
+  geom_polygon(aes(long, lat, group=group, fill=value)) +
+    geom_path(aes(long, lat, group=group), color="white", size=0.7)
 ```
 
 ------------------
