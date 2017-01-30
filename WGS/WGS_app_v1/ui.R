@@ -34,9 +34,11 @@ shinyUI(
     mainPanel(
       tags$h2("World map of gender statistics"),
 
-       plotOutput("map",
-                  click = "plot_click"),
-      verbatimTextOutput("info")
+       plotOutput("map"),
+
+      p("This dataset was downloaded from The World Bank's Open Data project:", a("http://data.worldbank.org/", href = "http://data.worldbank.org/")),
+      p("via", a("https://www.kaggle.com/theworldbank/world-gender-statistics", href = "https://www.kaggle.com/theworldbank/world-gender-statistic")),
+      p("For more info on how I built this app check out", a("my blog.", href = "https://shiring.github.io/"))
     ),
   )
 ))

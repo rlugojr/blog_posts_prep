@@ -1,12 +1,9 @@
 load("diff_table_bind.RData")
 load("dataset_fem.RData")
 load("dataset_male.RData")
-load("wmap_countries_df_final.RData")
+load("wmap_countries_smaller_df_final.RData")
 
 library(shiny)
-library(dplyr)
-library(ggplot2)
-
 library(dplyr)
 library(ggplot2)
 
@@ -83,6 +80,12 @@ shinyServer(function(input, output) {
         scale_fill_gradientn(colours = colfunc(100))
 
     }
+  })
+
+  output$info <- renderPrint({
+    # With base graphics, need to tell it what the x and y variables are.
+    nearPoints(wmap_countries_df_final[, c(1, 2, 16)], input$plot_click, xvar = "long", yvar = "lat", addDist = TRUE, maxpoints = 1, threshold = 100)
+    # nearPoints() also works with hover and dblclick events
   })
 
 })
