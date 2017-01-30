@@ -1,5 +1,6 @@
 load("measures.RData")
 load("years.RData")
+load("countries.RData")
 
 library(shiny)
 library(shinythemes)
@@ -16,27 +17,44 @@ shinyUI(
   sidebarLayout(
     sidebarPanel(
 
-      tags$h3("Select to display:"),
-      selectInput("measure", "Measurement:",
-                  choices = measures),
+      tags$h4("Select to display in map:"),
 
-      selectInput("year", "Year:",
-                choices = rev(years)),
+      uiOutput("choose_measure"),
+
+      uiOutput("choose_years"),
 
       radioButtons("sex", "Gender:",
                    choices = list("Male" = "M",
                                   "Female" = "F",
                                   "Ratio" = "ratio"),
-                   selected = "ratio")
+                   selected = "ratio"),
+
+      tags$h4("Select to display in timeline:"),
+
+      selectInput("country", "Country",
+                  choices = countries)
   ),
 
     # Show a plot of the generated distribution
     mainPanel(
-      tags$h2("World map of gender statistics"),
+      tags$h3("World map of gender statistic"),
+
+      p("Select a statistic and year on sidebar panel."),
 
        plotOutput("map",
-                  click = "plot_click"),
-      verbatimTextOutput("info")
+                  click = "plot_click", height = "auto"),
+
+      p("Click on any country on the map to find out more about it:"),
+
+      verbatimTextOutput("info"),
+
+      br(),
+
+      tags$h3("Timeline of gender statistic"),
+
+      p("Select a country on sidebar panel."),
+
+      plotOutput("timeline", height = "auto")
     ),
   )
 ))

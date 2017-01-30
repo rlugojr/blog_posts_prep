@@ -30,11 +30,13 @@ dataset_subs$Indicator.Name <- as.character(dataset_subs$Indicator.Name)
 
 dataset_fem <- dataset[grep("female", dataset$Indicator.Name), ]
 dataset_fem$Indicator.Name <- gsub("female", "", dataset_fem$Indicator.Name)
+dataset_fem$Indicator.Name <- gsub(",", "", dataset_fem$Indicator.Name)
 dataset_fem$Indicator.Code <- gsub(".FE", "", dataset_fem$Indicator.Code)
 dataset_fem$gender <- "female"
 
 dataset_male <- dataset[-grep("female", dataset$Indicator.Name), ]
 dataset_male$Indicator.Name <- gsub("male", "", dataset_male$Indicator.Name)
+dataset_male$Indicator.Name <- gsub(",", "", dataset_male$Indicator.Name)
 dataset_male$Indicator.Code <- gsub(".FE", "", dataset_male$Indicator.Code)
 dataset_male$gender <- "male"
 
@@ -108,6 +110,10 @@ save(measures, file = "measures.RData")
 years <- gsub("X", "", colnames(diff_table_bind)[-c(1:4)])
 years <- years[-length(years)]
 save(years, file = "years.RData")
+
+diff_table_bind <- diff_table_bind[which(diff_table_bind$Country.Code %in% wmap_countries_df_final$gu_a3), ]
+countries <- as.character(unique(diff_table_bind$Country.Name))
+save(countries, file = "countries.RData")
 ```
 
 ## Map
@@ -137,9 +143,12 @@ save(wmap_countries_df_final, file = "wmap_countries_smaller_df_final.RData")
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
 load("measures.RData")
 load("years.RData")
+load("countries.RData")
 
 measure = measures[1]
 year = years[56]
+
+country = countries[1]
 
 load("diff_table_bind.RData")
 load("dataset_fem.RData")
@@ -167,12 +176,10 @@ my_theme <- function(base_size = 12, base_family = "sans"){
     axis.title = element_text(size = 14),
     panel.grid.major = element_line(color = "grey"),
     panel.grid.minor = element_blank(),
-    panel.background = element_rect(fill = "aliceblue"),
+    panel.background = element_rect(fill = "white"),
     strip.background = element_rect(fill = "royalblue", color = "grey", size = 1),
     strip.text = element_text(face = "bold", size = 12, color = "white"),
-    legend.position = "none",
-    legend.box.background = element_rect(colour = "grey50"),
-    legend.background = element_blank(),
+    legend.position = "right",
     panel.border = element_rect(color = "grey", fill = NA, size = 0.5)
   )
 }
@@ -180,17 +187,27 @@ my_theme <- function(base_size = 12, base_family = "sans"){
 colfunc <- colorRampPalette(c("yellow", "red"))
 ```
 
-```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
-diff_table_timeline <- diff_table_bind[which(diff_table_bind$Indicator.Name == measure), ]
-diff_table_timeline <- diff_table_timeline[which(diff_table_timeline$Country.Code %in% wmap_countries_df_final$gu_a3), ]
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=10, fig.height=4, fig.align="center", cache=TRUE}
+
+diff_table_timeline <- rbind(dataset_fem, dataset_male) %>%
+  subset(Indicator.Name == measure) %>%
+  subset(Country.Code %in% wmap_countries_df_final$gu_a3) %>%
+  subset(as.character(Country.Name) == country)
 
 library(tidyr)
 diff_table_timeline_gather <- gather(diff_table_timeline, year, value, X1960:X2015)
+diff_table_timeline_gather$year <- gsub("X", "", diff_table_timeline_gather$year)
 
-ggplot(diff_table_timeline_gather, aes(x = year, y = value, color = Country.Name, group = Country.Code)) +
-  geom_point() +
-  geom_line() +
-  my_theme()
+ggplot(diff_table_timeline_gather, aes(x = year, y = value, color = gender, group = gender)) +
+  geom_line(size = 1, alpha = 0.7) +
+  geom_point(size = 2, alpha = 0.7) +
+  my_theme() +
+  scale_color_brewer(palette = "Set1") +
+  labs(title = paste(measure),
+       subtitle = paste(country),
+       x = "Year",
+       y = "Value",
+       color = "Gender")
 ```
 
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
