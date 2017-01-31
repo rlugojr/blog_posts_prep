@@ -46,7 +46,7 @@ shinyUI(
 
       p("Click on any country on the map to find out more about it:"),
 
-      verbatimTextOutput("info"),
+      tableOutput("info"),
 
       br(),
 

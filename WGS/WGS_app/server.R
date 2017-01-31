@@ -81,7 +81,7 @@ shinyServer(function(input, output, session) {
         geom_path(color = "white", size = 0.5) +
         labs(title = paste(measure),
              fill = "log2 of\nmale /\nfemale") +
-        scale_fill_gradient2(low = "blue", midpoint = 0, mid = "yellow", high = "red")
+        scale_fill_gradient2(low = "blue", midpoint = 0, mid = "yellow", high = "red", na.value = "grey30")
 
     } else if (input$sex == "F") {
 
@@ -96,7 +96,7 @@ shinyServer(function(input, output, session) {
         geom_path(color = "white", size = 0.5) +
         labs(title = paste(measure),
              fill = "Value") +
-        scale_fill_gradientn(colours = colfunc(100))
+        scale_fill_gradientn(colours = colfunc(100), na.value = "grey30")
 
     } else if (input$sex == "M") {
 
@@ -111,15 +111,19 @@ shinyServer(function(input, output, session) {
         geom_path(color = "white", size = 0.5) +
         labs(title = paste(measure),
              fill = "Value") +
-        scale_fill_gradientn(colours = colfunc(100))
+        scale_fill_gradientn(colours = colfunc(100), na.value = "grey30")
 
     }
   }, height = function() {
     0.6 * session$clientData$output_map_width
   })
 
-  output$info <- renderPrint({
-    nearPoints(wmap_countries_df_final[, c(1, 2, 26, 42, 48, 63)], input$plot_click, xvar = "long", yvar = "lat", maxpoints = 1, threshold = 100)
+  output$info <- renderTable({
+    table <- nearPoints(wmap_countries_df_final[, c(1, 2, 26, 42, 48, 63)], input$plot_click, xvar = "long", yvar = "lat", maxpoints = 1, threshold = 100)
+
+    colnames(table) <- c("longitude", "latitude", "country", "population est.", "income group", "region")
+
+    table
   })
 
   output$timeline <- renderPlot({
