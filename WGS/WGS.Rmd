@@ -155,6 +155,8 @@ load("dataset_fem.RData")
 load("dataset_male.RData")
 load("wmap_countries_smaller_df_final.RData")
 
+library(ggplot2)
+
 map_theme <- list(theme(panel.grid.minor = element_blank(),
                         panel.grid.major = element_blank(),
                         panel.background = element_blank(),
@@ -188,7 +190,6 @@ colfunc <- colorRampPalette(c("yellow", "red"))
 ```
 
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=10, fig.height=4, fig.align="center", cache=TRUE}
-
 diff_table_timeline <- rbind(dataset_fem, dataset_male) %>%
   subset(Indicator.Name == measure) %>%
   subset(Country.Code %in% wmap_countries_df_final$gu_a3) %>%
@@ -215,6 +216,7 @@ diff_table_map <- diff_table_bind[which(diff_table_bind$Indicator.Name == measur
                                         c(1:3, which(colnames(diff_table_bind) == paste0("X", year)))]
       colnames(diff_table_map)[ncol(diff_table_map)] <- "value"
 
+      library(dplyr)
       map <- left_join(subset(wmap_countries_df_final, !continent == "Antarctica"), diff_table_map, by = c("gu_a3" = "Country.Code"))
 
       ggplot(map, aes(long, lat, group = group, fill = log2(value))) +
