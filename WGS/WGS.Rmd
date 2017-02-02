@@ -190,6 +190,7 @@ colfunc <- colorRampPalette(c("yellow", "red"))
 ```
 
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=10, fig.height=4, fig.align="center", cache=TRUE}
+library(dplyr)
 diff_table_timeline <- rbind(dataset_fem, dataset_male) %>%
   subset(Indicator.Name == measure) %>%
   subset(Country.Code %in% wmap_countries_df_final$gu_a3) %>%
@@ -228,6 +229,76 @@ diff_table_map <- diff_table_bind[which(diff_table_bind$Indicator.Name == measur
              fill = "log2 of male / female") +
         scale_fill_gradient2(low = "blue", midpoint = 0, mid = "yellow", high = "red")
 ```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+year_table <- diff_table_bind[which(diff_table_bind$Country.Code %in% wmap_countries_df_final$gu_a3), ]
+
+last_val <- apply(year_table[, grep("^X[0-9]+$", colnames(year_table))], 1, function(x) 
+  na.omit(x)[length(na.omit(x))]
+  )
+last_val_df <- data.frame(unlist(last_val))
+last_val_df$year_of_val <- gsub("([0-9]+)(.X)([0-9]+)", "\\3", rownames(last_val_df))
+rownames(last_val_df) <- gsub("([0-9]+)(.X)([0-9]+)", "\\1", rownames(last_val_df))
+
+year_table_last_val <- cbind(year_table[rownames(last_val_df), 1:3], last_val_df)
+```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+map <- left_join(subset(wmap_countries_df_final, !continent == "Antarctica"), subset(year_table_last_val, Indicator.Name == measure), by = c("gu_a3" = "Country.Code"))
+
+      ggplot(map, aes(long, lat, group = group, fill = log2(unlist.last_val.), color = year_of_val)) +
+        coord_equal() +
+        map_theme +
+        geom_polygon() +
+        geom_path(size = 1) +
+        labs(title = paste(measure),
+             fill = "log2 of male / female") +
+        scale_fill_gradient2(low = "blue", midpoint = 0, mid = "yellow", high = "red", na.value = "grey") +
+        scale_color_brewer(palette="Set1")
+```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+ggplot(map, aes(x = economy, y = log2(unlist.last_val.), fill = income_grp, color = income_grp)) +
+  geom_boxplot(alpha = 0.7, size = 2) +
+  my_theme() +
+  coord_flip() +
+  scale_color_hue(l=20) +
+  labs(title = paste(measure),
+       y = "log2 of male / female",
+       x = "Economy",
+       color = "Income group",
+       fill = "Income group")
+```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+aggregate(log2(unlist.last_val.) ~ economy * income_grp, data = map, mean)
+
+subs <- map[!duplicated(map$gu_a3), c("gu_a3", "name", "economy", "income_grp", "unlist.last_val.")]
+arrange(subset(subs, !is.na(unlist.last_val.)), economy, income_grp)
+```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+ggplot(map, aes(x = log2(unlist.last_val.), fill = income_grp, color = income_grp)) +
+  my_theme() +
+  geom_density(alpha=0.3)
+```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+ggplot(map, aes(x = log2(unlist.last_val.), fill = economy, color = economy)) +
+  my_theme() +
+  geom_density(alpha=0.3)
+```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+kw1 <- kruskal.test(log2(unlist.last_val.) ~ economy, data = map)
+str(kw1)
+
+kruskal.test(log2(unlist.last_val.) ~ income_grp, data = map)
+
+```
+
+- https://cran.r-project.org/web/packages/ordinal/vignettes/clm_intro.pdf
+- https://journal.r-project.org/archive/2016-1/feys.pdf
 
 ------------------
 

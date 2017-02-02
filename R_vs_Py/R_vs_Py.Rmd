@@ -77,7 +77,7 @@ df.head()
 *R:*
 
 ```{r cache=TRUE}
-df <- read.csv("~/Documents/Github/Homo_sapiens.GRCh38.85.gff3.gz", 
+df <- read.csv("U:/Github_blog/Homo_sapiens.GRCh38.85.gff3.gz", 
                header = FALSE, 
                sep = "\t", 
                col.names = c('seqid', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes'), 
@@ -153,7 +153,7 @@ df.source.value_counts()
 sort(table(df$source), decreasing = TRUE)
 
 # dplyr:
-# df %>% select(source) %>% table %>% sort(decreasing = TRUE)
+df %>% group_by(source) %>% summarize(count = n()) %>% arrange(desc(count))
 ```
 
 

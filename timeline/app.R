@@ -6,17 +6,18 @@ library(timevis)
 
 data <- data.frame(
   content = c("Chip-Seq Marie Liebmann",
+              "Treffen mit Marie Liebmann",
               "Paper schreiben",
               "Antrag übersetzen & überarbeiten",
               "Vortrag für Informatikseminar vorbereiten<br>(auf Englisch!)",
               "Informatikseminar",
               "Protein-miRNA-WGCNA",
               "Doktorarbeit veröffentlichen ML to predict df based on ft"),
-  start = c("2017-02-01", "2017-02-01", "2017-02-01", "2017-02-01", "2017-02-23 14:00:00", "2017-04-01", "2017-04-01"),
-  end = c("2017-02-03", "2017-02-24", "2017-02-24", "2017-02-23", NA, NA, NA),
-  type = c("background", "range", "range", "range", "point", "box", "box"),
-  group = c(1, 2, 2, 3, 3, 2, 2),
-  style = c("color: grey;", NA, NA, "color: red;", NA, NA, NA)
+  start = c("2017-02-01", "2017-02-03", "2017-02-09", "2017-02-01", "2017-02-01", "2017-02-23 14:00:00", "2017-04-01", "2017-04-01"),
+  end = c("2017-02-03", NA, "2017-02-24", "2017-02-24", "2017-02-02", NA, NA, NA),
+  type = c("background", "point", "range", "range", "range", "point", "box", "box"),
+  group = c(1, 1, 2, 2, 3, 3, 2, 2),
+  style = c("color: grey;", "color: red;", NA, "color: red;", "color: grey;", NA, NA, NA)
 )
 
 data$id <- seq_len(nrow(data))
