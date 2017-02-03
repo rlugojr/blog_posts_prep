@@ -345,14 +345,14 @@ country.inf <- country.inf[!duplicated(country.inf), ]
 stats_test <- left_join(stats_test, country.inf, by = c("Country.Code" = "adm0_a3"))
 stats_test <- left_join(stats_test, subset(year_table_last_val, Indicator.Name == measure), by = "Country.Code")
 
-ggplot(stats_test, aes(x = X2015, fill = income_grp, color = income_grp)) +
+ggplot(stats_test, aes(x = log2(unlist.last_val.), fill = income_grp, color = income_grp)) +
   my_theme() +
   geom_density(alpha=0.3) +
   facet_grid(~ gender)
 ```
 
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
-ggplot(stats_test, aes(x = X2015, fill = economy, color = economy)) +
+ggplot(stats_test, aes(x = log2(unlist.last_val.), fill = economy, color = economy)) +
   my_theme() +
   geom_density(alpha=0.3) +
   facet_grid(~ gender)
