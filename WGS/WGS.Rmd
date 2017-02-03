@@ -73,12 +73,12 @@ for (n in 1:length(unique(dataset_fem$Indicator.Name))) {
     
     if (i == 1) {
       
-      diff <- male[i, 5:61] / fem[i, 5:61]
+      diff <- (male[i, 5:61] + 0.001) / (fem[i, 5:61] + 0.001)
       diff_table <- cbind(male[i, c(1:4)], diff)
       
     } else {
       
-      diff <- male[i, 5:61] / fem[i, 5:61]
+      diff <- (male[i, 5:61] + 0.001) / (fem[i, 5:61] + 0.001)
       diff_table <- rbind(diff_table, 
                           cbind(male[i, c(1:4)], diff))
       
@@ -97,10 +97,9 @@ for (n in 1:length(unique(dataset_fem$Indicator.Name))) {
   
 }
 
-diff_table_bind$Country.Code <- as.character(diff_table_bind$Country.Code)
-diff_table_bind[diff_table_bind == "NaN"] <- NA
 
-save(diff_table_bind, file = "diff_table_bind.RData")
+diff_table_bind$Country.Code <- as.character(diff_table_bind$Country.Code)
+
 ```
 
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
@@ -110,10 +109,6 @@ save(measures, file = "measures.RData")
 years <- gsub("X", "", colnames(diff_table_bind)[-c(1:4)])
 years <- years[-length(years)]
 save(years, file = "years.RData")
-
-diff_table_bind <- diff_table_bind[which(diff_table_bind$Country.Code %in% wmap_countries_df_final$gu_a3), ]
-countries <- as.character(unique(diff_table_bind$Country.Name))
-save(countries, file = "countries.RData")
 ```
 
 ## Map
@@ -135,9 +130,16 @@ wmap_countries_df <- fortify(wmap_countries)
 wmap_countries@data$id <- rownames(wmap_countries@data)
 wmap_countries_df_final <- join(wmap_countries_df, wmap_countries@data, by = "id")
 
-wmap_countries_df_final$gu_a3 <- as.character(wmap_countries_df_final$gu_a3)
+wmap_countries_df_final$adm0_a3 <- as.character(wmap_countries_df_final$adm0_a3)
 
 save(wmap_countries_df_final, file = "wmap_countries_smaller_df_final.RData")
+
+diff_table_bind <- diff_table_bind[which(diff_table_bind$Country.Code %in% wmap_countries_df_final$adm0_a3), ]
+
+save(diff_table_bind, file = "diff_table_bind.RData")
+
+countries <- as.character(unique(diff_table_bind$Country.Name))
+save(countries, file = "countries.RData")
 ```
 
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
@@ -193,7 +195,7 @@ colfunc <- colorRampPalette(c("yellow", "red"))
 library(dplyr)
 diff_table_timeline <- rbind(dataset_fem, dataset_male) %>%
   subset(Indicator.Name == measure) %>%
-  subset(Country.Code %in% wmap_countries_df_final$gu_a3) %>%
+  subset(Country.Code %in% wmap_countries_df_final$adm0_a3) %>%
   subset(as.character(Country.Name) == country)
 
 library(tidyr)
@@ -212,13 +214,32 @@ ggplot(diff_table_timeline_gather, aes(x = year, y = value, color = gender, grou
        color = "Gender")
 ```
 
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=10, fig.height=4, fig.align="center", cache=TRUE}
+diff_table_timeline_2 <- cbind(diff_table_timeline[, c(1:4, 62)], t(apply(diff_table_timeline[, grep("^X[0-9]+$", colnames(diff_table_timeline))], 1, function(x) 
+  diff(x)
+  )))
+
+diff_table_timeline_gather <- gather(diff_table_timeline_2, year, value, X1961:X2015)
+diff_table_timeline_gather$year <- gsub("X", "", diff_table_timeline_gather$year)
+
+ggplot(diff_table_timeline_gather, aes(x = year, y = value, color = gender, group = gender)) +
+  geom_line(size = 1, alpha = 0.7) +
+  geom_point(size = 2, alpha = 0.7) +
+  my_theme() +
+  scale_color_brewer(palette = "Set1") +
+  labs(title = paste("Change in", measure),
+       subtitle = paste(country),
+       x = "Year",
+       y = "Value",
+       color = "Gender")
+```
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
 diff_table_map <- diff_table_bind[which(diff_table_bind$Indicator.Name == measure),
                                         c(1:3, which(colnames(diff_table_bind) == paste0("X", year)))]
       colnames(diff_table_map)[ncol(diff_table_map)] <- "value"
 
       library(dplyr)
-      map <- left_join(subset(wmap_countries_df_final, !continent == "Antarctica"), diff_table_map, by = c("gu_a3" = "Country.Code"))
+      map <- left_join(subset(wmap_countries_df_final, !continent == "Antarctica"), diff_table_map, by = c("adm0_a3" = "Country.Code"))
 
       ggplot(map, aes(long, lat, group = group, fill = log2(value))) +
         coord_equal() +
@@ -230,8 +251,10 @@ diff_table_map <- diff_table_bind[which(diff_table_bind$Indicator.Name == measur
         scale_fill_gradient2(low = "blue", midpoint = 0, mid = "yellow", high = "red")
 ```
 
+---
+
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
-year_table <- diff_table_bind[which(diff_table_bind$Country.Code %in% wmap_countries_df_final$gu_a3), ]
+year_table <- diff_table_bind[which(diff_table_bind$Country.Code %in% wmap_countries_df_final$adm0_a3), ]
 
 last_val <- apply(year_table[, grep("^X[0-9]+$", colnames(year_table))], 1, function(x) 
   na.omit(x)[length(na.omit(x))]
@@ -244,7 +267,17 @@ year_table_last_val <- cbind(year_table[rownames(last_val_df), 1:3], last_val_df
 ```
 
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
-map <- left_join(subset(wmap_countries_df_final, !continent == "Antarctica"), subset(year_table_last_val, Indicator.Name == measure), by = c("gu_a3" = "Country.Code"))
+dif_sum <- apply(year_table[, grep("^X[0-9]+$", colnames(year_table))], 1, function(x) 
+  sum(diff(log2(x[!is.na(x)])))
+  )
+
+dif_sum_df <- data.frame(unlist(dif_sum))
+
+year_table_dif_sum <- cbind(year_table[rownames(dif_sum_df), 1:3], dif_sum_df)
+```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+map <- left_join(subset(wmap_countries_df_final, !continent == "Antarctica"), subset(year_table_last_val, Indicator.Name == measure), by = c("adm0_a3" = "Country.Code"))
 
       ggplot(map, aes(long, lat, group = group, fill = log2(unlist.last_val.), color = year_of_val)) +
         coord_equal() +
@@ -258,7 +291,75 @@ map <- left_join(subset(wmap_countries_df_final, !continent == "Antarctica"), su
 ```
 
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
-ggplot(map, aes(x = economy, y = log2(unlist.last_val.), fill = income_grp, color = income_grp)) +
+na.countries <- unique(map[is.na(map$unlist.last_val.), "adm0_a3"])
+
+year_table_dif_sum_na <- year_table_dif_sum
+year_table_dif_sum_na$unlist.dif_sum. <- ifelse(year_table_dif_sum_na$Country.Code %in% na.countries, NA, year_table_dif_sum_na$unlist.dif_sum.)
+
+map_2 <- left_join(subset(wmap_countries_df_final, !continent == "Antarctica"), subset(year_table_dif_sum_na, Indicator.Name == measure), by = c("adm0_a3" = "Country.Code"))
+
+      ggplot(map_2, aes(long, lat, group = group, fill = unlist.dif_sum.)) +
+        coord_equal() +
+        map_theme +
+        geom_polygon() +
+        geom_path(size = 1, color = "white") +
+        labs(title = paste(measure),
+             fill = "sum of\ndifferences\nover time") +
+        scale_fill_gradient2(low = "blue", midpoint = 0, mid = "yellow", high = "red", na.value = "grey")
+```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+subs <- map[!duplicated(map$adm0_a3), c("adm0_a3", "name", "economy", "income_grp", "unlist.last_val.")]
+arrange(subset(subs, !is.na(unlist.last_val.)), economy, income_grp)
+arrange(subset(subs, !is.na(unlist.last_val.)), income_grp, economy)
+```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+ggplot(map, aes(long, lat, group = group, fill = economy)) +
+        coord_equal() +
+        map_theme +
+        geom_polygon() +
+        geom_path(color = "white", size = 1) +
+        labs(title = paste(measure),
+             fill = "Economy")
+```
+     
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+ggplot(map, aes(long, lat, group = group, fill = income_grp)) +
+        coord_equal() +
+        map_theme +
+        geom_polygon() +
+        geom_path(color = "white", size = 1) +
+        labs(title = paste(measure),
+             fill = "Income group")
+```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+stats_test <- rbind(dataset_fem, dataset_male) %>%
+  subset(Indicator.Name == measure) %>%
+  subset(Country.Code %in% wmap_countries_df_final$adm0_a3)
+
+country.inf <- subset(wmap_countries_df_final[, c(17, 25, 26, 31, 32, 42, 43, 47, 48, 62)], !continent == "Antarctica")
+country.inf <- country.inf[!duplicated(country.inf), ]
+
+stats_test <- left_join(stats_test, country.inf, by = c("Country.Code" = "adm0_a3"))
+stats_test <- left_join(stats_test, subset(year_table_last_val, Indicator.Name == measure), by = "Country.Code")
+
+ggplot(stats_test, aes(x = X2015, fill = income_grp, color = income_grp)) +
+  my_theme() +
+  geom_density(alpha=0.3) +
+  facet_grid(~ gender)
+```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+ggplot(stats_test, aes(x = X2015, fill = economy, color = economy)) +
+  my_theme() +
+  geom_density(alpha=0.3) +
+  facet_grid(~ gender)
+```
+
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
+ggplot(stats_test, aes(x = economy, y = log2(unlist.last_val.), fill = income_grp, color = income_grp)) +
   geom_boxplot(alpha = 0.7, size = 2) +
   my_theme() +
   coord_flip() +
@@ -271,34 +372,31 @@ ggplot(map, aes(x = economy, y = log2(unlist.last_val.), fill = income_grp, colo
 ```
 
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
-aggregate(log2(unlist.last_val.) ~ economy * income_grp, data = map, mean)
-
-subs <- map[!duplicated(map$gu_a3), c("gu_a3", "name", "economy", "income_grp", "unlist.last_val.")]
-arrange(subset(subs, !is.na(unlist.last_val.)), economy, income_grp)
-```
-
-```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
-ggplot(map, aes(x = log2(unlist.last_val.), fill = income_grp, color = income_grp)) +
+ggplot(stats_test, aes(x = income_grp, y = log2(unlist.last_val.), fill = economy, color = economy)) +
+  geom_boxplot(alpha = 0.7, size = 2) +
   my_theme() +
-  geom_density(alpha=0.3)
+  coord_flip() +
+  scale_color_hue(l=60) +
+  labs(title = paste(measure),
+       y = "log2 of male / female",
+       x = "Income group",
+       color = "Economy",
+       fill = "Economy")
 ```
 
-```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
-ggplot(map, aes(x = log2(unlist.last_val.), fill = economy, color = economy)) +
-  my_theme() +
-  geom_density(alpha=0.3)
-```
 
 ```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8, fig.align="center", cache=TRUE}
-kw1 <- kruskal.test(log2(unlist.last_val.) ~ economy, data = map)
-str(kw1)
+kruskal.test(X2015 ~ economy, data = stats_test)
+kruskal.test(X2015 ~ income_grp, data = stats_test)
 
-kruskal.test(log2(unlist.last_val.) ~ income_grp, data = map)
 
 ```
 
 - https://cran.r-project.org/web/packages/ordinal/vignettes/clm_intro.pdf
 - https://journal.r-project.org/archive/2016-1/feys.pdf
+
+- nonparametric stats
+- pca
 
 ------------------
 
