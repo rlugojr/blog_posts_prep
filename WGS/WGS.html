@@ -12,7 +12,7 @@
 
 <meta name="author" content="Dr. Shirin Glander" />
 
-<meta name="date" content="2017-01-29" />
+<meta name="date" content="2017-02-05" />
 
 <title>Explore World Gender Statistics with Shiny</title>
 
@@ -73,18 +73,22 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <header>
 <h1 class="title toc-ignore">Explore World Gender Statistics with Shiny</h1>
 <h3 class="author">Dr. Shirin Glander</h3>
-<h3 class="date">2017-01-29</h3>
+<h3 class="date">2017-02-05</h3>
 </header>
 
 <hr>
 
 
 
-<p>This week I explored the World Gender Statistics dataset. You can look at 160 measurements over 56 years with <a href="https://shiring.shinyapps.io/wgs_app/">my Shiny app here</a>.</p>
+<p>Today, I want to share my analysis of the World Gender Statistics dataset.</p>
+<p>Last week I introduced <a href="https://shiring.shinyapps.io/wgs_app/">my Shiny app</a>, where you can explore 160 measurements over 56 years. This week I’ve put included a statistical analysis of these measurements and put some finishing touches on the app.</p>
+<p>Alternatively, you can load the app via Github with the <strong>shiny</strong> package. <a href="https://github.com/ShirinG/WGS_app">There, you can also find the source code for the app</a>.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(shiny)
+<span class="kw">runGitHub</span>(<span class="st">&quot;ShirinG/WGS_app&quot;</span>) </code></pre></div>
 <p><br></p>
-<p>I prepared the data as follows:</p>
-<div id="data.csv" class="section level3">
-<h3>Data.csv</h3>
+<div id="the-data" class="section level2">
+<h2>The data</h2>
+<p>The data was downloaded from <a href="http://data.worldbank.org/">The World Bank’s Open Data project</a> via <a href="https://www.kaggle.com/theworldbank/world-gender-statistic">Kaggle</a>. The main data table shows</p>
 <ul>
 <li>Country.Name: the name of the country</li>
 <li>Country.Code: the country’s code</li>
@@ -92,6 +96,8 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li>Indicator.Code: a unique id for the variable</li>
 <li>1960 - 2016: one column EACH for the value of the variable in each year it was available</li>
 </ul>
+<p>Unfortunately, the dataset doesn’t include a column that indicated which two female/ male statistics belong together and there is no consistent naming scheme either. Therefore, I chose to focus on those statistics, where the counterparts could be easily extracted: indicator codes that differed only in containing “.FE” or “.MA”. I then split the subsetted dataset into female and male and produced a third dataset with the ratios between male and female values. To calculate the ratios, I added 0.001 to each data point, so that zero values would not produce NAs.</p>
+<p>The finished datasets were saved as “R.Data” files, so that I could easily load them into the Shiny app.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">dataset &lt;-<span class="st"> </span><span class="kw">read.csv</span>(<span class="st">&quot;Data.csv&quot;</span>)
 dataset_subs &lt;-<span class="st"> </span>dataset[<span class="kw">grep</span>(<span class="st">&quot;.FE|.MA&quot;</span>, dataset$Indicator.Code), ]
 <span class="kw">head</span>(dataset_subs)
@@ -100,11 +106,13 @@ dataset_subs$Indicator.Name &lt;-<span class="st"> </span><span class="kw">as.ch
 
 dataset_fem &lt;-<span class="st"> </span>dataset[<span class="kw">grep</span>(<span class="st">&quot;female&quot;</span>, dataset$Indicator.Name), ]
 dataset_fem$Indicator.Name &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;female&quot;</span>, <span class="st">&quot;&quot;</span>, dataset_fem$Indicator.Name)
+dataset_fem$Indicator.Name &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;,&quot;</span>, <span class="st">&quot;&quot;</span>, dataset_fem$Indicator.Name)
 dataset_fem$Indicator.Code &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;.FE&quot;</span>, <span class="st">&quot;&quot;</span>, dataset_fem$Indicator.Code)
 dataset_fem$gender &lt;-<span class="st"> &quot;female&quot;</span>
 
 dataset_male &lt;-<span class="st"> </span>dataset[-<span class="kw">grep</span>(<span class="st">&quot;female&quot;</span>, dataset$Indicator.Name), ]
 dataset_male$Indicator.Name &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;male&quot;</span>, <span class="st">&quot;&quot;</span>, dataset_male$Indicator.Name)
+dataset_male$Indicator.Name &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;,&quot;</span>, <span class="st">&quot;&quot;</span>, dataset_male$Indicator.Name)
 dataset_male$Indicator.Code &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;.FE&quot;</span>, <span class="st">&quot;&quot;</span>, dataset_male$Indicator.Code)
 dataset_male$gender &lt;-<span class="st"> &quot;male&quot;</span>
 
@@ -138,12 +146,12 @@ for (n in <span class="dv">1</span>:<span class="kw">length</span>(<span class="
     
     if (i ==<span class="st"> </span><span class="dv">1</span>) {
       
-      diff &lt;-<span class="st"> </span>male[i, <span class="dv">5</span>:<span class="dv">61</span>] /<span class="st"> </span>fem[i, <span class="dv">5</span>:<span class="dv">61</span>]
+      diff &lt;-<span class="st"> </span>(male[i, <span class="dv">5</span>:<span class="dv">61</span>] +<span class="st"> </span><span class="fl">0.001</span>) /<span class="st"> </span>(fem[i, <span class="dv">5</span>:<span class="dv">61</span>] +<span class="st"> </span><span class="fl">0.001</span>)
       diff_table &lt;-<span class="st"> </span><span class="kw">cbind</span>(male[i, <span class="kw">c</span>(<span class="dv">1</span>:<span class="dv">4</span>)], diff)
       
     } else {
       
-      diff &lt;-<span class="st"> </span>male[i, <span class="dv">5</span>:<span class="dv">61</span>] /<span class="st"> </span>fem[i, <span class="dv">5</span>:<span class="dv">61</span>]
+      diff &lt;-<span class="st"> </span>(male[i, <span class="dv">5</span>:<span class="dv">61</span>] +<span class="st"> </span><span class="fl">0.001</span>) /<span class="st"> </span>(fem[i, <span class="dv">5</span>:<span class="dv">61</span>] +<span class="st"> </span><span class="fl">0.001</span>)
       diff_table &lt;-<span class="st"> </span><span class="kw">rbind</span>(diff_table, 
                           <span class="kw">cbind</span>(male[i, <span class="kw">c</span>(<span class="dv">1</span>:<span class="dv">4</span>)], diff))
       
@@ -162,33 +170,92 @@ for (n in <span class="dv">1</span>:<span class="kw">length</span>(<span class="
   
 }
 
-diff_table_bind$Country.Code &lt;-<span class="st"> </span><span class="kw">as.character</span>(diff_table_bind$Country.Code)
-diff_table_bind[diff_table_bind ==<span class="st"> &quot;NaN&quot;</span>] &lt;-<span class="st"> </span><span class="ot">NA</span>
-
-<span class="kw">save</span>(diff_table_bind, <span class="dt">file =</span> <span class="st">&quot;diff_table_bind.RData&quot;</span>)</code></pre></div>
+diff_table_bind$Country.Code &lt;-<span class="st"> </span><span class="kw">as.character</span>(diff_table_bind$Country.Code)</code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">measures &lt;-<span class="st"> </span><span class="kw">unique</span>(diff_table_bind$Indicator.Name)
 <span class="kw">save</span>(measures, <span class="dt">file =</span> <span class="st">&quot;measures.RData&quot;</span>)
 
 years &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;X&quot;</span>, <span class="st">&quot;&quot;</span>, <span class="kw">colnames</span>(diff_table_bind)[-<span class="kw">c</span>(<span class="dv">1</span>:<span class="dv">4</span>)])
 years &lt;-<span class="st"> </span>years[-<span class="kw">length</span>(years)]
 <span class="kw">save</span>(years, <span class="dt">file =</span> <span class="st">&quot;years.RData&quot;</span>)</code></pre></div>
+<p><br></p>
 </div>
-<div id="map" class="section level2">
-<h2>Map</h2>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(plyr)
-<span class="kw">library</span>(rgdal)
+<div id="the-world-map" class="section level2">
+<h2>The world map</h2>
+<p>The map has been downloaded from <a href="http://www.naturalearthdata.com/downloads/110m-cultural-vectors/">the Natural Earth Data website</a>. The country borders were reduced by 200 meters with <a href="https://www.esri.de/produkte/arcgis-pro">ArcGIS Pro</a>, so that clicking within any country on the map would show the corresponding country as nearest point. <a href="https://www.esri.de/produkte/arcgis-pro">ArcGIS Pro</a> was also used to convert the map to <a href="https://en.wikipedia.org/wiki/Mercator_projection">Mercator projection</a>. The changed shapefiles can be downloaded from <a href="https://github.com/ShirinG/blog_posts_prep/tree/master/WGS/shapefiles/changed_borders">my Github repository</a>.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(rgdal)
+<span class="kw">library</span>(ggplot2)
+<span class="kw">library</span>(plyr)
+<span class="kw">library</span>(dplyr)
+<span class="kw">library</span>(scales)
 
-wmap_countries &lt;-<span class="st"> </span><span class="kw">readOGR</span>(<span class="dt">dsn=</span><span class="st">&quot;shapefiles&quot;</span>, <span class="dt">layer=</span><span class="st">&quot;ne_110m_admin_0_countries&quot;</span>)
+wmap_countries &lt;-<span class="st"> </span><span class="kw">readOGR</span>(<span class="dt">dsn =</span> <span class="st">&quot;shapefiles/changed_borders&quot;</span>, <span class="dt">layer =</span> <span class="st">&quot;ne_110m_admin_0_countries_smaller_wm&quot;</span>)
 
 wmap_countries_df &lt;-<span class="st"> </span><span class="kw">fortify</span>(wmap_countries)
 wmap_countries@data$id &lt;-<span class="st"> </span><span class="kw">rownames</span>(wmap_countries@data)
 wmap_countries_df_final &lt;-<span class="st"> </span><span class="kw">join</span>(wmap_countries_df, wmap_countries@data, <span class="dt">by =</span> <span class="st">&quot;id&quot;</span>)
 
-wmap_countries_df_final$gu_a3 &lt;-<span class="st"> </span><span class="kw">as.character</span>(wmap_countries_df_final$gu_a3)
+wmap_countries_df_final$adm0_a3 &lt;-<span class="st"> </span><span class="kw">as.character</span>(wmap_countries_df_final$adm0_a3)
 
-<span class="kw">save</span>(wmap_countries_df_final, <span class="dt">file =</span> <span class="st">&quot;wmap_countries_df_final.RData&quot;</span>)</code></pre></div>
+<span class="kw">save</span>(wmap_countries_df_final, <span class="dt">file =</span> <span class="st">&quot;wmap_countries_smaller_df_final.RData&quot;</span>)
+
+diff_table_bind &lt;-<span class="st"> </span>diff_table_bind[<span class="kw">which</span>(diff_table_bind$Country.Code %in%<span class="st"> </span>wmap_countries_df_final$adm0_a3), ]
+
+<span class="kw">save</span>(diff_table_bind, <span class="dt">file =</span> <span class="st">&quot;diff_table_bind.RData&quot;</span>)
+
+countries &lt;-<span class="st"> </span><span class="kw">as.character</span>(<span class="kw">unique</span>(diff_table_bind$Country.Name))
+<span class="kw">save</span>(countries, <span class="dt">file =</span> <span class="st">&quot;countries.RData&quot;</span>)</code></pre></div>
+<p><br></p>
+</div>
+<div id="statistical-analysis" class="section level2">
+<h2>Statistical Analysis</h2>
+<p>To calculate statistical differences, I prepared a dataset that contains the first and last non-NA value in each time series (per statistic and country) to calculate whether the change over time was statistically significant.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">year_table &lt;-<span class="st"> </span>diff_table_bind[<span class="kw">which</span>(diff_table_bind$Country.Code %in%<span class="st"> </span>wmap_countries_df_final$adm0_a3), ]
+
+<span class="co"># last non-NA value</span>
+last_val &lt;-<span class="st"> </span><span class="kw">apply</span>(year_table[, <span class="kw">grep</span>(<span class="st">&quot;^X[0-9]+$&quot;</span>, <span class="kw">colnames</span>(year_table))], <span class="dv">1</span>, function(x) 
+  <span class="kw">na.omit</span>(x)[<span class="kw">length</span>(<span class="kw">na.omit</span>(x))]
+  )
+last_val_df &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="kw">unlist</span>(last_val))
+last_val_df$year_of_val &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;([0-9]+)(.X)([0-9]+)&quot;</span>, <span class="st">&quot;</span><span class="ch">\\</span><span class="st">3&quot;</span>, <span class="kw">rownames</span>(last_val_df))
+<span class="kw">rownames</span>(last_val_df) &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;([0-9]+)(.X)([0-9]+)&quot;</span>, <span class="st">&quot;</span><span class="ch">\\</span><span class="st">1&quot;</span>, <span class="kw">rownames</span>(last_val_df))
+
+<span class="co"># first non-NA value</span>
+first_val &lt;-<span class="st"> </span><span class="kw">apply</span>(year_table[, <span class="kw">grep</span>(<span class="st">&quot;^X[0-9]+$&quot;</span>, <span class="kw">colnames</span>(year_table))], <span class="dv">1</span>, function(x) 
+  <span class="kw">na.omit</span>(x)[<span class="dv">1</span>]
+  )
+first_val_df &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="kw">na.omit</span>(first_val))
+
+year_table_last_val &lt;-<span class="st"> </span><span class="kw">cbind</span>(year_table[<span class="kw">rownames</span>(last_val_df), <span class="dv">1</span>:<span class="dv">3</span>], last_val_df, first_val_df)
+<span class="kw">save</span>(year_table_last_val, <span class="dt">file =</span> <span class="st">&quot;year_table_last_val.RData&quot;</span>)</code></pre></div>
+<p><br></p>
+<div id="co-factors" class="section level3">
+<h3>Co-factors</h3>
+<p>The world data contains information on each country. I used The following variables to test for statistical significance:</p>
+<ol style="list-style-type: decimal">
+<li>its economic status,</li>
+<li>income group,</li>
+<li>estimated population size,</li>
+<li>estimated gross domestic product (GDP) and</li>
+<li>continent.</li>
+</ol>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(dplyr)
+country.inf &lt;-<span class="st"> </span><span class="kw">subset</span>(wmap_countries_df_final[, <span class="kw">c</span>(<span class="dv">17</span>, <span class="dv">25</span>, <span class="dv">26</span>, <span class="dv">31</span>, <span class="dv">32</span>, <span class="dv">42</span>, <span class="dv">43</span>, <span class="dv">47</span>, <span class="dv">48</span>, <span class="dv">62</span>)], !continent ==<span class="st"> &quot;Antarctica&quot;</span>)
+country.inf &lt;-<span class="st"> </span>country.inf[!<span class="kw">duplicated</span>(country.inf), ]</code></pre></div>
+<p>Because not all data was normally distributed I explored <a href="https://en.wikipedia.org/wiki/Nonparametric_statistics">non-parametric models</a>, as well as an <a href="https://en.wikipedia.org/wiki/Analysis_of_variance">ANOVA</a>. The plots for each statistic can be explored in my app, so here, I am only showing the results and which meaures were statistically significant for the different variables.</p>
+<p><br></p>
+</div>
+</div>
+<div id="wilcoxon-signed-rank-test" class="section level2">
+<h2>Wilcoxon Signed-Rank Test</h2>
+<p>The <a href="https://en.wikipedia.org/wiki/Wilcoxon_signed-rank_test">Wilcoxon Signed-Rank test</a> can be used to test whether observations from repeated measures differ statistically from each other. Here, I am using it to test whether the most recent recorded value is significantly different from the first recorded value.</p>
+<p><br></p>
+</div>
+<div id="kruskal-wallis-test" class="section level2">
+<h2>Kruskal-Wallis Test</h2>
+<p>The <a href="https://en.wikipedia.org/wiki/Kruskal%E2%80%93Wallis_one-way_analysis_of_variance">Kruskal-Wallis test</a> is a simple non-parametric statistical test. I used it here to test for each variable of interest whether it has a statistically significant effect on the most recent recorded value. Because I am testing the same data multiple times, I am correcting the p-values and only consider them significant with False Discovery Rate (FDR) below 10% (adjusted p-value &lt; 0.1).</p>
 <hr />
 <p><br></p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">sessionInfo</span>()</code></pre></div>
 <pre><code>## R version 3.3.2 (2016-10-31)
 ## Platform: x86_64-apple-darwin13.4.0 (64-bit)
 ## Running under: macOS Sierra 10.12.1
@@ -199,17 +266,11 @@ wmap_countries_df_final$gu_a3 &lt;-<span class="st"> </span><span class="kw">as.
 ## attached base packages:
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
-## other attached packages:
-## [1] ggplot2_2.2.1 dplyr_0.5.0  
-## 
 ## loaded via a namespace (and not attached):
-##  [1] Rcpp_0.12.8      digest_0.6.11    rprojroot_1.1    assertthat_0.1  
-##  [5] plyr_1.8.4       grid_3.3.2       R6_2.2.0         gtable_0.2.0    
-##  [9] DBI_0.5-1        backports_1.0.4  magrittr_1.5     scales_0.4.1    
-## [13] evaluate_0.10    stringi_1.1.2    lazyeval_0.2.0   rmarkdown_1.3   
-## [17] tools_3.3.2      stringr_1.1.0    munsell_0.4.3    prettydoc_0.2.0 
-## [21] yaml_2.1.14      colorspace_1.3-2 htmltools_0.3.5  knitr_1.15.1    
-## [25] tibble_1.2</code></pre>
+##  [1] backports_1.0.4 magrittr_1.5    rprojroot_1.1   tools_3.3.2    
+##  [5] htmltools_0.3.5 prettydoc_0.2.0 yaml_2.1.14     Rcpp_0.12.8    
+##  [9] stringi_1.1.2   rmarkdown_1.3   knitr_1.15.1    stringr_1.1.0  
+## [13] digest_0.6.11   evaluate_0.10</code></pre>
 </div>
 </div>
 </div>
