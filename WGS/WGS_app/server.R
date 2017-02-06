@@ -15,7 +15,6 @@ library(shiny)
 library(dplyr)
 library(ggplot2)
 library(tidyr)
-library(np)
 
 map_theme <- list(theme(panel.grid.minor = element_blank(),
                         panel.grid.major = element_blank(),
@@ -34,7 +33,6 @@ my_theme <- function(base_size = 12, base_family = "sans"){
   theme_minimal(base_size = base_size, base_family = base_family) +
     theme(
       axis.text = element_text(size = 12),
-      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
       axis.title = element_text(size = 14),
       panel.grid.major = element_line(color = "grey"),
       panel.grid.minor = element_blank(),
@@ -144,6 +142,7 @@ shinyServer(function(input, output, session) {
   # Last values
 
   output$last_vals <- renderPlot({
+
     measure <- input$measure
 
     map <- left_join(subset(wmap_countries_df_final, !continent == "Antarctica"), subset(year_table_last_val, Indicator.Name == measure), by = c("adm0_a3" = "Country.Code"))
@@ -159,6 +158,66 @@ shinyServer(function(input, output, session) {
       scale_fill_gradient2(low = "blue", midpoint = 0, mid = "yellow", high = "red", na.value = "grey30")
   }, height = function() {
     0.6 * session$clientData$output_map_width
+  })
+
+  output$bias1 <- renderTable({
+
+    measure <- input$measure
+
+    subs <- subset(year_table_last_val, Indicator.Name == measure)
+
+    table <- arrange(subs, desc(log2(unlist.last_val.)))[1:10, -c(2, 3, 5)]
+    table$unlist.last_val. <- log2(table$unlist.last_val.)
+    table$na.omit.first_val. <- log2(table$na.omit.first_val.)
+    table$difference <- log2(table$difference)
+
+    colnames(table) <- c("Country name", "Last value", "First value", "Difference")
+    table
+  })
+
+  output$bias2 <- renderTable({
+
+    measure <- input$measure
+
+    subs <- subset(year_table_last_val, Indicator.Name == measure)
+
+    table <- arrange(subs, log2(unlist.last_val.))[1:10, -c(2, 3, 5)]
+    table$unlist.last_val. <- log2(table$unlist.last_val.)
+    table$na.omit.first_val. <- log2(table$na.omit.first_val.)
+    table$difference <- log2(table$difference)
+
+    colnames(table) <- c("Country name", "Last value", "First value", "Difference")
+    table
+  })
+
+  output$diff1 <- renderTable({
+
+    measure <- input$measure
+
+    subs <- subset(year_table_last_val, Indicator.Name == measure)
+
+    table <- arrange(subs, desc(log2(difference)))[1:10, -c(2, 3, 5)]
+    table$unlist.last_val. <- log2(table$unlist.last_val.)
+    table$na.omit.first_val. <- log2(table$na.omit.first_val.)
+    table$difference <- log2(table$difference)
+
+    colnames(table) <- c("Country name", "Last value", "First value", "Difference")
+    table
+  })
+
+  output$diff2 <- renderTable({
+
+    measure <- input$measure
+
+    subs <- subset(year_table_last_val, Indicator.Name == measure)
+
+    table <- arrange(subs, log2(difference))[1:10, -c(2, 3, 5)]
+    table$unlist.last_val. <- log2(table$unlist.last_val.)
+    table$na.omit.first_val. <- log2(table$na.omit.first_val.)
+    table$difference <- log2(table$difference)
+
+    colnames(table) <- c("Country name", "Last value", "First value", "Difference")
+    table
   })
 
 
@@ -181,6 +240,7 @@ shinyServer(function(input, output, session) {
       geom_line(size = 1, alpha = 0.7) +
       geom_point(size = 2, alpha = 0.7) +
       my_theme() +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
       scale_color_brewer(palette = "Set1") +
       labs(title = paste(measure),
            subtitle = paste(country),
@@ -213,6 +273,7 @@ shinyServer(function(input, output, session) {
         geom_line(size = 1, alpha = 0.7) +
         geom_point(size = 2, alpha = 0.7) +
         my_theme() +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
         scale_color_brewer(palette = "Set1") +
         labs(title = paste("Change in", measure),
              subtitle = paste(country),
@@ -288,9 +349,9 @@ shinyServer(function(input, output, session) {
     stats_test <- left_join(subset(year_table_last_val, Indicator.Name == measure), country.inf, by = c("Country.Code" = "adm0_a3"))
 
     stats_test %>%
-      rename(latest_value = unlist.last_val.) %>%
+      rename(last_value = unlist.last_val.) %>%
       rename(first_value = na.omit.first_val.) %>%
-      gather(x, y, latest_value, first_value) %>%
+      gather(x, y, last_value, first_value) %>%
       ggplot(aes(x = log2(y), color = x, fill = x)) +
       geom_vline(xintercept = 0, color = "red", size = 2, alpha = 0.3) +
       my_theme() +
@@ -309,7 +370,7 @@ shinyServer(function(input, output, session) {
 
     stats_test <- left_join(subset(year_table_last_val, Indicator.Name == measure), country.inf, by = c("Country.Code" = "adm0_a3"))
 
-    labels <- c(na.omit.first_val. = "first value", unlist.last_val. = "latest value")
+    labels <- c(na.omit.first_val. = "first value", unlist.last_val. = "last value")
 
     stats_test %>%
       gather(x, y, unlist.last_val., na.omit.first_val.) %>%
@@ -335,7 +396,7 @@ shinyServer(function(input, output, session) {
 
     stats_test <- left_join(subset(year_table_last_val, Indicator.Name == measure), country.inf, by = c("Country.Code" = "adm0_a3"))
 
-    labels <- c(na.omit.first_val. = "first value", unlist.last_val. = "latest value")
+    labels <- c(na.omit.first_val. = "first value", unlist.last_val. = "last value")
 
     stats_test %>%
       gather(x, y, unlist.last_val., na.omit.first_val.) %>%
@@ -350,6 +411,30 @@ shinyServer(function(input, output, session) {
       labs(title = paste(measure),
            y = "log2 of male / female",
            x = "Income group") +
+      facet_grid(~ x, scales = "free", labeller = labeller(x = labels))
+  })
+
+  output$distribution3 <- renderPlot({
+
+    measure <- input$measure
+
+    stats_test <- left_join(subset(year_table_last_val, Indicator.Name == measure), country.inf, by = c("Country.Code" = "adm0_a3"))
+
+    labels <- c(na.omit.first_val. = "first value", unlist.last_val. = "last value")
+
+    stats_test %>%
+      gather(x, y, unlist.last_val., na.omit.first_val.) %>%
+      ggplot(aes(x = continent, y = log2(y), fill = continent, color = continent)) +
+      geom_hline(yintercept = 0, color = "red", size = 2, alpha = 0.3) +
+      geom_boxplot() +
+      geom_violin(alpha = 0.5) +
+      my_theme() +
+      coord_flip() +
+      scale_color_hue(l = 50) +
+      guides(fill = FALSE, color = FALSE) +
+      labs(title = paste(measure),
+           y = "log2 of male / female",
+           x = "Continent") +
       facet_grid(~ x, scales = "free", labeller = labeller(x = labels))
   })
 
@@ -426,7 +511,7 @@ shinyServer(function(input, output, session) {
       p.val = c(k_economy_rank$p.value, k_income_rank$p.value, k_pop$p.value, k_gdp$p.value, k_continent$p.value))
 
     kruskal_last_val$p.adj <- p.adjust(kruskal_last_val$p.val, method = "fdr")
-    kruskal_last_val$significant <- ifelse(kruskal_last_val$p.adj < 0.1, "significant", "")
+    kruskal_last_val$significance <- ifelse(kruskal_last_val$p.adj < 0.1, "significant", "")
     kruskal_last_val
   })
 
@@ -439,10 +524,10 @@ shinyServer(function(input, output, session) {
     stats_test$economy_rank <- as.numeric(as.character(gsub("(^[1-7])(.*)", "\\1", stats_test$economy)))
     stats_test$income_grp_rank <- as.numeric(as.character(gsub("(^[1-5])(.*)", "\\1", stats_test$income_grp)))
 
-    mod.boik <- lm(log2(unlist.last_val.) ~ gdp_md_est * pop_est * economy_rank * income_grp_rank * continent, data = stats_test)
-    anova <- data.frame(Variables = rownames(anova(mod.boik)),
-                        anova(mod.boik))
-    anova$significant <- ifelse(anova$Pr..F. < 0.05, "significant",
+    mod <- lm(log2(unlist.last_val.) ~ gdp_md_est * pop_est * economy_rank * income_grp_rank * continent, data = stats_test)
+    anova <- data.frame(Variables = rownames(anova(mod)),
+                        anova(mod))
+    anova$significance <- ifelse(anova$Pr..F. < 0.05, "significant",
                                 ifelse(anova$Pr..F. < 0.1, "trend", ""))
     anova
   })

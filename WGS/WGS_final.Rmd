@@ -1,11 +1,10 @@
 ---
-title: "Scratching the surface of gender bias in the world"
+title: "Scratching the surface of gender bias"
 author: "Dr. Shirin Glander"
 date: '`r Sys.Date()`'
 output:
-  prettydoc::html_pretty:
-    theme: tactile
-    highlight: github
+  md_document:
+    variant: markdown_github
 ---
 
 Today, I want to share my analysis of the World Gender Statistics dataset. 

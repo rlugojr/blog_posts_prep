@@ -40,16 +40,16 @@ shinyUI(
       mainPanel(
 
         fluidRow(
-          p("The data was downloaded from", a("The World Bank's Open Data project", href = "http://data.worldbank.org/"), "via", a("Kaggle.", href = "https://www.kaggle.com/theworldbank/world-gender-statistic"), "For more info on how I built this app check out", a("my blog.", href = "https://shiring.github.io/2017/02/05/WGS_final")),
+          p("The data was downloaded from", a("The World Bank's Open Data project", href = "http://data.worldbank.org/"), "via", a("Kaggle.", href = "https://www.kaggle.com/theworldbank/world-gender-statistic"), "For more info on how I built this app check out", a("my blog.", href = "https://shiring.github.io/2017/02/06/WGS_final")),
 
-          p("Explore the tabs below to see information about male vs female measures of 160 statistics from 56 years. 'World map' shows female, male or male/female values for individual years. 'Latest ratios' shows the most recent male/ female ratio of the chosen statistic. 'Timelines' shows the change of male and female values over time. 'Country information' gives an overview over the co-variates used for statistic analysis in 'Analysis - Plots' and '- Tests'.")
+          p("Explore the tabs below to see information about male vs female measures of 160 measurements for 164 countries over 56 years. 'World map' shows female, male or male/female values for individual years. 'Latest ratios' shows the most recent male/ female ratio of the chosen statistic. 'Timelines' shows the change of male and female values over time. 'Country information' gives an overview over the co-variates used for statistic analysis in 'Analysis - Plots' and '- Tests'.")
           ),
 
       tabsetPanel(
         tabPanel("World map", fluidRow(
                                   tags$h3("World map of gender statistic"),
 
-                                  p("Select a statistic and year on sidebar panel and click on any country on the map to find out more about it."),
+                                  p("Select a gender statistic and year on sidebar panel and click on any country on the map to find out more about it."),
 
                                   plotOutput("map",
                                              click = "plot_click", height = "auto"),
@@ -57,7 +57,23 @@ shinyUI(
                                   tableOutput("info"))),
 
         tabPanel("Latest ratios", fluidRow(
-                                  plotOutput("last_vals", height = "auto"))),
+                                  tags$h3("World map of last recorded values"),
+
+                                  p("Select a gender statistic on sidebar panel."),
+
+                                  plotOutput("last_vals", height = "auto"),
+
+                                  tags$h5("Countries with strongest bias in last value:"),
+
+                                  tableOutput("bias1"),
+
+                                  tableOutput("bias2"),
+
+                                  tags$h5("Countries with biggest change over time:"),
+
+                                  tableOutput("diff1"),
+
+                                  tableOutput("diff2"))),
 
         tabPanel("Timelines", fluidRow(
                                   tags$h3("Timeline of gender statistic"),
@@ -69,6 +85,8 @@ shinyUI(
                                   plotOutput("timeline2", height = "auto"))),
 
         tabPanel("Country information", fluidRow(
+                                  tags$h3("World map of factors used in statistical analysis"),
+
                                   plotOutput("income", height = "auto"),
 
                                   plotOutput("economy", height = "auto"),
@@ -78,6 +96,10 @@ shinyUI(
                                   plotOutput("gdp", height = "auto"))),
 
         tabPanel("Analysis - Plots", fluidRow(
+                                  tags$h3("Density, bar- & correlation plots"),
+
+                                  p("Select a gender statistic on sidebar panel."),
+
                                   plotOutput("density"),
 
                                   br(),
@@ -90,6 +112,10 @@ shinyUI(
 
                                   br(),
 
+                                  plotOutput("distribution3"),
+
+                                  br(),
+
                                   plotOutput("cor1"),
 
                                   br(),
@@ -97,18 +123,21 @@ shinyUI(
                                   plotOutput("cor2"))),
 
         tabPanel("Analysis - Tests", fluidRow(
+                                  tags$h3("Statistical tests"),
 
-                                  tags$h3("Wilcoxon Signed-Rank Test"),
+                                  p("Select a gender statistic on sidebar panel."),
+
+                                  tags$h5("Wilcoxon Signed-Rank Test"),
                                   tableOutput("wilcox"),
 
                                   br(),
 
-                                  tags$h3("Kruskal-Wallis Test"),
+                                  tags$h5("Kruskal-Wallis Test"),
                                   tableOutput("kruskal"),
 
                                   br(),
 
-                                  tags$h3('ANOVA Table'),
+                                  tags$h5('ANOVA Table'),
                                   tableOutput('aovSummary')
 
         ))
