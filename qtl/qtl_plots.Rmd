@@ -1,313 +1,378 @@
 ---
-title: "QTL plots with ggplot2"
+title: "Conditional ggplot2 geoms in functions (QTL plots)"
 author: "Shirin Glander"
 date: "February 9, 2017"
 output: html_document
 ---
 
-```{r}
+```{r message=FALSE, warning=FALSE, chache=TRUE}
 library(qtl)
+```
 
+http://www.rqtl.org/tutorials/rqtltour.pdf
+
+```{r message=FALSE, warning=FALSE, chache=TRUE}
+library(ggplot2)
+library(ggrepel)
+library(tidyr)
+library(dplyr)
+
+qtl_plot <- function(input,              # data frame input from scanone
+                     mult.pheno = FALSE, # multiple phenotypes?
+                     model = "normal",   # model used in scanone
+                     chrs = NA,          # chromosomes to display
+                     lod = NA,           # LOD threshold
+                     rug = FALSE,        # plot marker positions as rug?
+                     ncol = NA,          # number of columns for facetting
+                     labels = NA         # optional dataframe to plot QTL labels
+                     ) {
+  
+  # if we have multiple phenotypes and/or a 2part model, gather input
+  if (mult.pheno & model == "2part") {
+    input <- gather(input, group, lod, grep("pheno", colnames(input)))
+  } else if (mult.pheno) {
+    input <- gather(input, group, lod, grep("pheno", colnames(input)))
+  } else if (model == "2part") {
+    input <- gather(input, group, lod, lod.p.mu:lod.mu)
+  }
+    
+  # if not all chromosomes should be displayed, subset input
+  if (!is.na(chrs)[1]) {
+    input <- input[as.character(input$chr) %in% chrs, ]
+  }
+  
+  # if there are more than one LOD column, gather input
+  if (!any(colnames(input) == "lod")) {
+    input$lod <- input[, grep("lod", colnames(input))]
+  }
+    
+  # if no number of columns for facetting is defined, plot all in one row
+  if (is.na(ncol)) {
+    ncol <- length(unique(input$chr))
+  }
+  
+  # if labels are set and there is no name column, set from rownames
+  if (!is.na(labels)[1]) {
+    if (is.null(labels$name)) {
+      labels$name <- rownames(labels)
+    }
+  }
+
+  # plot input data frame position and LOD score
+  plot <- ggplot(input, aes(x = pos, y = lod)) + {
+    
+    # if LOD threshold is given, plot as horizontal line
+    if(!is.na(lod)[1]) geom_hline(yintercept = lod, linetype = "dashed")
+  } + {
+    
+    # plot rug on bottom, if TRUE
+    if(rug) geom_rug(size = 0.1, sides = "b")
+  } + {
+        
+    # if input has column method but not group, plot line and color by method
+    if (!is.null(input$method) & is.null(input$group)) geom_line(aes(color = method), size = 2, alpha = 0.6)
+  } + {
+        
+    # if input has column group but not method, plot line and color by group
+    if (!is.null(input$group) & is.null(input$method)) geom_line(aes(color = group), size = 2, alpha = 0.6)
+  } + {
+        
+    # if input has columns method and group, plot line and color by method & linetype by group
+    if (!is.null(input$group) & !is.null(input$method)) geom_line(aes(color = method, linetype = group), size = 2, alpha = 0.6)
+  } + {
+        
+    # set linetype, if input has columns method and group
+    if (!is.null(input$group) & !is.null(input$method)) scale_linetype_manual(values=c("solid", "twodash", "dotted"))
+  } + {
+            
+    # if input has neither columns method nor group, plot black line
+    if (is.null(input$group) & is.null(input$method)) geom_line(size = 2, alpha = 0.6)
+  } + {
+    
+    # if QTL positions are given in labels df, plot as point...
+    if(!is.na(labels)[1]) geom_point(data = labels, aes(x = pos, y = lod))
+  } + {
+    
+    # ... and plot name as text with ggrepel to avoid overlapping
+    if(!is.na(labels)[1]) geom_text_repel(data = labels, aes(x = pos, y = lod, label = name), nudge_y = 0.5)
+  } + 
+    # facet by chromosome
+    facet_wrap(~ chr, ncol = ncol, scales = "free_x") +
+    # minimal plotting theme
+    theme_minimal() +
+    # increase strip title size
+    theme(strip.text = element_text(face = "bold", size = 12)) +
+    # use RcolorBrewer palette
+    scale_color_brewer(palette = "Set1") +
+    # Change plot labels
+    labs(x = "Chromosome",
+         y = "LOD",
+         color = "Method")
+    
+  print(plot)
+}
+```
+
+
+```{r message=FALSE, warning=FALSE, chache=TRUE}
 data(hyper)
 
-plotMissing(hyper, reorder=TRUE)
-plotMap(hyper)
-plotPheno(hyper, pheno.col=1)
-plotMap(hyper, chr=c(1, 4, 6, 7, 15), show.marker.names=TRUE)
-```
-
-```{r}
 hyper <- est.rf(hyper)
-plotRF(hyper)
-plotRF(hyper, chr=c(1,4))
-```
 
-```{r}
-hyper <- calc.errorlod(hyper, error.prob=0.01)
-plotGeno(hyper, chr=16, ind=c(24:34, 71:81))
-
-```
-
-```{r}
-plotInfo(hyper)
-plotInfo(hyper, chr=c(1,4,15), method="entropy")
-plotInfo(hyper, chr=c(1,4,15), method="variance")
-```
-
-```{r}
-hyper <- calc.genoprob(hyper, step=1, error.prob=0.01)
+hyper <- calc.genoprob(hyper, step = 1, error.prob = 0.01)
 out.em <- scanone(hyper, model = "normal")
-out.hk <- scanone(hyper, method="hk", model = "normal")
+out.hk <- scanone(hyper, method = "hk", model = "normal")
 
-hyper <- sim.geno(hyper, step=2, n.draws=16, error.prob=0.01)
-out.imp <- scanone(hyper, method="imp", model = "normal")
+hyper <- sim.geno(hyper, step = 2, n.draws = 16, error.prob = 0.01)
+out.imp <- scanone(hyper, method = "imp", model = "normal")
 
-plot(out.em, out.hk, out.imp, chr=c(1,4,15))
-plot(out.em, chr=c(1,4,15))
-plot(out.hk, chr=c(1,4,15), col="blue", add=TRUE)
-plot(out.imp, chr=c(1,4,15), col="red", add=TRUE)
-abline(h = 3, lty = 2)
-legend("topright", c("EM algorithm","Mult. imputation"), col = c("blue", "red"), lty = 1, lwd = 3)
+operm.hk <- scanone(hyper, pheno.col = 1, model = "normal", method = "hk", n.perm = 1000, verbose = FALSE)
+
+lod_threshold <- summary(operm.hk, alpha = 0.05)
+labels_df <- as.data.frame(summary(out.hk, perms = operm.hk, alpha = 0.05, pvalues = TRUE))
 ```
 
-```{r}
-operm.hk <- scanone(hyper, pheno.col = 1, model = "normal", method="hk", n.perm=1000)
-summary(operm.hk, alpha = 0.05)
-summary(out.hk, perms=operm.hk, alpha=0.05, pvalues=TRUE)
-```
-
-
-
-```{r fig.width=15, fig.height=3}
+```{r fig.width=15, fig.height=3, message=FALSE, warning=FALSE, chache=TRUE}
 qtl_plot(input = out.hk)
 ```
 
-```{r fig.width=8, fig.height=6}
+```{r fig.width=10, fig.height=3, message=FALSE, warning=FALSE, chache=TRUE}
 qtl_plot(input = rbind(data.frame(out.em, method = "EM algorithm"), 
                        data.frame(out.hk, method = "Haley-Knott regression"), 
                        data.frame(out.imp, method = "Multiple imputation")), 
-         chrs = c(1, 4, 14, 15), 
-         lod = summary(operm.hk, alpha=0.05)[1], 
+         chrs = c(1, 4), 
+         lod = lod_threshold[1], 
          rug = TRUE, 
          ncol = 2,
-         labels = as.data.frame(summary(out.hk, perms=operm.hk, alpha=0.05, pvalues=TRUE)))
+         labels = labels_df)
 ```
 
-```{r}
-data(badorder)
-summary(badorder)
-plot(badorder)
-
-badorder <- est.rf(badorder)
-plotRF(badorder)
-
-newmap <- est.map(badorder, verbose=TRUE)
-plotMap(badorder, newmap)
-
-pull.map(badorder, chr=2)
-pull.map(badorder, chr=3)
-
-badorder <- movemarker(badorder, "D2M937", 3, 48)
-badorder <- movemarker(badorder, "D3M160", 2, 28.8)
-
-plotRF(badorder, chr=2:3)
-
-```
-
-```{r}
-badorder <- calc.genoprob(badorder, step=1, error.prob=0.01)
-out.em <- scanone(badorder)
-out.hk <- scanone(badorder, method="hk")
-
-badorder <- sim.geno(badorder, step=2, n.draws=16, error.prob=0.01)
-out.imp <- scanone(badorder, method="imp")
-
-plot(out.em, out.hk, out.imp, chr=c(1,4,15))
-plot(out.em, chr=c(1,4,15))
-plot(out.hk, chr=c(1,4,15), col="blue", add=TRUE)
-plot(out.imp, chr=c(1,4,15), col="red", add=TRUE)
-abline(h = 3, lty = 2)
-legend("topright", c("EM algorithm","Mult. imputation"), col = c("blue", "red"), lty = 1, lwd = 3)
-```
-
-```{r}
-operm.hk <- scanone(badorder, method="hk", n.perm=1000)
-summary(operm.hk, alpha = 0.05)
-summary(out.hk, perms=operm.hk, alpha=0.05, pvalues=TRUE)
-```
-
-```{r fig.width=15, fig.height=3}
-qtl_plot(input = out.hk, chrs = c(1, 3))
-```
-
-```{r fig.width=8, fig.height=3}
-qtl_plot(input = rbind(data.frame(out.em, method = "EM algorithm"), 
-                       data.frame(out.hk, method = "Haley-Knott regression"), 
-                       data.frame(out.imp, method = "Multiple imputation")), 
-         chrs = c(1, 3), 
-         lod = summary(operm.hk, alpha=0.05)[1], 
-         rug = TRUE, 
-         ncol = 2,
-         labels = as.data.frame(summary(out.hk, perms=operm.hk, alpha=0.05, pvalues=TRUE)))
-```
-
-```{r}
+```{r message=FALSE, warning=FALSE, chache=TRUE}
 data(listeria)
-summary(listeria)
-plot(listeria)
-plotMissing(listeria)
+
 listeria$pheno$logSurv <- log(listeria$pheno[,1])
-plot(listeria)
-
 listeria <- est.rf(listeria)
-plotRF(listeria)
-plotRF(listeria, chr=c(5,13))
 
-newmap <- est.map(listeria, error.prob=0.01)
-plotMap(listeria, newmap)
+newmap <- est.map(listeria, error.prob = 0.01)
 listeria <- replace.map(listeria, newmap)
 
-listeria <- calc.errorlod(listeria, error.prob=0.01)
-top.errorlod(listeria)
-top.errorlod(listeria, cutoff=3.5)
-plotGeno(listeria, chr=13, ind=61:70, cutoff=3.5)
+listeria <- calc.errorlod(listeria, error.prob = 0.01)
 
-listeria <- calc.genoprob(listeria, step=2)
-out.2p <- scanone(listeria, pheno.col=3, model="2part", upper=TRUE)
+listeria <- calc.genoprob(listeria, step = 2)
+out.2p <- scanone(listeria, pheno.col = 3, model = "2part", upper = TRUE)
 
-summary(out.2p)
-summary(out.2p, threshold=4.5)
+operm.2p <- scanone(listeria, model = "2part", pheno.col = 3, upper = TRUE, n.perm = 25, verbose = FALSE)
+lod_threshold <- summary(operm.2p, alpha = 0.05)
 
-summary(out.2p, format="allpeaks", threshold=3)
-summary(out.2p, format="allpeaks", threshold=c(4.5,3,3))
-
-plot(out.2p)
-plot(out.2p, lodcolumn=2)
-plot(out.2p, lodcolumn=1:3, chr=c(1,5,13,15))
-
-operm.2p <- scanone(listeria, model="2part", pheno.col=3,
-upper=TRUE, n.perm=25)
-summary(operm.2p, alpha=0.05)
-
-summary(out.2p, format="allpeaks", perms=operm.2p, alpha=0.05, pvalues=TRUE)
-
+labels_df <- as.data.frame(summary(out.2p, format = "allpeaks", perms = operm.2p, alpha = 0.05, pvalues = TRUE))
 ```
 
-```{r }
-library(ggplot2)
-library(tidyr)
+```{r message=FALSE, warning=FALSE, chache=TRUE}
+p.mu <- labels_df[, 1:4]
+colnames(p.mu)[3] <- "lod"
+p.mu$name <- "p.mu"
 
-qtl_plot <- function(input, model = "normal", chrs = NA, lod = NA, rug = FALSE, ncol = NA, labels = NA) {
-  
-  if (model == "2part") {
-    input <- gather(input, group, lod, lod.p.mu:lod.mu)
-  }
-    
-  if (!is.na(chrs)[1]) {
-    input <- input[as.character(input$chr) %in% chrs, ]
-  }
-  
-  if (is.na(ncol)) {
-    ncol <- length(unique(input$chr))
-  }
-  
-  if(!is.na(labels)[1]) {
-    labels$name <- rownames(labels)
-  }
+p <- labels_df[, c(1, 5:7)]
+colnames(p)[3] <- "lod"
+p$name <- "p"
 
-  
-  ggplot(input, aes(x = pos, y = lod)) + {
-    if(!is.na(lod)) geom_hline(yintercept = lod, linetype = "dashed")
-  } + {
-    if(rug) geom_rug(size = 0.1, sides = "b")
-  } + {
-    if (!is.null(input$method)) geom_line(aes(color = method), size = 2, alpha = 0.6)
-  } + {
-    if (!is.null(input$group)) geom_line(aes(color = group), size = 2, alpha = 0.6)
-  } + {
-    if (is.null(input$group) & is.null(input$method)) geom_line(size = 2, alpha = 0.6)
-  } + {
-    if(!is.na(labels)[1]) geom_point(data = labels, aes(x = pos, y = lod))
-  } + {
-    if(!is.na(labels)[1]) geom_text(data = labels, aes(x = pos, y = lod, label = name), nudge_y = 1)
-  } +
-    facet_wrap(~ chr, ncol = ncol, scales = "free_x") +
-    theme_minimal() +
-    theme(strip.text = element_text(face = "bold", size = 12)) +
-    scale_color_brewer(palette = "Set1") +
-    labs(x = "Chromosome",
-         y = "LOD",
-         color = "Method")
-    
-}
+mu <- labels_df[, c(1, 8:10)]
+colnames(mu)[3] <- "lod"
+mu$name <- "mu"
+
+labels_df <- rbind(p.mu, p, mu)
 ```
 
-```{r  fig.width=8, fig.height=6}
+```{r fig.width=15, fig.height=3, message=FALSE, warning=FALSE, chache=TRUE}
+f = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "X")
+out.2p$chr <- factor(out.2p$chr, levels = f)
+labels_df$chr <- factor(labels_df$chr, levels = f)
+```
+
+```{r fig.width=10, fig.height=6, message=FALSE, warning=FALSE, chache=TRUE}
 qtl_plot(input = out.2p, 
          model = "2part",
-         chrs = c(1:3, 5:6, 13, 15),
-         lod = summary(operm.2p, alpha=0.05)[1], 
+         chrs = c(1, 3, 5:6, 13, 15),
+         lod = lod_threshold[1], 
          rug = TRUE, 
-         ncol = 4,
-         labels = as.data.frame(summary(out.2p, perms=operm.2p, alpha=0.05, pvalues=TRUE)))
+         ncol = 3,
+         labels = labels_df)
 ```
 
-```{r}
+```{r message=FALSE, warning=FALSE, chache=TRUE}
 y <- listeria$pheno$logSurv
-my <- max(y, na.rm=TRUE)
-z <- as.numeric(y==my)
-y[y==my] <- NA
+my <- max(y, na.rm = TRUE)
+z <- as.numeric(y == my)
+y[y == my] <- NA
 listeria$pheno$logSurv2 <- y
 listeria$pheno$binary <- z
-plot(listeria)
 
-out.p <- scanone(listeria, pheno.col=5, model="binary")
-plot(out.p, out.2p, lodcolumn=c(1,2), chr=c(1,5,13,15), col=c("blue","red"))
+out.p <- scanone(listeria, pheno.col = 5, model = "binary")
+out.np1 <- scanone(listeria, model = "np", ties.random = TRUE)
+out.np2 <- scanone(listeria, model = "np", ties.random = FALSE)
 ```
 
-```{r }
-library(ggplot2)
-library(tidyr)
-
-qtl_plot <- function(input, model = "normal", chrs = NA, lod = NA, rug = FALSE, ncol = NA, labels = NA) {
-  
-  if (model == "2part") {
-    input <- gather(input, group, lod, lod.p.mu:lod.mu)
-  }
-    
-  if (!is.na(chrs)[1]) {
-    input <- input[as.character(input$chr) %in% chrs, ]
-  }
-  
-  if (is.na(ncol)) {
-    ncol <- length(unique(input$chr))
-  }
-  
-  if(!is.na(labels)[1]) {
-    labels$name <- rownames(labels)
-  }
-
-  
-  ggplot(input, aes(x = pos, y = lod)) + {
-    if(!is.na(lod)) geom_hline(yintercept = lod, linetype = "dashed")
-  } + {
-    if(rug) geom_rug(size = 0.1, sides = "b")
-  } + {
-    if (!is.null(input$method)) geom_line(aes(color = method), size = 2, alpha = 0.6)
-  } + {
-    if (!is.null(input$group)) geom_line(aes(color = group), size = 2, alpha = 0.6)
-  } + {
-    if (is.null(input$group) & is.null(input$method)) geom_line(size = 2, alpha = 0.6)
-  } + {
-    if(!is.na(labels)[1]) geom_point(data = labels, aes(x = pos, y = lod))
-  } + {
-    if(!is.na(labels)[1]) geom_text(data = labels, aes(x = pos, y = lod, label = name), nudge_y = 1)
-  } +
-    facet_wrap(~ chr, ncol = ncol, scales = "free_x") +
-    theme_minimal() +
-    theme(strip.text = element_text(face = "bold", size = 12)) +
-    scale_color_brewer(palette = "Set1") +
-    labs(x = "Chromosome",
-         y = "LOD",
-         color = "Method")
-    
-}
-```
-
-
-```{r}
-out.np1 <- scanone(listeria, model="np", ties.random=TRUE)
-out.np2 <- scanone(listeria, model="np", ties.random=FALSE)
-plot(out.np1, out.np2, col=c("blue","red"))
-plot(out.2p, out.np1, out.np2, chr=c(1,5,13,15))
-```
-
-```{r  fig.width=8, fig.height=6}
+```{r fig.width=15, fig.height=4, message=FALSE, warning=FALSE, chache=TRUE}
 qtl_plot(input = rbind(data.frame(out.np1, method = "out.2p"),
                        data.frame(out.np1, method = "np1"),
                        data.frame(out.np2, method = "np2")))
 ```
 
+```{r message=FALSE, warning=FALSE, chache=TRUE}
+data(fake.bc)
 
+fake.bc <- calc.genoprob(fake.bc, step = 2.5)
+out.nocovar <- scanone(fake.bc, pheno.col = 1:2)
+```
+
+```{r fig.width=15, fig.height=4, message=FALSE, warning=FALSE, chache=TRUE}
+qtl_plot(input = out.nocovar, mult.pheno = TRUE)
+```
+
+```{r fig.width=8, fig.height=3, message=FALSE, warning=FALSE, chache=TRUE}
+out.nocovar.2p <- scanone(fake.bc, pheno.col = 1:2, model = "2part", upper = TRUE)
+
+qtl_plot(input = out.nocovar.2p,
+         chrs = c(2, 5),
+         mult.pheno = TRUE, 
+         model = "2part")
+```
+
+
+```{r message=FALSE, warning=FALSE, chache=TRUE}
+sex <- fake.bc$pheno$sex
+out.acovar <- scanone(fake.bc, pheno.col = 1:2, addcovar = sex)
+
+out.icovar <- scanone(fake.bc, pheno.col = 1:2, addcovar = sex, intcovar = sex)
+summary(out.icovar, threshold = 3, format = "allpeaks")
+
+out.sexint <- out.icovar - out.acovar
+
+operm.icovar <- scanone(fake.bc, pheno.col = 1:2, addcovar = sex, intcovar = sex, n.perm = 25, verbose = FALSE)
+lod_threshold <- summary(operm.icovar, alpha = 0.05)
+
+labels_df <- as.data.frame(summary(out.icovar, perms = operm.icovar, alpha = 0.05, pvalues = TRUE))
+```
+
+```{r message=FALSE, warning=FALSE, chache=TRUE}
+pheno1 <- labels_df[, 1:4]
+colnames(pheno1)[3] <- "lod"
+pheno1$name <- "pheno1"
+
+pheno2 <- labels_df[, c(1, 2, 5, 6)]
+colnames(pheno2)[3] <- "lod"
+pheno2$name <- "pheno2"
+
+labels_df <- rbind(pheno1, pheno2)
+```
+
+```{r fig.width=15, fig.height=3, message=FALSE, warning=FALSE, chache=TRUE}
+f = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "X")
+labels_df$chr <- factor(labels_df$chr, levels = f)
+```
+
+```{r fig.width=15, fig.height=4, message=FALSE, warning=FALSE, chache=TRUE}
+qtl_plot(input = rbind(data.frame(out.acovar, method = "acovar"),
+                       data.frame(out.icovar, method = "icovar"),
+                       data.frame(out.sexint, method = "sexint")), 
+         chrs = c(2, 5, 10, 16, 17),
+         mult.pheno = TRUE,
+         lod = lod_threshold[1:2],
+         labels = labels_df)
+```
+
+```{r message=FALSE, warning=FALSE, chache=TRUE}
+seed <- ceiling(runif(1, 0, 10^8))
+set.seed(seed)
+operm.acovar <- scanone(fake.bc, pheno.col = 1:2, addcovar = sex, method = "hk", n.perm = 100, verbose = FALSE)
+
+set.seed(seed)
+operm.icovar <- scanone(fake.bc, pheno.col = 1:2, addcovar = sex, intcovar = sex, method = "hk", n.perm = 100, verbose = FALSE)
+
+operm.sexint <- operm.icovar - operm.acovar
+
+lod_threshold <- summary(operm.sexint, alpha = c(0.05, 0.20))
+```
+
+```{r fig.width=10, fig.height=4, message=FALSE, warning=FALSE, chache=TRUE}
+labels <- as.data.frame(summary(out.sexint, perms = operm.sexint, alpha = 0.1, format = "allpeaks", pvalues = TRUE))
+pheno1 <- data.frame(labels[, 1:4])
+colnames(pheno1)[3] <- "lod"
+pheno1$name <- "p1"
+
+pheno2 <- data.frame(labels[, c(1, 5:7)])
+colnames(pheno2)[3] <- "lod"
+pheno2$name <- "p2"
+
+labels_df <- rbind(pheno1, pheno2)
+```
+
+```{r fig.width=10, fig.height=3, message=FALSE, warning=FALSE, chache=TRUE}
+qtl_plot(input = out.sexint, 
+         mult.pheno = TRUE,
+         labels = labels_df,
+         chrs = c(2, 7, 17), 
+         lod = lod_threshold[1, ],
+         ncol = 3)
+```
+
+```{r message=FALSE, warning=FALSE, chache=TRUE}
+hyper <- sim.geno(hyper, step = 2.5, n.draws = 16, err = 0.01)
+g <- pull.geno(fill.geno(hyper))[, "D4Mit164"]
+out1.c4i <- scanone(hyper, method = "imp", addcovar = g, intcovar = g)
+```
+
+```{r fig.width=15, fig.height=3, message=FALSE, warning=FALSE, chache=TRUE}
+qtl_plot(input = out1.c4i)
+```
+
+```{r message=FALSE, warning=FALSE, chache=TRUE}
+qc <- c(1, 1, 4, 6, 15)
+qp <- c(43.3, 78.3, 30.0, 62.5, 18.0)
+qtl <- makeqtl(hyper, chr = qc, pos = qp)
+```
+
+```{r message=FALSE, warning=FALSE, chache=TRUE}
+myformula <- y ~ Q1 + Q2 + Q3 + Q4 + Q5 + Q4:Q5
+out.fq <- fitqtl(hyper, qtl = qtl, formula = myformula, drop = FALSE, get.ests = TRUE)
+
+revqtl <- refineqtl(hyper, qtl = qtl, formula = myformula, verbose = FALSE)
+out1.c4r <- addqtl(hyper, qtl = revqtl, formula = y ~ Q3)
+
+out2.c4r <- addpair(hyper, qtl = revqtl, formula = y ~ Q3, chr = c(1, 6, 7, 15), verbose = FALSE)
+out.iw4 <- addqtl(hyper, qtl = revqtl, formula = y ~ Q1 + Q2 + Q3 + Q4 + Q5 + Q4:Q5 + Q6 + Q5:Q6)
+out.1more <- addqtl(hyper, qtl = revqtl, formula = myformula)
+
+qtl2 <- addtoqtl(hyper, revqtl, 7, 53.6)
+qtl3 <- dropfromqtl(qtl2, index = 2)
+qtl4 <- replaceqtl(hyper, qtl3, index = 1, chr = 1, pos = 50)
+qtl5 <- reorderqtl(qtl4, c(1:3, 5, 4))
+
+stepout.i <- stepwiseqtl(hyper, max.qtl = 6, verbose = FALSE)
+```
+
+```{r message=FALSE, warning=FALSE, chache=TRUE}
+label_df <- data.frame(name = stepout.i$name, chr = stepout.i$chr, pos = stepout.i$pos)
+
+qtl1 <- attr(stepout.i, "lodprofile")[[1]]
+qtl4 <- attr(stepout.i, "lodprofile")[[2]]
+qtl6 <- attr(stepout.i, "lodprofile")[[3]]
+qtl15 <- attr(stepout.i, "lodprofile")[[4]]
+
+input_df <- rbind(qtl1, qtl4, qtl6, qtl15)
+input_df$marker <- rownames(input_df)
+input_df$name <- paste(input_df$chr, round(input_df$pos, digits = 1), sep = "@")
+
+label_df$pos <- as.numeric(gsub("(^[0-9]+)(.0$)", "\\1", label_df$pos))
+label_df$name <- paste(label_df$chr, round(label_df$pos, digits = 1), sep = "@")
+
+label_df <- left_join(label_df, input_df[, 3:5, drop = FALSE], by = "name")
+label_df$name <- paste(label_df$name, label_df$marker, sep = "\n")
+```
+
+```{r fig.width=10, fig.height=3, message=FALSE, warning=FALSE, chache=TRUE}
+qtl_plot(input = input_df,
+         labels = label_df)
+```
 
 
