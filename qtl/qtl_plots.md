@@ -1,10 +1,11 @@
 ---
+layout: post
 title: "Conditional ggplot2 geoms in functions (QTL plots)"
-author: "Shirin Glander"
-date: "`r Sys.Date()`"
-output:
-  md_document:
-    variant: markdown_github
+date: 2017-02-12
+categories: ggplot2
+tags: ggplot2 qtl functions
+author: Shirin Glander
+image: ggplot2/2017/02/12/qtl_plots_files/figure-markdown_github/unnamed-chunk-5-1.png
 ---
 
 When running an analysis, I am usually combining functions from multiple packages. Most of these packages come with their own plotting functions. And while they are certainly convenient in that they allow me to get a quick glance at the data or the output, they all have their own style. If I want to prepare a report, proposal or a paper though, I want all my plots to come from a single cast so that they give a consistent feel to the story I want to tell with my data.
@@ -15,7 +16,7 @@ Specifically, I want to show how to incorporate conditional geoms when using ggp
 
 I will show how my function can be used with the output from qtl's **scanone()** function by following the examples from the [package tutorial](http://www.rqtl.org/tutorials/rqtltour.pdf). The tutorial does an excellent job describing the workflow, so I am not going to explain it here.
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 library(qtl)
 ```
 
@@ -23,7 +24,7 @@ library(qtl)
 
 For defining the function and preparing the data for plotting, I am working with ggplot2, ggrepel (for adding text labels that don't overlap), tidyr and dplyr. This is my function code:
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 library(ggplot2)
 library(ggrepel)
 library(tidyr)
@@ -133,7 +134,7 @@ qtl_plot <- function(input,              # data frame input from scanone
 
 The first example uses the *hyper* data set and builds a simple QTL model with three modeling functions: the EM algorithm, Haley-Knott regression and multiple imputation. The genome wide LOD threshold is calculated with permutation. Feeding this LOD threshold into the summary output gives us the markers with a significant phenotype association (i.e. the QTL).
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 data(hyper)
 
 hyper <- est.rf(hyper)
@@ -153,15 +154,17 @@ labels_df <- as.data.frame(summary(out.hk, perms = operm.hk, alpha = 0.05, pvalu
 
 The most basic version of my plotting function takes as input a data frame from the **scanone()** function: It needs to have a column with chromosome information, position and LOD score. Without defining anything else, the function will return a line plot of the LOD scores for each marker position on each chromosome in the input data.
 
-```{r fig.width=17, fig.height=3, message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 qtl_plot(input = out.hk)
 ```
+
+![](qtl_plots_files/figure-markdown_github/unnamed-chunk-4-1.png)
 
 If we want to compare the output from e.g. different QTL models, we can follow the tidyverse principle by combining the output data frames in long format and adding a column with the respective method names. If the input has a *method* column, it will color the lines accordingly. We can also specify, which chromosomes to display (here, 1 and 4) and give a LOD threshold to plot as a horizontal dashed line. If we want to see each marker position, we can specify *rug = TRUE* to plot them underneath the line plots.
 
 And we can also plot the markers with a significant phenotype association (the QTL) by adding a data frame with the labeling information to the function call. This data frame needs to contain the chromosome, position and LOD score information. If there is no *name* column, it will take the row names (which usually give the marker name) as labels.
 
-```{r fig.width=10, fig.height=3, message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 qtl_plot(input = rbind(data.frame(out.em, method = "EM algorithm"), 
                        data.frame(out.hk, method = "Haley-Knott regression"), 
                        data.frame(out.imp, method = "Multiple imputation")), 
@@ -171,11 +174,13 @@ qtl_plot(input = rbind(data.frame(out.em, method = "EM algorithm"),
          labels = labels_df)
 ```
 
+![](qtl_plots_files/figure-markdown_github/unnamed-chunk-5-1.png)
+
 <br>
 
 The second example I want to show is from the *listeria* data. This time, a slightly more complex *2-part* model is built.
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 data(listeria)
 
 listeria$pheno$logSurv <- log(listeria$pheno[,1])
@@ -199,7 +204,7 @@ The output from a 2-part model looks different than from the other model functio
 
 If we also want to plot the QTL labels, we need to prepare the label data frame before feeding it into the plotting function:
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 p.mu <- labels_df[, 1:4]
 colnames(p.mu)[3] <- "lod"
 p.mu$name <- "p.mu"
@@ -217,7 +222,7 @@ labels_df <- rbind(p.mu, p, mu)
 
 If the chromosomes are not in the right order, we can reorder the factor labels:
 
-```{r fig.width=15, fig.height=3, message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 f = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "X")
 out.2p$chr <- factor(out.2p$chr, levels = f)
 labels_df$chr <- factor(labels_df$chr, levels = f)
@@ -225,7 +230,7 @@ labels_df$chr <- factor(labels_df$chr, levels = f)
 
 The parameter *ncol* let's you define how many facet columns you want to have. Here, I want two rows and three columns to display the six chromosomes I chose for plotting:
 
-```{r fig.width=10, fig.height=6, message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 qtl_plot(input = out.2p, 
          model = "2part",
          chrs = c(1, 3, 5:6, 13, 15),
@@ -235,11 +240,13 @@ qtl_plot(input = out.2p,
          labels = labels_df)
 ```
 
+![](qtl_plots_files/figure-markdown_github/unnamed-chunk-9-1.png)
+
 <br>
 
 Binary models are again treated the same way as e.g. normal models:
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 y <- listeria$pheno$logSurv
 my <- max(y, na.rm = TRUE)
 z <- as.numeric(y == my)
@@ -252,17 +259,19 @@ out.np1 <- scanone(listeria, model = "np", ties.random = TRUE)
 out.np2 <- scanone(listeria, model = "np", ties.random = FALSE)
 ```
 
-```{r fig.width=15, fig.height=4, message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 qtl_plot(input = rbind(data.frame(out.np1, method = "out.2p"),
                        data.frame(out.np1, method = "np1"),
                        data.frame(out.np2, method = "np2")))
 ```
 
+![](qtl_plots_files/figure-markdown_github/unnamed-chunk-11-1.png)
+
 <br>
 
 The *fake.bc* data is used to show how to run QTL models with multiple phenotypes simultaneously and how to add additive or interactive covariates.
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 data(fake.bc)
 
 fake.bc <- calc.genoprob(fake.bc, step = 2.5)
@@ -271,13 +280,15 @@ out.nocovar <- scanone(fake.bc, pheno.col = 1:2)
 
 If the parameter *mult.pheno* is set to TRUE, the plotting function gathers the phenotype columns and plots each phenotype in a different color.
 
-```{r fig.width=17, fig.height=4, message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 qtl_plot(input = out.nocovar, mult.pheno = TRUE)
 ```
 
+![](qtl_plots_files/figure-markdown_github/unnamed-chunk-13-1.png)
+
 If we specify both *mult.pheno = TRUE* and *model = "2part"*, the function plots each LOD score for each phenotype in a different color. If you wanted to plot only the *lod.p* column for example, you could subset the input data frame before feeding it into the plotting function.
 
-```{r fig.width=8, fig.height=3, message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 out.nocovar.2p <- scanone(fake.bc, pheno.col = 1:2, model = "2part", upper = TRUE)
 
 qtl_plot(input = out.nocovar.2p,
@@ -286,11 +297,13 @@ qtl_plot(input = out.nocovar.2p,
          model = "2part")
 ```
 
+![](qtl_plots_files/figure-markdown_github/unnamed-chunk-14-1.png)
+
 <br>
 
 If we run a multiple phenotype model and want to determine the QTL positions, we get a different LOD threshold for each of the phenotypes and respectively, for significantly associated markers as well.
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 sex <- fake.bc$pheno$sex
 out.acovar <- scanone(fake.bc, pheno.col = 1:2, addcovar = sex)
 
@@ -306,7 +319,7 @@ labels_df <- as.data.frame(summary(out.icovar, perms = operm.icovar, alpha = 0.0
 
 This means that, if we want to plot QTL labels for both phenotypes, we first need to prepare the label data frame:
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 pheno1 <- labels_df[, 1:4]
 colnames(pheno1)[3] <- "lod"
 pheno1$name <- paste("pheno1", rownames(pheno1), sep = "\n")
@@ -323,7 +336,7 @@ labels_df$chr <- factor(labels_df$chr, levels = f)
 
 If different methods and groups are detected in the input data frame, the methods will be drawn with different colors, while the groups will have different line types. If we want to plot two LOD thresholds for the two phenotypes, we can give a data frame to the function that has a group column that corresponds to the phenotypes of the input data frame. The LOD threshold will now be plotted in the same line type as the phenotype LOD score plot.
 
-```{r fig.width=10, fig.height=4, message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 qtl_plot(input = rbind(data.frame(out.acovar, method = "acovar"),
                        data.frame(out.icovar, method = "icovar"),
                        data.frame(out.sexint, method = "sexint")), 
@@ -334,11 +347,13 @@ qtl_plot(input = rbind(data.frame(out.acovar, method = "acovar"),
          labels = labels_df)
 ```
 
+![](qtl_plots_files/figure-markdown_github/unnamed-chunk-17-1.png)
+
 <br>
 
 For QTL models with covariates, the same principles apply:
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 seed <- ceiling(runif(1, 0, 10^8))
 set.seed(seed)
 operm.acovar <- scanone(fake.bc, pheno.col = 1:2, addcovar = sex, method = "hk", n.perm = 100, verbose = FALSE)
@@ -351,7 +366,7 @@ operm.sexint <- operm.icovar - operm.acovar
 lod_threshold <- summary(operm.sexint, alpha = c(0.05, 0.20))
 ```
 
-```{r fig.width=10, fig.height=4, message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 labels <- as.data.frame(summary(out.sexint, perms = operm.sexint, alpha = 0.1, format = "allpeaks", pvalues = TRUE))
 pheno1 <- data.frame(labels[, 1:4])
 colnames(pheno1)[3] <- "lod"
@@ -364,7 +379,7 @@ pheno2$name <- "p2"
 labels_df <- rbind(pheno1, pheno2)
 ```
 
-```{r fig.width=10, fig.height=3, message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 qtl_plot(input = out.sexint, 
          mult.pheno = TRUE,
          labels = labels_df,
@@ -374,27 +389,31 @@ qtl_plot(input = out.sexint,
          ncol = 3)
 ```
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+![](qtl_plots_files/figure-markdown_github/unnamed-chunk-20-1.png)
+
+``` r
 hyper <- sim.geno(hyper, step = 2.5, n.draws = 16, err = 0.01)
 g <- pull.geno(fill.geno(hyper))[, "D4Mit164"]
 out1.c4i <- scanone(hyper, method = "imp", addcovar = g, intcovar = g)
 ```
 
-```{r fig.width=15, fig.height=3, message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 qtl_plot(input = out1.c4i)
 ```
+
+![](qtl_plots_files/figure-markdown_github/unnamed-chunk-22-1.png)
 
 <br>
 
 And as well for model fitting:
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 qc <- c(1, 1, 4, 6, 15)
 qp <- c(43.3, 78.3, 30.0, 62.5, 18.0)
 qtl <- makeqtl(hyper, chr = qc, pos = qp)
 ```
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 myformula <- y ~ Q1 + Q2 + Q3 + Q4 + Q5 + Q4:Q5
 out.fq <- fitqtl(hyper, qtl = qtl, formula = myformula, drop = FALSE, get.ests = TRUE)
 
@@ -415,7 +434,7 @@ stepout.i <- stepwiseqtl(hyper, max.qtl = 6, verbose = FALSE)
 
 Here, we also need to prepare the label data frame before the plotting function can handle it:
 
-```{r message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 label_df <- data.frame(name = stepout.i$name, chr = stepout.i$chr, pos = stepout.i$pos)
 
 qtl1 <- attr(stepout.i, "lodprofile")[[1]]
@@ -434,19 +453,46 @@ label_df <- left_join(label_df, input_df[, 3:5, drop = FALSE], by = "name")
 label_df$name <- paste(label_df$name, label_df$marker, sep = "\n")
 ```
 
-```{r fig.width=10, fig.height=3, message=FALSE, warning=FALSE, cache=TRUE}
+``` r
 qtl_plot(input = input_df,
          labels = label_df)
 ```
+
+![](qtl_plots_files/figure-markdown_github/unnamed-chunk-26-1.png)
 
 <br>
 
 These examples show only the simple QTL models. The qtl package also gives examples for building **scantwo()** models. But they can not be plotted in the same way as a **scanone()** output and thus, won't be covered here.
 
-------------------
+------------------------------------------------------------------------
 
 <br>
 
-```{r echo=TRUE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, fig.align="center", cache=FALSE}
+``` r
 sessionInfo()
 ```
+
+    ## R version 3.3.2 (2016-10-31)
+    ## Platform: x86_64-apple-darwin13.4.0 (64-bit)
+    ## Running under: macOS Sierra 10.12.1
+    ## 
+    ## locale:
+    ## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+    ## 
+    ## attached base packages:
+    ## [1] stats     graphics  grDevices utils     datasets  methods   base     
+    ## 
+    ## other attached packages:
+    ## [1] dplyr_0.5.0   tidyr_0.6.0   ggrepel_0.6.5 ggplot2_2.2.1 qtl_1.40-8   
+    ## 
+    ## loaded via a namespace (and not attached):
+    ##  [1] Rcpp_0.12.8        knitr_1.15.1       magrittr_1.5      
+    ##  [4] munsell_0.4.3      colorspace_1.3-2   R6_2.2.0          
+    ##  [7] stringr_1.1.0      plyr_1.8.4         tools_3.3.2       
+    ## [10] parallel_3.3.2     grid_3.3.2         gtable_0.2.0      
+    ## [13] DBI_0.5-1          htmltools_0.3.5    yaml_2.1.14       
+    ## [16] lazyeval_0.2.0     rprojroot_1.1      digest_0.6.11     
+    ## [19] assertthat_0.1     tibble_1.2         RColorBrewer_1.1-2
+    ## [22] codetools_0.2-15   evaluate_0.10      rmarkdown_1.3     
+    ## [25] labeling_0.3       stringi_1.1.2      scales_0.4.1      
+    ## [28] backports_1.0.4
