@@ -1,5 +1,5 @@
 ---
-title: "CLustering/ Deep learning of Food preference data"
+title: "How to build neural nets in R"
 author: "Dr. Shirin Glander"
 date: '`r Sys.Date()`'
 output:
@@ -8,11 +8,80 @@ output:
     highlight: github
 ---
 
+I've seen many examples for building neural nets with Python. Therefore, I wanted to show here, how it could be done with R.
+Obviously, the power of deep learning is in applying it to large datasets with many features (like image categorisation, etc.). Because that's not very handy for demonstration purposes, I am here showing the principles on a small dataset.
+
+The raw data behind the story "The FiveThirtyEight International Food Association's 2014 World Cup" http://fivethirtyeight.com/features/the-fivethirtyeight-international-food-associations-2014-world-cup/. For all the countries below, the response to the following question is presented: "Please rate how much you like the traditional cuisine of X"
+
+5: I love this country's traditional cuisine. I think it's one of the best in the world.
+
+4: I like this country's traditional cuisine. I think it's considerably above average.
+
+3: I'm OK with this county's traditional cuisine. I think it's about average.
+
+2: I dislike this country's traditional cuisine. I think it's considerably below average.
+
+1: I hate this country's traditional cuisine. I think it's one of the worst in the world.
+
+N/A: I'm unfamiliar with this country's traditional cuisine.
+
 ```{r}
 library(fivethirtyeight)
 
-str(food_world_cup)
+# backup copy:
+food_world_cup_copy <- food_world_cup
+
+head(food_world_cup)
 ```
+
+```{r}
+food_world_cup[food_world_cup == "N/A"] <- NA
+
+library(tidyr)
+#food_world_cup_gather <- na.omit(gather(food_world_cup, country, value, algeria:vietnam))
+food_world_cup_gather <- gather(food_world_cup, country, value, algeria:vietnam)
+                                 
+food_world_cup_gather$value <- as.numeric(food_world_cup_gather$value)
+food_world_cup_gather$country <- as.factor(food_world_cup_gather$country)
+```
+
+```{r fig.width=20}
+library(ggplot2)
+
+order <- aggregate(food_world_cup_gather$value, by = list(country = food_world_cup_gather$country), FUN = sum)
+
+food_world_cup_gather$country <- factor(food_world_cup_gather$country, levels = order$country[order(order$x, decreasing = TRUE)])
+
+ggplot(food_world_cup_gather, aes(x = country, y = value, fill = gender)) +
+  geom_bar(stat = "identity") +
+  facet_grid(age ~ education)
+```
+
+```{r fig.width=20}
+ggplot(food_world_cup_gather, aes(x = country, y = value, fill = gender)) +
+  geom_bar(stat = "identity") +
+  facet_grid(education ~ household_income)
+```
+
+```{r fig.width=20}
+ggplot(food_world_cup_gather, aes(x = country, y = value, fill = gender)) +
+  geom_bar(stat = "identity") +
+  facet_grid(knowledge ~ interest)
+```
+
+```{r fig.width=20}
+ggplot(food_world_cup_gather, aes(x = country, y = value, fill = gender)) +
+  geom_boxplot()
+```
+
+---
+
+```{r}
+
+```
+
+
+---
 
 http://www.r-tutor.com/deep-learning/introduction
 
