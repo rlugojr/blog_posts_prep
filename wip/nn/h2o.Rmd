@@ -152,9 +152,7 @@ sc <- spark_connect(master = "local", version = "2.0.0")
 ```
 
 ```{r message=FALSE, warning=FALSE}
-library(tidyr)
 library(ggplot2)
-library(ggrepel)
 
 my_theme <- function(base_size = 12, base_family = "sans"){
   theme_minimal(base_size = base_size, base_family = base_family) +
@@ -439,8 +437,8 @@ h2o.mse(best_dl_perf)
 Let's see which model had the lowest validation error:
 
 ```{r}
-scores <- cbind(as.data.frame(unlist((lapply(grid@model_ids, function(x)
-{ h2o.confusionMatrix(h2o.performance(h2o.getModel(x),valid=T))$Error[8] })) )), unlist(grid@model_ids))
+scores <- cbind(as.data.frame(unlist((lapply(dl_grid@model_ids, function(x)
+{ h2o.confusionMatrix(h2o.performance(h2o.getModel(x),valid=T))$Error[3] })) )), unlist(dl_grid@model_ids))
 
 names(scores) <- c("misclassification","model")
 sorted_scores <- scores[order(scores$misclassification),]
@@ -490,9 +488,9 @@ for (i in 1:10) {
 We continue to look for the model with the lowest validation misclassification rate:
 
 ```{r}
-best_err <- 1      ##start with the best reference model from the grid search above, if available
+best_err <- 1
 for (i in 1:length(models)) {
-  err <- h2o.confusionMatrix(h2o.performance(models[[i]],valid=T))$Error[8]
+  err <- h2o.confusionMatrix(h2o.performance(models[[i]],valid=T))$Error[3]
   if (err < best_err) {
     best_err <- err
     best_model <- models[[i]]
@@ -510,29 +508,27 @@ Let's continue training the manually tuned model from before, for 2 more epochs.
 
 ```{r}
 max_epochs <- 12 ## Add two more epochs
-m_cont <- h2o.deeplearning(
-model_id="dl_model_tuned_continued",
-checkpoint="dl_model_tuned",
-training_frame=train,
-validation_frame=valid,
-x=features,
-y=response,
-hidden=c(128,128,128),          ## more hidden layers -> more complex interactions
-epochs=max_epochs,              ## hopefully long enough to converge (otherwise restart again)
-stopping_metric="logloss",      ## logloss is directly optimized by Deep Learning
-stopping_tolerance=1e-2,        ## stop when validation logloss does not improve by >=1% for 2 scoring events
-stopping_rounds=2,
-score_validation_samples=10000, ## downsample validation set for faster scoring
-score_duty_cycle=0.025,         ## don't score more than 2.5% of the wall time
-adaptive_rate=F,                ## manually tuned learning rate
-rate=0.01,
-rate_annealing=2e-6,
-momentum_start=0.2,             ## manually tuned momentum
-momentum_stable=0.4,
-momentum_ramp=1e7,
-l1=1e-5,                        ## add some L1/L2 regularization
-l2=1e-5,
-max_w2=10                       ## helps stability for Rectifier
+m_cont <- h2o.deeplearning(model_id="dl_model_tuned_continued",
+                          training_frame=train,
+                          validation_frame=valid,
+                          x=features,
+                          y=response,
+                          hidden=c(128,128,128),          ## more hidden layers -> more complex interactions
+                          epochs=max_epochs,              ## hopefully long enough to converge (otherwise restart again)
+                          stopping_metric="logloss",      ## logloss is directly optimized by Deep Learning
+                          stopping_tolerance=1e-2,        ## stop when validation logloss does not improve by >=1% for 2 scoring events
+                          stopping_rounds=2,
+                          score_validation_samples=10000, ## downsample validation set for faster scoring
+                          score_duty_cycle=0.025,         ## don't score more than 2.5% of the wall time
+                          adaptive_rate=F,                ## manually tuned learning rate
+                          rate=0.01,
+                          rate_annealing=2e-6,
+                          momentum_start=0.2,             ## manually tuned momentum
+                          momentum_stable=0.4,
+                          momentum_ramp=1e7,
+                          l1=1e-5,                        ## add some L1/L2 regularization
+                          l2=1e-5,
+                          max_w2=10                       ## helps stability for Rectifier
 )
 summary(m_cont)
 plot(m_cont)
@@ -566,7 +562,7 @@ gbm_gridperf1 <- h2o.getGrid(grid_id = "gbm_grid1",
 print(gbm_gridperf1)
 ```
 
-Once we are satisfied with the results, we can save the model to disk (on the cluster). In this example, we store the model in a directory called `mybest_deeplearning_covtype_model`, which will be created for us since `force=TRUE`.
+Once we are satisfied with the results, we can save the model to disk (on the cluster).
 
 ```{r}
 path <- h2o.saveModel(m_cont,
