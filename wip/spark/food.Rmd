@@ -8,22 +8,106 @@ output:
     highlight: github
 ---
 
-Obviously, the power of Spark is in applying it to large datasets with many features (like image categorisation, etc.). Because that's not very handy for demonstration purposes, I am here showing the principles on a small dataset.
+Obviously, the power of Spark is in applying it to large datasets with many features (like image categorisation, etc.). Because that's not very handy for demonstration purposes, I am here showing the principles on a small dataset. 
+
+Also, this dataset was a bit troublesome. The predictions were biased by the fact that the distributions were very different between countries. But I wanted to keep the analysis anyways. Because most blogs I've seen show only the cool examples, where ML worked really well, so that I thought it good to also show a difficult example and show what problems can arise. Maybe the model could be improved with feature engineering but here, I'm only showing a simple feature transformation example.
+
+The reason why Nigeria, Cameroon, etc. had such high accuracy when we keep the 0s, is that they had a majority of 0 votes, meaning that the likelihood of correctly classifying a sample as 0 is high! When we remove 0s however, the prediction accuracy drops sharply. The main problem is that the distribution of preferences and whether a dish is known (i.e. has a value > 0) is very different between countries. Specifically, whenever a value is overrepresented, the likelihood of correctly classifying that value by chance increases and thus introduces bias to our models!
 
 ---
 
-http://spark.rstudio.com/
+- sparklyr: R interface for Apache Spark: http://spark.rstudio.com/
 
-http://spark.apache.org/
+You can orchestrate machine learning algorithms in a Spark cluster via the machine learning functions within sparklyr. These functions connect to a set of high-level APIs built on top of DataFrames that help you create and tune machine learning workflows.
 
-http://spark.apache.org/faq.html
+- Apache Spark™ is a fast and general engine for large-scale data processing.: http://spark.apache.org/
 
-https://bigdatauniversity.com/courses/what-is-spark/
+Apache Spark is an open-source cluster-computing framework. Originally developed at the University of California, Berkeley's AMPLab, the Spark codebase was later donated to the Apache Software Foundation, which has maintained it since. Spark provides an interface for programming entire clusters with implicit data parallelism and fault-tolerance.
 
-http://spark.apache.org/docs/latest/quick-start.html
+Overview[edit]
+Apache Spark provides programmers with an application programming interface centered on a data structure called the resilient distributed dataset (RDD), a read-only multiset of data items distributed over a cluster of machines, that is maintained in a fault-tolerant way.[2] It was developed in response to limitations in the MapReduce cluster computing paradigm, which forces a particular linear dataflow structure on distributed programs: MapReduce programs read input data from disk, map a function across the data, reduce the results of the map, and store reduction results on disk. Spark's RDDs function as a working set for distributed programs that offers a (deliberately) restricted form of distributed shared memory.[3]
 
-http://spark.apache.org/docs/latest/programming-guide.html
+The availability of RDDs facilitates the implementation of both iterative algorithms, that visit their dataset multiple times in a loop, and interactive/exploratory data analysis, i.e., the repeated database-style querying of data. The latency of such applications (compared to Apache Hadoop, a popular MapReduce implementation) may be reduced by several orders of magnitude.[2][4] Among the class of iterative algorithms are the training algorithms for machine learning systems, which formed the initial impetus for developing Apache Spark.[5]
 
+Apache Spark requires a cluster manager and a distributed storage system. For cluster management, Spark supports standalone (native Spark cluster), Hadoop YARN, or Apache Mesos.[6] For distributed storage, Spark can interface with a wide variety, including Hadoop Distributed File System (HDFS),[7] MapR File System (MapR-FS),[8] Cassandra,[9] OpenStack Swift, Amazon S3, Kudu, or a custom solution can be implemented. Spark also supports a pseudo-distributed local mode, usually used only for development or testing purposes, where distributed storage is not required and the local file system can be used instead; in such a scenario, Spark is run on a single machine with one executor per CPU core.
+
+Spark Core[edit]
+Spark Core is the foundation of the overall project. It provides distributed task dispatching, scheduling, and basic I/O functionalities, exposed through an application programming interface (for Java, Python, Scala, and R) centered on the RDD abstraction (the Java API is available for other JVM languages, but is also usable for some other non-JVM languages, such as Julia,[10] that can connect to the JVM). This interface mirrors a functional/higher-order model of programming: a "driver" program invokes parallel operations such as map, filter or reduce on an RDD by passing a function to Spark, which then schedules the function's execution in parallel on the cluster.[2] These operations, and additional ones such as joins, take RDDs as input and produce new RDDs. RDDs are immutable and their operations are lazy; fault-tolerance is achieved by keeping track of the "lineage" of each RDD (the sequence of operations that produced it) so that it can be reconstructed in the case of data loss. RDDs can contain any type of Python, Java, or Scala objects.
+
+Aside from the RDD-oriented functional style of programming, Spark provides two restricted forms of shared variables: broadcast variables reference read-only data that needs to be available on all nodes, while accumulators can be used to program reductions in an imperative style.[2]
+
+A typical example of RDD-centric functional programming is the following Scala program that computes the frequencies of all words occurring in a set of text files and prints the most common ones. Each map, flatMap (a variant of map) and reduceByKey takes an anonymous function that performs a simple operation on a single data item (or a pair of items), and applies its argument to transform an RDD into a new RDD.
+
+MLlib Machine Learning Library[edit]
+Spark MLlib is a distributed machine learning framework on top of Spark Core that, due in large part to the distributed memory-based Spark architecture, is as much as nine times as fast as the disk-based implementation used by Apache Mahout (according to benchmarks done by the MLlib developers against the Alternating Least Squares (ALS) implementations, and before Mahout itself gained a Spark interface), and scales better than Vowpal Wabbit.[15] Many common machine learning and statistical algorithms have been implemented and are shipped with MLlib which simplifies large scale machine learning pipelines, including:
+
+summary statistics, correlations, stratified sampling, hypothesis testing, random data generation[16]
+classification and regression: support vector machines, logistic regression, linear regression, decision trees, naive Bayes classification
+collaborative filtering techniques including alternating least squares (ALS)
+cluster analysis methods including k-means, and Latent Dirichlet Allocation (LDA)
+dimensionality reduction techniques such as singular value decomposition (SVD), and principal component analysis (PCA)
+feature extraction and transformation functions
+optimization algorithms such as stochastic gradient descent, limited-memory BFGS (L-BFGS)
+
+Spark offers over 80 high-level operators that make it easy to build parallel apps. And you can use it interactively from the Scala, Python and R shells. Spark powers a stack of libraries including SQL and DataFrames, MLlib for machine learning, GraphX, and Spark Streaming. You can combine these libraries seamlessly in the same application. Spark runs on Hadoop, Mesos, standalone, or in the cloud. It can access diverse data sources including HDFS, Cassandra, HBase, and S3. Spark’s primary abstraction is a distributed collection of items called a Resilient Distributed Dataset (RDD). RDDs can be created from Hadoop InputFormats (such as HDFS files) or by transforming other RDDs. Let’s make a new RDD from the text of the README file in the Spark source directory.
+
+Spark is a fast and general processing engine compatible with Hadoop data. It can run in Hadoop clusters through YARN or Spark's standalone mode, and it can process data in HDFS, HBase, Cassandra, Hive, and any Hadoop InputFormat. It is designed to perform both batch processing (similar to MapReduce) and new workloads like streaming, interactive queries, and machine learning.
+
+Many organizations run Spark on clusters of thousands of nodes. The largest cluster we know has 8000 of them. In terms of data size, Spark has been shown to work well up to petabytes. It has been used to sort 100 TB of data 3X faster than Hadoop MapReduce on 1/10th of the machines, winning the 2014 Daytona GraySort Benchmark, as well as to sort 1 PB. Several production workloads use Spark to do ETL and data analysis on PBs of data.
+
+You can use either the standalone deploy mode, which only needs Java to be installed on each node, or the Mesos and YARN cluster managers. If you'd like to run on Amazon EC2, Spark provides EC2 scripts to automatically launch a cluster.
+
+Note that you can also run Spark locally (possibly on multiple cores) without any special setup by just passing local[N] as the master URL, where N is the number of parallel threads you want.
+
+No, but if you run on a cluster, you will need some form of shared file system (for example, NFS mounted at the same path on each node). If you have this type of filesystem, you can just deploy Spark in standalone mode.
+
+At a high level, every Spark application consists of a driver program that runs the user’s main function and executes various parallel operations on a cluster. The main abstraction Spark provides is a resilient distributed dataset (RDD), which is a collection of elements partitioned across the nodes of the cluster that can be operated on in parallel. RDDs are created by starting with a file in the Hadoop file system (or any other Hadoop-supported file system), or an existing Scala collection in the driver program, and transforming it. Users may also ask Spark to persist an RDD in memory, allowing it to be reused efficiently across parallel operations. Finally, RDDs automatically recover from node failures.
+
+A second abstraction in Spark is shared variables that can be used in parallel operations. By default, when Spark runs a function in parallel as a set of tasks on different nodes, it ships a copy of each variable used in the function to each task. Sometimes, a variable needs to be shared across tasks, or between tasks and the driver program. Spark supports two types of shared variables: broadcast variables, which can be used to cache a value in memory on all nodes, and accumulators, which are variables that are only “added” to, such as counters and sums.
+
+This guide shows each of these features in each of Spark’s supported languages. It is easiest to follow along with if you launch Spark’s interactive shell – either bin/spark-shell for the Scala shell or bin/pyspark for the Python one.
+
+- Spark Machine Learning Library (MLlib): http://spark.rstudio.com/mllib.html
+
+sparklyr provides bindings to Spark’s distributed machine learning library. In particular, sparklyr allows you to access the machine learning routines provided by the spark.ml package. Together with sparklyr’s dplyr interface, you can easily create and tune machine learning workflows on Spark, orchestrated entirely within R.
+
+sparklyr provides three families of functions that you can use with Spark machine learning:
+
+Machine learning algorithms for analyzing data (ml_*)
+Feature transformers for manipulating individual features (ft_*)
+Functions for manipulating Spark DataFrames (sdf_*)
+An analytic workflow with sparklyr might be composed of the following stages. For an example see Example Workflow.
+
+Perform SQL queries through the sparklyr dplyr interface,
+Use the sdf_* and ft_* family of functions to generate new columns, or partition your data set,
+Choose an appropriate machine learning algorithm from the ml_* family of functions to model your data,
+Inspect the quality of your model fit, and use it to make predictions with new data.
+Collect the results for visualization and further analysis in R
+
+Transformers
+A model is often fit not on a dataset as-is, but instead on some transformation of that dataset. Spark provides feature transformers, facilitating many common transformations of data within a Spark DataFrame, and sparklyr exposes these within the ft_* family of functions. These routines generally take one or more input columns, and generate a new output column formed as a transformation of those columns.
+
+---
+
+Non-standard evaluation
+
+2016-06-23
+
+Dplyr uses non-standard evaluation (NSE) in all the important single table verbs: filter(), mutate(), summarise(), arrange(), select() and group_by(). NSE is important not only because it reduces typing; for database backends, it’s what makes it possible to translate R code into SQL. However, while NSE is great for interactive use it’s hard to program with. This vignette describes how you can opt out of NSE in dplyr, and instead (with a little quoting) rely only on standard evaluation (SE).
+
+Behind the scenes, NSE is powered by the lazyeval package. The goal is to provide an approach to NSE that you can learn once and then apply in many places (dplyr is the first of my packages to use this approach, but over time I will implement it everywhere). You may want to read the lazyeval vignettes, if you’d like to learn more about the underlying details, or if you’d like to use this approach in your own packages.
+
+Standard evaluation basics
+
+Every function in dplyr that uses NSE also has a version that uses SE. The name of the SE version is always the NSE name with an _ on the end. For example, the SE version of summarise() is summarise_(); the SE version of arrange() is arrange_(). These functions work very similarly to their NSE cousins, but their inputs must be “quoted”:
+
+It’s best to use a formula because a formula captures both the expression to evaluate and the environment where the evaluation occurs. This is important if the expression is a mixture of variables in a data frame and objects in the local environment
+
+If you also want output variables to vary, you need to pass a list of quoted objects to the .dots argument
+
+What if you need to mingle constants and variables? Use the handy lazyeval::interp()
+
+---
 
 ```{r eval=FALSE}
 # install a local version of Spark
@@ -78,7 +162,7 @@ The raw data behind the story "The FiveThirtyEight International Food Associatio
 
 N/A: I'm unfamiliar with this country's traditional cuisine.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(fivethirtyeight)
 
 # backup copy:
@@ -90,7 +174,7 @@ food_world_cup$gender <- as.factor(food_world_cup$gender)
 food_world_cup$location <- as.factor(food_world_cup$location)
 ```
 
-```{r fig.width=20}
+```{r echo=FALSE, eval=FALSE, fig.width=20}
 food_world_cup %>%
   gather(x, y, algeria:vietnam) %>%
   ggplot(aes(as.numeric(y))) +
@@ -99,14 +183,33 @@ food_world_cup %>%
   facet_wrap(~ x, ncol = 8)
 ```
 
-```{r fig.width=20}
+```{r echo=FALSE, eval=FALSE, fig.width=20, fig.height=11, message=FALSE, warning=FALSE}
 food_world_cup %>%
   gather(x, y, algeria:vietnam) %>%
   ggplot(aes(as.factor(y))) +
     geom_histogram(stat = "count", fill = "navy", alpha = 0.7) +
     my_theme() + 
-  facet_wrap(~ x, ncol = 8)
+    facet_wrap(~ x, ncol = 8)
 ```
+
+```{r fig.width=15, fig.height=11, message=FALSE, warning=FALSE}
+percentages <- food_world_cup %>%
+  select(algeria:vietnam) %>%
+  gather(x, y) %>%
+  group_by(x, y) %>%
+  summarise(n = n()) %>%
+  mutate(Percent = round(n / sum(n) * 100, digits = 2))
+
+percentages %>%
+  ggplot(aes(x = "", y = Percent, fill = y)) + 
+    geom_bar(width = 1, stat = "identity") + 
+    theme_minimal() +
+    coord_polar("y", start = 0) +
+    facet_wrap(~ x, ncol = 8) +
+    scale_fill_brewer(palette = "Set3") +
+    labs(fill = "")
+```
+
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE}
 library(mice)
@@ -124,40 +227,48 @@ save(food_world_cup, file = "food_world_cup.RData")
 load("food_world_cup.RData")
 ```
 
-```{r fig.width=20}
-#summary(food_world_cup)
+```{r echo=FALSE, eval=FALSE}
+countries_low_NA <- percentages %>%
+  filter(y == 0) %>%
+  filter(Percent < 50) %>%
+  select(x)
+```
 
-countries <- paste(colnames(food_world_cup)[-c(1:7, 48:54)])
+```{r echo=FALSE, eval=FALSE}
+food_world_cup <- food_world_cup %>%
+  select(-one_of(countries_high_NA$x))
+```
+
+```{r fig.width=20}
+countries <- paste(colnames(food_world_cup)[-c(1:7)])
 
 for (response in countries) {
   food_world_cup[paste(response, "trans", sep = "_")] <- food_world_cup[response] / mean(food_world_cup[food_world_cup[response] > 0, response])
 }
+```
 
+```{r eval=FALSE, echo=FALSE}
 #food_world_cup <- food_world_cup %>%
   #mutate_each_(funs(. + 0.000001), countries) %>%
   #mutate_each_(funs(yjPower(., 0)), countries)
 ```
 
-```{r fig.width=20}
+```{r fig.width=18, fig.height=10}
 food_world_cup %>%
-  gather(x, y, algeria_trans:vietnam_trans) %>%
+  gather(x, y, china_trans:vietnam_trans) %>%
   ggplot(aes(y)) +
     geom_density(fill = "navy", alpha = 0.7) +
     my_theme() + 
-    facet_wrap(~ x, ncol = 8)
+    facet_wrap(~ x, ncol = 8) +
+    labs(x = "transformed preference")
 ```
 
-```{r}
-food_world_cup <- copy_to(sc, food_world_cup)
-head(food_world_cup)
-```
-
-http://spark.rstudio.com/mllib.html
+### Do any countries show a gender difference?
 
 ```{r message=FALSE, warning=FALSE, fig.width=15}
 food_world_cup_gather <- food_world_cup %>%
   collect %>%
-  gather(country, value, algeria:vietnam)
+  gather(country, value, china:vietnam)
                                  
 food_world_cup_gather$value <- as.numeric(food_world_cup_gather$value)
 food_world_cup_gather$country <- as.factor(food_world_cup_gather$country)
@@ -174,12 +285,10 @@ ggplot(food_world_cup_gather, aes(x = country, y = value, fill = gender)) +
   my_theme()
 ```
 
-### Do any countries show a gender difference?
-
-https://cran.r-project.org/web/packages/dplyr/vignettes/nse.html
-
 ```{r echo=FALSE, eval=FALSE}
-for (response in colnames(food_world_cup)[-c(1:7, 48:54)]) {
+library(lazyeval)
+
+for (response in colnames(food_world_cup)[-c(1:7, 23:37)]) {
   food_world_cup %>%
     collect %>%
     group_by(gender) %>%
@@ -203,7 +312,11 @@ food_world_cup %>%
          y = "difference\nbetween gender")
 ```
 
-```{r fig.width=8}
+```{r}
+food_world_cup <- copy_to(sc, food_world_cup, overwrite = TRUE)
+```
+
+```{r eval=FALSE, echo=FALSE, fig.width=8}
 library(exprAnalysis)
 
 heat_data <- na.omit(as.data.frame(food_world_cup))[, -c(1:7, 48:87)] %>%
@@ -234,15 +347,14 @@ legend("left", c("Africa", "South America", "Australia", "Europe", "Asia", "Cent
        col = brewer.pal(8, "Set1"), pch = 19, cex = 0.7)
 ```
 
-```{r fig.width=8, fig.height=8}
+```{r message=FALSE, warning=FALSE, fig.width=8, fig.height=8}
 pca <- food_world_cup %>%
   mutate_each_(funs(as.numeric), countries) %>%
-  ml_pca(features = paste(colnames(food_world_cup)[-c(1:7, 48:87)]))
+  ml_pca(features = paste(colnames(food_world_cup)[-c(1:47)]))
 
-groups <- as.factor(colors)
 labels <- rownames(as.data.frame(pca$components))
 
-ggplot(data = as.data.frame(pca$components), aes(x = PC1, y = PC2, color = groups, label = labels)) + 
+ggplot(data = as.data.frame(pca$components), aes(x = PC1, y = PC2, color = labels, label = labels)) + 
   geom_point(size = 2, alpha = 0.6) +
   geom_text_repel() +
   labs(x = paste0("PC1: ", round(pca$explained.variance[1], digits = 2) * 100, "% variance"),
@@ -251,7 +363,7 @@ ggplot(data = as.data.frame(pca$components), aes(x = PC1, y = PC2, color = group
   guides(fill = FALSE, color = FALSE)
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
 library(pcaGoPromoter)
 
 pca_func <- function(pcaOutput2, group_name){
@@ -278,8 +390,8 @@ pca_func <- function(pcaOutput2, group_name){
 }
 ```
 
-```{r fig.width=5, fig.height=4}
-pcaOutput <- pca(t(sapply(as.data.frame(food_world_cup)[-c(1:7, 48:87)], as.numeric)), printDropped = FALSE, scale = TRUE, center = TRUE)
+```{r eval=FALSE, echo=FALSE, fig.width=5, fig.height=4}
+pcaOutput <- pca(t(sapply(as.data.frame(food_world_cup)[-c(1:7, 23:37)], as.numeric)), printDropped = FALSE, scale = TRUE, center = TRUE)
 pcaOutput2 <- as.data.frame(pcaOutput$scores)
 
 pcaOutput2$groups <- as.data.frame(food_world_cup)$knowledge
@@ -287,39 +399,38 @@ pcaOutput2$groups <- as.data.frame(food_world_cup)$knowledge
 pca1 <- pca_func(pcaOutput2, group_name = "knowledge")
 ```
 
-```{r fig.width=5, fig.height=4}
+```{r eval=FALSE, echo=FALSE, fig.width=5, fig.height=4}
 pcaOutput2$groups <- as.data.frame(food_world_cup)$interest
 pca2 <- pca_func(pcaOutput2, group_name = "interest")
 ```
 
-```{r fig.width=5, fig.height=4}
+```{r eval=FALSE, echo=FALSE, fig.width=5, fig.height=4}
 pcaOutput2$groups <- as.data.frame(food_world_cup)$age
 pca3 <- pca_func(pcaOutput2, group_name = "age")
 ```
 
-```{r fig.width=6, fig.height=4}
+```{r eval=FALSE, echo=FALSE, fig.width=6, fig.height=4}
 pcaOutput2$groups <- as.data.frame(food_world_cup)$household_income
 pca4 <- pca_func(pcaOutput2, group_name = "household_income")
 ```
 
-```{r fig.width=7, fig.height=4}
+```{r eval=FALSE, echo=FALSE, fig.width=7, fig.height=4}
 pcaOutput2$groups <- as.data.frame(food_world_cup)$education
 pca5 <- pca_func(pcaOutput2, group_name = "education")
 ```
 
-```{r fig.width=6, fig.height=4}
+```{r eval=FALSE, echo=FALSE, fig.width=6, fig.height=4}
 pcaOutput2$groups <- as.data.frame(food_world_cup)$location
 pca6 <- pca_func(pcaOutput2, group_name = "location")
 ```
 
-```{r fig.width=20, fig.height=10, message=FALSE, warning=FALSE}
+```{r eval=FALSE, echo=FALSE, fig.width=20, fig.height=10, message=FALSE, warning=FALSE}
 library(gridExtra)
 library(grid)
 
 grid.arrange(pca1, pca2, pca3, pca4, pca5, pca6, ncol = 3)
 ```
 
----
 
 ```{r}
 food_world_cup <- tbl(sc, "food_world_cup") %>%
@@ -332,25 +443,19 @@ food_world_cup <- tbl(sc, "food_world_cup") %>%
   ft_string_indexer(input_col = "knowledge", output_col = "knowledge_idx")
 ```
 
-The reason why Nigeria, Cameroon, etc. had such high accuracy when we keep the 0s, is that they had a majority of 0 votes, meaning that the likelihood of correctly classifying a sample as 0 is high! When we remove 0s however, the prediction accuracy drops sharply. The main problem is that the distribution of preferences and whether a dish is known (i.e. has a value > 0) is very different between countries. Specifically, whenever a value is overrepresented, the likelihood of correctly classifying that value by chance increases and thus introduces bias to our models!
+```{r echo=FALSE, eval=FALSE, warning=FALSE, message=FALSE, fig.width=10, fig.height=9}
+library(reshape2)
 
-```{r}
-cor()
-
-ggplot(data = associations_table_melt, aes(x = word, y = variable, fill = value)) + 
-    geom_tile(width=.9, height=.9) +
+cor(as.data.frame(food_world_cup)[, -c(1:47, 87:94)], method = "pearson") %>%
+  melt %>%
+  ggplot(aes(x = Var1, y = Var2, fill = value)) + 
+    geom_tile(width = 0.9, height = 0.9) +
     scale_fill_gradient2(low = "white", high = "red",  
                          limit = c(0,1), space = "Lab", 
-                         name="") +
-    my_theme() + 
-    theme(
-      axis.title = element_blank(),
-      legend.position = "right") +
-    coord_fixed() +
-    labs(title = paste0("Word pair associations > ", cor, " in ", name, "'s lines"))
-  
+                         name = "") +
+    my_theme() +
+    labs(x = "", y = "")
 ```
-
 
 ```{r echo=FALSE, eval=FALSE}
 food_world_cup_NA <- food_world_cup %>%
@@ -361,7 +466,7 @@ food_world_cup_NA <- food_world_cup %>%
 food_world_cup_NA <- copy_to(sc, food_world_cup_NA, overwrite = TRUE)
 ```
 
-```{r}
+```{r eval=FALSE}
 partitions <- food_world_cup %>%
   sdf_partition(training = 0.75, test = 0.25, seed = 753)
 ```
@@ -375,7 +480,7 @@ for(response in countries) {
   features <- features[grep("_trans|_idx", features)]
 
   fit <- partitions$training %>%
-    filter_(interp(~ var > 0, var = as.name(response))) %>% # tested with and without this line of code
+    filter_(interp(~ var > 0, var = as.name(response))) %>%
     ml_random_forest(intercept = FALSE, response = response, features = features, type = "classification")
   
   feature_imp <- ml_tree_feature_importance(sc, fit)
@@ -383,7 +488,7 @@ for(response in countries) {
   features <- as.character(feature_imp[1:10, 2])
   
   fit <- partitions$training %>%
-    filter_(interp(~ var > 0, var = as.name(response))) %>% # tested with and without this line of code
+    filter_(interp(~ var > 0, var = as.name(response))) %>%
     ml_random_forest(intercept = FALSE, response = response, features = features, type = "classification")
   
   partitions$test <- partitions$test %>%
@@ -422,6 +527,57 @@ for(response in countries) {
 ```
 
 ```{r echo=FALSE, eval=FALSE}
+library(lazyeval)
+
+for(response in countries) {
+
+  features <- colnames(partitions$training)[-grep(response, colnames(partitions$training))]
+  features <- features[grep("_trans|_idx", features)]
+
+  fit <- partitions$training %>%
+    ml_random_forest(intercept = FALSE, response = response, features = features, type = "classification")
+  
+  feature_imp <- ml_tree_feature_importance(sc, fit)
+  
+  features <- as.character(feature_imp[1:10, 2])
+  
+  fit <- partitions$training %>%
+    filter_(interp(~ var > 0, var = as.name(response))) %>% # tested with and without this line of code
+    ml_random_forest(intercept = FALSE, response = response, features = features, type = "classification")
+  
+  pred <- sdf_predict(fit, partitions$test) %>%
+    collect
+  
+  pred_2 <- as.data.frame(table(pred[[response]], pred$prediction))
+  pred_2$response <- response
+  
+  pred_sc <- select(pred, -rawPrediction, -probability)
+  pred_sc <- copy_to(sc, pred_sc, overwrite = TRUE)
+  
+  feature_imp$response <- response
+  
+  f1 <- ml_classification_eval(pred_sc, response, "prediction", metric = "f1")
+  wP <- ml_classification_eval(pred_sc, response, "prediction", metric = "weightedPrecision")
+  wR <- ml_classification_eval(pred_sc, response, "prediction", metric = "weightedRecall")
+  
+  ml_eval <- data.frame(response = response,
+                        f1 = f1,
+                        weightedPrecision = wP,
+                        weightedRecall = wR)
+  
+  if (response == "china") {
+    feature_imp_df <- feature_imp
+    ml_eval_df <- ml_eval
+    pred_df <- pred_2
+  } else {
+    feature_imp_df <- rbind(feature_imp_df, feature_imp)
+    ml_eval_df <- rbind(ml_eval_df, ml_eval)
+    pred_df <- rbind(pred_df, pred_2)
+  }
+}
+```
+
+```{r echo=FALSE, eval=FALSE}
 # with 0 kept in response column
 # data as numeric
 save(feature_imp_df, file = "feature_imp_df.RData")
@@ -447,9 +603,9 @@ load("feature_imp_df.RData")
 load("ml_eval_df.RData")
 load("pred_df.RData")
 
-load("feature_imp_df_no_0.RData")
-load("ml_eval_df_no_0.RData")
-load("pred_df_no_0.RData")
+#load("feature_imp_df_no_0.RData")
+#load("ml_eval_df_no_0.RData")
+#load("pred_df_no_0.RData")
 ```
 
 ```{r fig.width=10}
@@ -458,12 +614,13 @@ order <- ml_eval_df$response[order(ml_eval_df$weightedPrecision, decreasing = TR
 gather(ml_eval_df, x, y, f1:weightedRecall) %>%
   mutate(response = factor(response, levels = order)) %>%
   ggplot(aes(x = response, y = y, color = x, fill = x)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.9) +
   scale_fill_brewer(palette = "Set1") +
-  my_theme()
+  my_theme() +
+  labs(fill = "", color = "", x = "", y = "value")
 ```
 
-```{r fig.width=10}
+```{r echo=FALSE, eval=FALSE, fig.width=10}
 order <- ml_eval_df_no_0$response[order(ml_eval_df_no_0$weightedPrecision, decreasing = TRUE)]
 
 gather(ml_eval_df_no_0, x, y, f1:weightedRecall) %>%
@@ -474,42 +631,57 @@ gather(ml_eval_df_no_0, x, y, f1:weightedRecall) %>%
   my_theme()
 ```
 
-```{r message=FALSE, warning=FALSE, fig.width=10}
-as.data.frame(food_world_cup)[-c(1:7, 48:94)] %>%
-  gather(x, y, -nigeria) %>%
-  ggplot(aes(x = x, y = nigeria, color = y)) +
+```{r message=FALSE, warning=FALSE, fig.width=9, fig.height=6}
+feats <- feature_imp_df %>%
+  filter(response == "spain") %>%
+  slice(1:10)
+
+as.data.frame(food_world_cup) %>%
+  select_(.dots = c("spain", as.character(feats$feature))) %>%
+  gather(x, y, -spain) %>%
+  filter(spain > 0) %>%
+  ggplot(aes(x = x, y = spain, color = y)) +
   geom_jitter(alpha = 0.2) +
   scale_color_gradient(low = "blue", high = "red") +
-  my_theme()
+  my_theme() +
+  labs(x = "", color = "")
 ```
 
-```{r message=FALSE, warning=FALSE, fig.width=10}
-as.data.frame(food_world_cup)[-c(1:7, 48:94)] %>%
-  gather(x, y, -cameroon) %>%
-  filter(y > 0) %>%
-  ggplot(aes(x = x, y = cameroon, color = y)) +
+```{r message=FALSE, warning=FALSE, fig.width=9, fig.height=6}
+feats <- feature_imp_df %>%
+  filter(response == "greece") %>%
+  slice(1:10)
+
+as.data.frame(food_world_cup) %>%
+  select_(.dots = c("greece", as.character(feats$feature))) %>%
+  gather(x, y, -greece) %>%
+  filter(greece > 0) %>%
+  ggplot(aes(x = x, y = greece, color = y)) +
   geom_jitter(alpha = 0.2) +
   scale_color_gradient(low = "blue", high = "red") +
-  my_theme()
+  my_theme() +
+  labs(x = "", color = "")
 ```
 
-```{r message=FALSE, warning=FALSE, fig.width=10}
-as.data.frame(food_world_cup)[-c(1:7, 48:94)] %>%
-  gather(x, y, -mexico) %>%
-  ggplot(aes(x = x, y = mexico, color = y)) +
-  geom_jitter(alpha = 0.2) +
-  scale_color_gradient(low = "blue", high = "red") +
-  my_theme()
-```
+```{r message=FALSE, warning=FALSE, fig.width=9, fig.height=6}
+feats <- feature_imp_df %>%
+  filter(response == "italy") %>%
+  slice(1:10)
 
-```{r message=FALSE, warning=FALSE, fig.width=10}
-as.data.frame(food_world_cup)[-c(1:7, 48:94)] %>%
+as.data.frame(food_world_cup) %>%
+  select_(.dots = c("italy", as.character(feats$feature))) %>%
   gather(x, y, -italy) %>%
+  filter(italy > 0) %>%
   ggplot(aes(x = x, y = italy, color = y)) +
   geom_jitter(alpha = 0.2) +
   scale_color_gradient(low = "blue", high = "red") +
-  my_theme()
+  my_theme() +
+  labs(x = "", color = "")
 ```
+
+---
+
+Next week, I'll be looking into H2O integration with sparklyr using rsparkling and Sparkling Water. 
 
 ------------------
 
