@@ -158,7 +158,6 @@ my_theme <- function(base_size = 12, base_family = "sans"){
   theme_minimal(base_size = base_size, base_family = base_family) +
   theme(
     axis.text = element_text(size = 12),
-    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
     axis.title = element_text(size = 14),
     panel.grid.major = element_line(color = "grey"),
     panel.grid.minor = element_blank(),
@@ -179,25 +178,34 @@ Class 01 refers to 'normal' ECG classes 02 to 15 refers to different classes of 
 
 ```{r}
 arrhythmia <- read.table("arrhythmia.data.txt", sep = ",")
+
+arrhythmia[-280] <- lapply(arrhythmia[-280], as.numeric)
+
 colnames(arrhythmia)[280] <- "class"
 arrhythmia$class <- as.factor(arrhythmia$class)
-summary(arrhythmia$class)
-arrhythmia[-280] <- lapply(arrhythmia[-280], as.numeric)
 ```
 
-```{r warning=FALSE, message=FALSE}
-library(matrixStats)
-
-colvars <- colVars(as.matrix(arrhythmia[-280]))
-summary(colvars)
-arrhythmia_subset <- arrhythmia[, c(280, which(colvars > 150))]
+```{r fig.width=4, fig.height=2, fig.align='center'}
+p1 <- ggplot(arrhythmia, aes(x = class)) +
+  geom_bar(fill = "navy", alpha = 0.7) +
+  my_theme()
 ```
 
 ```{r}
-arrhythmia_subset$class <- ifelse(arrhythmia_subset$class == 1, "normal", "arrhythmia")
+arrhythmia$class <- ifelse(arrhythmia$class == 1, "normal", "arrhythmia")
+```
 
-arrhythmia_sc <- copy_to(sc, arrhythmia_subset, overwrite = TRUE)
-arrhythmia_hf <- as_h2o_frame(sc, arrhythmia_sc, strict_version_check = FALSE)
+```{r fig.width=3, fig.height=2, fig.align='center'}
+p2 <- ggplot(arrhythmia, aes(x = class)) +
+  geom_bar(fill = "navy", alpha = 0.7) +
+  my_theme()
+```
+
+```{r eval=FALSE, echo=FALSE, fig.align='center', fig.width=6, fig.height=2, message=FALSE, warning=FALSE}
+library(gridExtra)
+library(grid)
+
+grid.arrange(p1, p2, ncol = 2)
 ```
 
 ```{r warning=FALSE, message=FALSE}
@@ -214,7 +222,7 @@ pca_func <- function(pcaOutput2, group_name){
         
     plot <- ggplot(data = pcaOutput2, aes(x = PC1, y = PC2, group = groups, color = groups)) + 
       geom_polygon(data = conf.rgn, aes(fill = groups), alpha = 0.2) +
-      geom_point(size = 2, alpha = 0.6) + 
+      geom_point(size = 2, alpha = 0.5) + 
       scale_color_brewer(palette = "Set1") +
       scale_fill_brewer(palette = "Set1") +
       labs(color = paste(group_name),
@@ -227,13 +235,70 @@ pca_func <- function(pcaOutput2, group_name){
 }
 ```
 
-```{r eval=FALSE, echo=FALSE, fig.width=5, fig.height=4}
-pcaOutput <- pca(t(arrhythmia_subset[-1]), printDropped = FALSE, scale = TRUE, center = TRUE)
+```{r eval=FALSE, echo=FALSE, fig.width=5, fig.height=3}
+pcaOutput <- pca(t(arrhythmia[-280]), printDropped = FALSE, scale = TRUE, center = TRUE)
 pcaOutput2 <- as.data.frame(pcaOutput$scores)
 
-pcaOutput2$groups <- arrhythmia_subset$class
+pcaOutput2$groups <- arrhythmia$class
 
 pca_func(pcaOutput2, group_name = "")
+```
+
+```{r}
+weights <- ifelse(pcaOutput2$PC1 < -5 & abs(pcaOutput2$PC2) >10, 2, 1)
+```
+
+```{r warning=FALSE, message=FALSE, fig.width=17, fig.height=4, fig.align='center'}
+library(matrixStats)
+
+colvars <- data.frame(feature = colnames(arrhythmia[-280]),
+                      variance = colVars(as.matrix(arrhythmia[-280])))
+
+subset(colvars, variance > 50) %>%
+  mutate(feature = factor(feature, levels = colnames(arrhythmia[-280]))) %>%
+  ggplot(aes(x = feature, y = variance)) +
+    geom_bar(stat = "identity", fill = "navy", alpha = 0.7) +
+    my_theme() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+```{r}
+arrhythmia_subset <- cbind(weights, arrhythmia[, c(280, which(colvars$variance > 50))])
+```
+
+```{r}
+arrhythmia_sc <- copy_to(sc, arrhythmia_subset, overwrite = TRUE)
+arrhythmia_hf <- as_h2o_frame(sc, arrhythmia_sc, strict_version_check = FALSE)
+```
+
+```{r warning=FALSE, message=FALSE, fig.width=17, fig.height=4, fig.align='center'}
+library(tidyr)
+h2o.describe(arrhythmia_hf[, -1]) %>%
+  gather(x, y, Min:Mean) %>%
+  mutate(Label = factor(Label, levels = colnames(arrhythmia_hf[, -1]))) %>%
+  ggplot(aes(x = Label, y = as.numeric(y), color = x)) +
+    geom_point(size = 4, alpha = 0.8) +
+    scale_color_brewer(palette = "Set1") +
+    my_theme() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+```{r warning=FALSE, message=FALSE, fig.width=20, fig.height=20, fig.align='center'}
+library(reshape2)
+
+cor <- h2o.cor(arrhythmia_hf[, -1])
+rownames(cor) <- colnames(cor)
+
+melt(cor) %>%
+  mutate(Var2 = rep(rownames(cor), nrow(cor))) %>%
+  mutate(Var2 = factor(Var2, levels = colnames(cor))) %>%
+  mutate(variable = factor(variable, levels = colnames(cor))) %>%
+  ggplot(aes(x = variable, y = Var2, fill = value)) + 
+    geom_tile(width = 0.9, height = 0.9) +
+    scale_fill_gradient2(low = "white", high = "red", name = "") +
+    my_theme() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    labs(x = "", y = "")
 ```
 
 ```{r eval=FALSE, echo=FALSE}
@@ -248,7 +313,8 @@ summary(as.factor(test$class), exact_quantiles=TRUE)
 ```
 
 ```{r}
-arrhythmia_hf[, 1] <- as.factor(arrhythmia_hf[, 1])
+#arrhythmia_hf[, 1] <- as.factor(arrhythmia_hf[, 1])
+arrhythmia_hf[, 2] <- h2o.asfactor(arrhythmia_hf[, 2])
 
 splits <- h2o.splitFrame(arrhythmia_hf, 
                          ratios = c(0.7, 0.15), 
@@ -259,12 +325,23 @@ valid <- splits[[2]]
 test <- splits[[3]]
 
 response <- "class"
-features <- setdiff(colnames(train), response)
+weights <- "weights"
+features <- setdiff(colnames(train), c(response, weights))
 ```
 
 ```{r echo=FALSE, eval=FALSE}
 h2o.hist(arrhythmia_hf$V1)
 ?h2o.interaction
+```
+
+```{r}
+h2o.prcomp(training_frame = train,
+           x = features,
+           validation_frame = valid,
+           transform = "NORMALIZE",
+           pca_method = "Power",
+           k = 3,
+           seed = 1)
 ```
 
 ```{r echo=FALSE, eval=FALSE}
@@ -330,50 +407,275 @@ By default, H2O Deep Learning uses an adaptive learning rate ([ADADELTA](http://
 
 If `adaptive_rate` is disabled, several manual learning rate parameters become important: `rate`, `rate_annealing`, `rate_decay`, `momentum_start`, `momentum_ramp`, `momentum_stable` and `nesterov_accelerated_gradient`, the discussion of which we leave to [H2O Deep Learning booklet](http://h2o.ai/resources/).
 
-```{r}
+In computational networks, the activation function of a node defines the output of that node given an input or set of inputs. A standard computer chip circuit can be seen as a digital network of activation functions that can be "ON" (1) or "OFF" (0), depending on input. This is similar to the behavior of the linear perceptron in neural networks. However, it is the nonlinear activation function that allows such networks to compute nontrivial problems using only a small number of nodes. In artificial neural networks this function is also called transfer function (not to be confused with a linear system’s transfer function).
+
+In biologically inspired neural networks, the activation function is usually an abstraction representing the rate of action potential firing in the cell. In its simplest form, this function is binary—that is, either the neuron is firing or not. The function looks like {\displaystyle \phi (v_{i})=U(v_{i})} \phi (v_{i})=U(v_{i}), where {\displaystyle U} U is the Heaviside step function. In this case a large number of neurons must be used in computation beyond linear separation of categories.
+
+A line of positive slope may also be used to reflect the increase in firing rate that occurs as input current increases. The function would then be of the form {\displaystyle \phi (v_{i})=\mu v_{i}} \phi (v_{i})=\mu v_{i}, where {\displaystyle \mu } \mu  is the slope. This activation function is linear, and therefore has the same problems as the binary function. In addition, networks constructed using this model have unstable convergence because neuron inputs along favored paths tend to increase without bound, as this function is not normalizable.
+
+All problems mentioned above can be handled by using a normalizable sigmoid activation function. One realistic model stays at zero until input current is received, at which point the firing frequency increases quickly at first, but gradually approaches an asymptote at 100% firing rate. Mathematically, this looks like {\displaystyle \phi (v_{i})=U(v_{i})\tanh(v_{i})} \phi (v_{i})=U(v_{i})\tanh(v_{i}), where the hyperbolic tangent function can also be replaced by any sigmoid function. This behavior is realistically reflected in the neuron, as neurons cannot physically fire faster than a certain rate. This model runs into problems, however, in computational networks as it is not differentiable, a requirement in order to calculate backpropagation.
+
+The final model, then, that is used in multilayer perceptrons is a sigmoidal activation function in the form of a hyperbolic tangent. Two forms of this function are commonly used: {\displaystyle \phi (v_{i})=\tanh(v_{i})} \phi (v_{i})=\tanh(v_{i}) whose range is normalized from -1 to 1, and {\displaystyle \phi (v_{i})=(1+\exp(-v_{i}))^{-1}} \phi (v_{i})=(1+\exp(-v_{i}))^{{-1}} is vertically translated to normalize from 0 to 1. The latter model is often considered more biologically realistic, but it runs into theoretical and experimental difficulties with certain types of computational problems.
+
+Comparison of activation functions[edit]
+Some desirable properties in an activation function include:
+
+Nonlinear: When the activation function is non-linear, then a two-layer neural network can be proven to be a universal function approximator.[2] The identity activation function does not satisfy this property. When multiple layers use the identity activation function, the entire network is equivalent to a single-layer model.
+Continuously differentiable: This property is necessary for enabling gradient-based optimization methods. The binary step activation function is not differentiable at 0, and it differentiates to 0 for all other values, so gradient-based methods can make no progress with it.[3]
+Range: When the range of the activation function is finite, gradient-based training methods tend to be more stable, because pattern presentations significantly affect only limited weights. When the range is infinite, training is generally more efficient because pattern presentations significantly affect most of the weights. In the latter case, smaller learning rates are typically necessary.[citation needed]
+Monotonic: When the activation function is monotonic, the error surface associated with a single-layer model is guaranteed to be convex.[4]
+Smooth Functions with a Monotonic derivative have been shown to generalize better in some cases. The argument for these properties suggests that such activation functions are more consistent with Occam's razor.[5]
+Approximates identity near the origin: When activation functions have this property, the neural network will learn efficiently when its weights are initialized with small random values. When the activation function does not approximate identity near the origin, special care must be used when initializing the weights.[6] In the table below, activation functions where {\displaystyle f(0)=0} f(0)=0 and {\displaystyle f'(0)=1} f'(0)=1 and {\displaystyle f'} f' is continuous at 0 are indicated as having this property.
+The following table compares the properties of several activation functions that are functions of one fold x from the previous layer or layers:
+
+```{r eval=FALSE}
 dl_model <- h2o.deeplearning(x = features,
                              y = response,
+                             weights_column = weights,
                              model_id = "dl_model",
                              training_frame = train,
                              validation_frame = valid,
-                             hidden = c(200, 200, 200, 200), # 4 hidden layers, each of 200 neurons
-                             nfolds = 10, # cross validation
+                             nfolds = 10,                                   # 10x cross validation
+                             keep_cross_validation_fold_assignment = TRUE,
+                             fold_assignment = "Stratified",
+                             activation = "Rectifier",
+                             hidden = c(200, 200, 200, 200),                # 4 hidden layers, each of 200 neurons
+                             epochs = 20,
+                             classification_stop = -1,
+                             export_weights_and_biases = TRUE,
+                             overwrite_with_best_model = TRUE,
                              seed = 1234)
+```
 
+Once we are satisfied with the results, we can save the model to disk (on the cluster).
+
+```{r echo=FALSE, eval=FALSE}
+dl_model <- h2o.saveModel(dl_model, path="dl_model", force = TRUE)
+```
+
+```{r echo=FALSE}
+dl_model <- h2o.loadModel(dl_model)
+```
+
+```{r}
 summary(dl_model)
+```
 
-plot(dl_model)
+```{r echo=FALSE, eval=FALSE}
+h2o.cross_validation_fold_assignment(dl_model)
+```
 
-h2o.confusionMatrix(dl_model, test)
+```{r}
+h2o.mean_per_class_error(dl_model, train = TRUE, valid = FALSE, xval = FALSE)
+h2o.mean_per_class_error(dl_model, train = FALSE, valid = TRUE, xval = FALSE)
+h2o.mean_per_class_error(dl_model, train = FALSE, valid = FALSE, xval = TRUE)
+```
 
-perf <- h2o.performance(dl_model, test)
+In the neural network terminology:
 
-# Retreive test set MSE
-h2o.mse(perf)
+one epoch = one forward pass and one backward pass of all the training examples
+batch size = the number of training examples in one forward/backward pass. The higher the batch size, the more memory space you'll need.
+number of iterations = number of passes, each pass using [batch size] number of examples. To be clear, one pass = one forward pass + one backward pass (we do not count the forward pass and backward pass as two different passes).
+Example: if you have 1000 training examples, and your batch size is 500, then it will take 2 iterations to complete 1 epoch.
 
-h2o.auc(perf, xval = TRUE)
+Epoch and Iteration describe slightly different things.
 
-finalRf_predictions <- h2o.predict(object = dl_model,
-                                   newdata = test)
+As others have already mentioned, an "epoch" describes the number of times the algorithm sees the ENTIRE data set. So each time the algorithm has seen all samples in the dataset, an epoch has completed.
 
+An "iteration" describes the number of times a "batch" of data passed through the algorithm. In the case of neural networks, that means the "forwarwd pass" and "backward pass". So every time you pass a batch of data through the NN, you completed an "iteration"
+
+An example might make it clearer:
+
+Say you have a dataset of 10 examples/samples. You have batch size of 2, and you've specified you want the algorithm to run for 3 epochs.
+
+Therefore, in each epoch, you have 5 batches (10/2 = 5). Each batch gets passed through the algorithm, therefore you have 5 iterations per epoch. Since you've specified 3 epochs, you have a total of 15 iterations (5*3 = 15) for training.
+
+One epoch consists of one full training cycle on the training set. Once every sample in the set is seen, you start again - marking the beginning of the 2nd epoch.
+
+This has nothing to do with batch or online training per se. Batch means that you update once at the end of the epoch (after every sample is seen, i.e. #epoch updates) and online that you update after each sample (#samples * #epoch updates).
+
+You can't be sure if 5 epochs or 500 is enough for convergence since it will vary from data to data. You can stop training when the error converges or gets lower than a certain threshold. This also goes into the territory of preventing overfitting. You can read up on early stopping and cross-validation regarding that.
+
+```{r fig.width=8, fig.height=4, fig.align='center'}
 plot(dl_model,
      timestep = "epochs",
      metric = "classification_error")
+```
 
+```{r echo=TRUE, eval=TRUE, fig.width=8, fig.height=4, fig.align='center'}
+plot(dl_model,
+     timestep = "samples",
+     metric = "classification_error")
+```
+
+```{r echo=TRUE, eval=TRUE, fig.width=8, fig.height=4, fig.align='center'}
+plot(dl_model,
+     timestep = "duration",
+     metric = "classification_error")
+```
+
+The lower the Loss, the better a model (unless the model has over-fitted to the training data). The loss is calculated on training and validation and its interperation is how well the model is doing for these two sets. Loss is not in percentage as opposed to accuracy and it is a summation of the errors made for each example in training or validation sets. In the case of neural networks the loss is usually negative log-likelihood and residual sum of squares for classification and regression respectively. Then naturally, the main objective in a learning model is to reduce (minimize) the loss function's value with respect to the model's parameters by changing the weight vector values through different optimization methods, such as backpropagation in neural networks. Loss value implies how well or bad a certain model is behaving after each iteration of optimization. Ideally, one would expect the reduction of loss after each, or several, iteration(s). The accuracy of a model is usually determined after the model parameters are learned and fixed and no learning is taking place. Then the test samples are fed to the model and the number of mistakes (zero-one loss) the model makes are recorded, after comparison to the true targets. Then the percentage of misclassification is calculated. For example, if the number of test samples is 1000 and model classifies 952 of those correctly, then the model's accuracy is reported as 95.2%.
+
+There are also some subtleties while reducing the loss value. For instance, you may run into the problem of over-fitting in which the model memorizes the training examples and becomes kind of ineffective for the test set. Over-fitting also occurs in cases where you do not employ a regularization, you have a very complex model (the number of free parameters W is large) or the number of data points N is very low.
+
+Log loss, aka logistic loss or cross-entropy loss.
+This is the loss function used in (multinomial) logistic regression and extensions of it such as neural networks, defined as the negative log-likelihood of the true labels given a probabilistic classifier’s predictions. The log loss is only defined for two or more labels. For a single sample with true label yt in {0,1} and estimated probability yp that yt = 1, the log loss is
+
+```{r fig.width=8, fig.height=4, fig.align='center'}
+plot(dl_model,
+     timestep = "epochs",
+     metric = "logloss")
+```
+
+root-mean-square error 
+
+```{r fig.width=8, fig.height=4, fig.align='center'}
+plot(dl_model,
+     timestep = "epochs",
+     metric = "rmse")
+```
+
+```{r}
+h2o.auc(dl_model, train = TRUE)
+h2o.auc(dl_model, valid = TRUE)
+h2o.auc(dl_model, xval = TRUE)
+```
+
+```{r eval=FALSE}
+finalRf_predictions <- h2o.predict(object = dl_model,
+                                   newdata = test)
+```
+
+```{r echo=FALSE, eval=FALSE}
+h2o.confusionMatrix(dl_model, valid = TRUE)
+```
+
+```{r}
+h2o.confusionMatrix(dl_model, test)
+```
+
+In the field of pharmacokinetics, the area under the curve (AUC) is the area under the curve (mathematically known as definite integral) in a plot of concentration of drug in blood plasma against time. Typically, the area is computed starting at the time the drug is administered and ending when the concentration in plasma is negligible. In practice, the drug concentration is measured at certain discrete points in time and the trapezoidal rule is used to estimate AUC.
+
+The AUC (from zero to infinity) represents the total drug exposure over time. Assuming linear pharmacodynamics with elimination rate constant K, one can show that AUC is proportional to the total amount of drug absorbed by the body. The proportionality constant is 1/K.
+
+This is useful when trying to determine whether two formulations of the same dose (for example a capsule and a tablet) release the same dose of drug to the body. Another use is in the therapeutic monitoring of toxic drugs. For example, gentamicin is an antibiotic which displays nephro- and ototoxicities; measurement of gentamicin concentrations in a patient's plasma and calculation of the AUC is used to guide the dosage of this drug.
+
+AUC becomes useful for knowing the average concentration over a time interval, AUC/t. Also, AUC is referenced when talking about elimination. The amount eliminated by the body (mass) = clearance (volume/time) * AUC (mass*time/volume).
+
+The AUC is a common evaluation metric for binary classification problems. Consider a plot of the true positive rate vs the false positive rate as the threshold value for classifying an item as 0 or is increased from 0 to 1: if the classifier is very good, the true positive rate will increase quickly and the area under the curve will be close to 1. If the classifier is no better than random guessing, the true positive rate will increase linearly with the false positive rate and the area under the curve will be around 0.5.
+
+One characteristic of the AUC is that it is independent of the fraction of the test population which is class 0 or class 1: this makes the AUC useful for evaluating the performance of classifiers on unbalanced data sets.
+
+```{r fig.width=6, fig.height=5, fig.align='center'}
+perf <- h2o.performance(dl_model, test)
+plot(perf)
+```
+
+```{r}
+h2o.logloss(perf)
+```
+
+```{r}
+# Retreive test set MSE
+h2o.mse(perf)
+h2o.auc(perf)
+```
+
+```{r echo=FALSE, eval=FALSE}
+h2o.gainsLift(dl_model, valid = TRUE, xval = TRUE)
+h2o.gainsLift(dl_model, test)
+```
+
+```{r}
 # Get the CV models from the `dl_model` object
-cv_models <- sapply(dl_model@model$cross_validation_models, function(i) h2o.getModel(i$name))
+cv_models <- h2o.cross_validation_models(dl_model)
+```
 
-# Plot the scoring history over time
+```{r fig.width=6, fig.height=5, fig.align='center'}
 plot(cv_models[[1]],
      timestep = "epochs",
      metric = "classification_error")
+```
 
+```{r fig.width=6, fig.height=5, fig.align='center'}
 plot(cv_models[[1]],
      timestep = "epochs",
      metric = "AUC")
-
-plot(h2o.performance(dl_model))
 ```
+
+```{r eval=FALSE}
+head(h2o.deepfeatures(dl_model, train, layer = 1))
+```
+
+```{r eval=FALSE}
+h2o.weights(dl_model, matrix_id = 1)
+h2o.biases(dl_model, vector_id = 1)
+```
+
+
+- https://en.wikipedia.org/wiki/Mean_squared_error
+
+In statistics, the mean squared error (MSE) or mean squared deviation (MSD) of an estimator (of a procedure for estimating an unobserved quantity) measures the average of the squares of the errors or deviations—that is, the difference between the estimator and what is estimated. MSE is a risk function, corresponding to the expected value of the squared error loss or quadratic loss. The difference occurs because of randomness or because the estimator doesn't account for information that could produce a more accurate estimate.[1]
+
+The MSE is a measure of the quality of an estimator—it is always non-negative, and values closer to zero are better.
+
+The MSE is the second moment (about the origin) of the error, and thus incorporates both the variance of the estimator and its bias. For an unbiased estimator, the MSE is the variance of the estimator. Like the variance, MSE has the same units of measurement as the square of the quantity being estimated. In an analogy to standard deviation, taking the square root of MSE yields the root-mean-square error or root-mean-square deviation (RMSE or RMSD), which has the same units as the quantity being estimated; for an unbiased estimator, the RMSE is the square root of the variance, known as the standard deviation.
+
+The MSE assesses the quality of an estimator (i.e., a mathematical function mapping a sample of data to a parameter of the population from which the data is sampled) or a predictor (i.e., a function mapping arbitrary inputs to a sample of values of some random variable). Definition of an MSE differs according to whether one is describing an estimator or a predictor.
+
+An MSE of zero, meaning that the estimator {\displaystyle {\hat {\theta }}} \hat{\theta} predicts observations of the parameter {\displaystyle \theta } \theta  with perfect accuracy, is the ideal, but is typically not possible.
+
+Values of MSE may be used for comparative purposes. Two or more statistical models may be compared using their MSEs as a measure of how well they explain a given set of observations: An unbiased estimator (estimated from a statistical model) with the smallest variance among all unbiased estimators is the best unbiased estimator or MVUE (Minimum Variance Unbiased Estimator).
+
+Both linear regression techniques such as analysis of variance estimate the MSE as part of the analysis and use the estimated MSE to determine the statistical significance of the factors or predictors under study. The goal of experimental design is to construct experiments in such a way that when the observations are analyzed, the MSE is close to zero relative to the magnitude of at least one of the estimated treatment effects.
+
+MSE is also used in several stepwise regression techniques as part of the determination as to how many predictors from a candidate set to include in a model for a given set of observations.
+
+Squared error loss is one of the most widely used loss functions in statistics, though its widespread use stems more from mathematical convenience than considerations of actual loss in applications. Carl Friedrich Gauss, who introduced the use of mean squared error, was aware of its arbitrariness and was in agreement with objections to it on these grounds.[1] The mathematical benefits of mean squared error are particularly evident in its use at analyzing the performance of linear regression, as it allows one to partition the variation in a dataset into variation explained by the model and variation explained by randomness.
+
+Criticism[edit]
+The use of mean squared error without question has been criticized by the decision theorist James Berger. Mean squared error is the negative of the expected value of one specific utility function, the quadratic utility function, which may not be the appropriate utility function to use under a given set of circumstances. There are, however, some scenarios where mean squared error can serve as a good approximation to a loss function occurring naturally in an application.[6]
+
+Like variance, mean squared error has the disadvantage of heavily weighting outliers.[7] This is a result of the squaring of each term, which effectively weights large errors more heavily than small ones. This property, undesirable in many applications, has led researchers to use alternatives such as the mean absolute error, or those based on the median.
+
+- https://en.wikipedia.org/wiki/Errors_and_residuals
+
+In statistics and optimization, errors and residuals are two closely related and easily confused measures of the deviation of an observed value of an element of a statistical sample from its "theoretical value". The error (or disturbance) of an observed value is the deviation of the observed value from the (unobservable) true value of a quantity of interest (for example, a population mean), and the residual of an observed value is the difference between the observed value and the estimated value of the quantity of interest (for example, a sample mean). The distinction is most important in regression analysis, where the concepts are sometimes called the regression errors and regression residuals and where they lead to the concept of studentized residuals.
+
+Introduction[edit]
+Suppose there is a series of observations from a univariate distribution and we want to estimate the mean of that distribution (the so-called location model). In this case, the errors are the deviations of the observations from the population mean, while the residuals are the deviations of the observations from the sample mean.
+
+A statistical error (or disturbance) is the amount by which an observation differs from its expected value, the latter being based on the whole population from which the statistical unit was chosen randomly. For example, if the mean height in a population of 21-year-old men is 1.75 meters, and one randomly chosen man is 1.80 meters tall, then the "error" is 0.05 meters; if the randomly chosen man is 1.70 meters tall, then the "error" is −0.05 meters. The expected value, being the mean of the entire population, is typically unobservable, and hence the statistical error cannot be observed either.
+
+A residual (or fitting deviation), on the other hand, is an observable estimate of the unobservable statistical error. Consider the previous example with men's heights and suppose we have a random sample of n people. The sample mean could serve as a good estimator of the population mean. Then we have:
+
+The difference between the height of each man in the sample and the unobservable population mean is a statistical error, whereas
+The difference between the height of each man in the sample and the observable sample mean is a residual.
+Note that the sum of the residuals within a random sample is necessarily zero, and thus the residuals are necessarily not independent. The statistical errors on the other hand are independent, and their sum within the random sample is almost surely not zero.
+
+One can standardize statistical errors (especially of a normal distribution) in a z-score (or "standard score"), and standardize residuals in a t-statistic, or more generally studentized residuals.
+
+In regression analysis, the distinction between errors and residuals is subtle and important, and leads to the concept of studentized residuals. Given an unobservable function that relates the independent variable to the dependent variable – say, a line – the deviations of the dependent variable observations from this function are the unobservable errors. If one runs a regression on some data, then the deviations of the dependent variable observations from the fitted function are the residuals.
+
+However, a terminological difference arises in the expression mean squared error (MSE). The mean squared error of a regression is a number computed from the sum of squares of the computed residuals, and not of the unobservable errors. If that sum of squares is divided by n, the number of observations, the result is the mean of the squared residuals. Since this is a biased estimate of the variance of the unobserved errors, the bias is removed by dividing the sum of the squared residuals by n − df instead of n, where df is the number of degrees of freedom (n minus the number of parameters being estimated). This forms an unbiased estimate of the variance of the unobserved errors, and is called the mean squared error.[1]
+
+Another method to calculate the mean square of error when analyzing the variance of linear regression using a technique like that used in ANOVA (they are the same because ANOVA is a type of regression), the sum of squares of the residuals (aka sum of squares of the error) is divided by the degrees of freedom (where the degrees of freedom equals n − p − 1, where p is the number of parameters estimated in the model (one for each variables in the regression equation). One can then also calculate the mean square of the model by dividing the sum of squares of the model minus the degrees of freedom, which is just the number of parameters. Then the F value can be calculated by divided MS(model) by MS(error), and we can then determine significance (which is why you want the mean squares to begin with.).[2]
+
+However, because of the behavior of the process of regression, the distributions of residuals at different data points (of the input variable) may vary even if the errors themselves are identically distributed. Concretely, in a linear regression where the errors are identically distributed, the variability of residuals of inputs in the middle of the domain will be higher than the variability of residuals at the ends of the domain[citation needed]: linear regressions fit endpoints better than the middle. This is also reflected in the influence functions of various data points on the regression coefficients: endpoints have more influence.
+
+Thus to compare residuals at different inputs, one needs to adjust the residuals by the expected variability of residuals, which is called studentizing. This is particularly important in the case of detecting outliers: a large residual may be expected in the middle of the domain, but considered an outlier at the end of the domain.
+
+The use of the term "error" as discussed in the sections above is in the sense of a deviation of a value from a hypothetical unobserved value. At least two other uses also occur in statistics, both referring to observable prediction errors:
+
+Mean square error or mean squared error (abbreviated MSE) and root mean square error (RMSE) refer to the amount by which the values predicted by an estimator differ from the quantities being estimated (typically outside the sample from which the model was estimated).
+
+Sum of squared errors, typically abbreviated SSE or SSe, refers to the residual sum of squares (the sum of squared residuals) of a regression; this is the sum of the squares of the deviations of the actual values from the predicted values, within the sample used for estimation. Likewise, the sum of absolute errors (SAE) refers to the sum of the absolute values of the residuals, which is minimized in the least absolute deviations approach to regression.
+
+- https://en.wikipedia.org/wiki/Residual_sum_of_squares
+
+In statistics, the residual sum of squares (RSS), also known as the sum of squared residuals (SSR) or the sum of squared errors of prediction (SSE), is the sum of the squares of residuals (deviations predicted from actual empirical values of data). It is a measure of the discrepancy between the data and an estimation model. A small RSS indicates a tight fit of the model to the data. It is used as an optimality criterion in parameter selection and model selection.
+
+In general, total sum of squares = explained sum of squares + residual sum of squares. For a proof of this in the multivariate ordinary least squares (OLS) case, see partitioning in the general OLS model.
 
 ### Hyper-parameter Tuning with Grid Search
 
@@ -385,8 +687,12 @@ One handy feature of RGS is that you can specify how long you would like to exec
 
 First define a grid of Deep Learning hyperparameters and specify the search_criteria. Once we have trained the grid, we can collect the results and sort by our model performance metric of choice.
 
+In regression analysis, the term mean squared error is sometimes used to refer to the unbiased estimate of error variance: the residual sum of squares divided by the number of degrees of freedom. This definition for a known, computed quantity differs from the above definition for the computed MSE of a predictor in that a different denominator is used. The denominator is the sample size reduced by the number of model parameters estimated from the same data, (n-p) for p regressors or (n-p-1) if an intercept is used.[3] For more details, see errors and residuals in statistics. Note that, although the MSE (as defined in the present article) is not an unbiased estimator of the error variance, it is consistent, given the consistency of the predictor.
+
+Also in regression analysis, "mean squared error", often referred to as mean squared prediction error or "out-of-sample mean squared error", can refer to the mean value of the squared deviations of the predictions from the true values, over an out-of-sample test space, generated by a model estimated over a particular sample space. This also is a known, computed quantity, and it varies by sample and by out-of-sample test space.
+
 ```{r}
-activation_opt <- c("Rectifier", "Maxout", "Tanh")
+activation_opt <- c("Rectifier", "Maxout", "Tanh", "Sigmoid")
 l1_opt <- c(0, 0.00001, 0.0001, 0.001, 0.01)
 l2_opt <- c(0, 0.00001, 0.0001, 0.001, 0.01)
 
@@ -396,6 +702,61 @@ hyper_params <- list(activation = activation_opt,
 
 search_criteria <- list(strategy = "RandomDiscrete", max_runtime_secs = 60) # train grid for 60 seconds
 ```
+
+In the context of artificial neural networks, the rectifier is an activation function defined as
+
+{\displaystyle f(x)=\max(0,x),} {\displaystyle f(x)=\max(0,x),}
+where x is the input to a neuron. This is also known as a ramp function and is analogous to half-wave rectification in electrical engineering. This activation function was first introduced to a dynamical network by Hahnloser et al. in a 2000 paper in Nature[1] with strong biological motivations and mathematical justifications.[2] It has been used in convolutional networks[3] more effectively than the widely used logistic sigmoid (which is inspired by probability theory; see logistic regression) and its more practical[4] counterpart, the hyperbolic tangent. The rectifier is, as of 2015, the most popular activation function for deep neural networks.[5]
+
+A unit employing the rectifier is also called a rectified linear unit (ReLU).[6]
+
+A smooth approximation to the rectifier is the analytic function
+
+{\displaystyle f(x)=\ln(1+e^{x}),} {\displaystyle f(x)=\ln(1+e^{x}),}
+which is called the softplus function.[7] The derivative of softplus is {\displaystyle f'(x)=e^{x}/(e^{x}+1)=1/(1+e^{-x})} {\displaystyle f'(x)=e^{x}/(e^{x}+1)=1/(1+e^{-x})}, i.e. the logistic function.
+
+Rectified linear units find applications in computer vision[3] and speech recognition[8][9] using deep neural nets.
+
+A maxout layer is simply a layer where the activation function is the max of the inputs. As stated in the paper, even an MLP with 2 maxout units can approximate any function. They give a couple of reasons as to why maxout may be performing well, but the main reason they give is the following --
+
+Dropout can be thought of as a form of model averaging in which a random subnetwork is trained at every iteration and in the end the weights of the different such random networks are averaged. Since one cannot average the weights explicitly, an approximation is used. This approximation is exact for for a linear network 
+In maxout, they do not drop the inputs to the maxout layer. Thus the identity of the input outputting the max value for a data point remains unchanged. Thus the dropout only happens in the linear part of the MLP but one can still approximate any function because of the maxout layer. 
+As the dropout happens in the linear part only, they conjecture that this leads to more efficient model averaging as the averaging approximation is exact for linear networks.
+
+tanh: Hyperbolic tangent:
+Although tanh is just a scaled and shifted version of a logistic sigmoid, one of the prime reasons why tanh is the preferred activation/transfer function is because it squashes to a wider numerical range (-1..1) and has asymptotic symmetry.
+
+There are several implications to these properties,
+
+It results in faster convergence than the standard logistic function.
+On average, it's more likely to create output values that are close to 0, which is beneficial when forward propagating to subsequent layers.
+Overall makes training less difficult as it less proned to saturation in the later layers of your network.
+When supplying transformed or normalized inputs, the variance of the outputs will also be close to 1. This makes it great for when you're training on image corpora.
+It also has a nice derivative (1-tanh^2)! For training purposes, you can calculate the value of the derivative just by using the output, no knowledge of the input is needed.
+Yann Lecun's shares some great insight in his paper Efficient Backpropagation on why tanh works well in-practice.
+
+From my own experience, I've found tanh particularly beneficial when used with deep-convolutional neural networks. The intuition behind choosing an ideal activation functions moreso depending on the nature of your problem, dataset, and type of network.
+
+It's best to test it out yourself and compare the results emprically; there are many times where it won't make much of a difference at all (especially in shallow networks).
+
+On the field of Artificial Neural Networks, the sigmoid funcion is a type of activation function for artifical neurons.
+
+The most basic activation funciton is the Heaviside (binary step, 0 or 1, high or low):
+
+You can have several types of activation functions and they are best suitable for different purposes. In the specific case of the Sigmoid:
+
+Real-valued and differentiable (you need this to find gradients);
+Analytic tractability for the differentiaton operation;
+It is an acceptable mathematical representation of a biological neuron behaviour. The output shows if the neuron is firing or not.
+There is a table with the various types of activation functions:
+
+Activation function
+
+Most of the time you will be concerned about the following points when choosing the activation function:
+
+continuity of the function
+computational power to process all neurons of the network
+type of the desired output (logistic/continuous variables or classification/categorical data)
 
 ```{r}
 dl_grid <- h2o.grid("deeplearning", 
@@ -410,7 +771,6 @@ dl_grid <- h2o.grid("deeplearning",
                     hyper_params = hyper_params,
                     search_criteria = search_criteria)
 ```
-
 
 ```{r}
 dl_gridperf <- h2o.getGrid(grid_id = "dl_grid",
@@ -450,6 +810,7 @@ print(best_err)
 ```
 
 ### Random Hyper-Parameter Search
+
 Often, hyper-parameter search for more than 4 parameters can be done more efficiently with random parameter search than with grid search. Basically, chances are good to find one of many good models in less time than performing an exhaustive grid search. We simply build `N` models with parameters drawn randomly from user-specified distributions (here, uniform). For this example, we use the adaptive learning rate and focus on tuning the network architecture and the regularization parameters.
 
 ```{r}
@@ -562,24 +923,11 @@ gbm_gridperf1 <- h2o.getGrid(grid_id = "gbm_grid1",
 print(gbm_gridperf1)
 ```
 
-Once we are satisfied with the results, we can save the model to disk (on the cluster).
-
-```{r}
-path <- h2o.saveModel(m_cont,
-                      path="./mybest_deeplearning_covtype_model", force=TRUE)
-```
-
-It can be loaded later with the following command:
-
-```{r}
-print(path)
-m_loaded <- h2o.loadModel(path)
-summary(m_loaded)
-```
 
 This model is fully functional and can be inspected, restarted, or used to score a dataset, etc. Note that binary compatibility between H2O versions is currently not guaranteed.
 
 ###Cross-Validation
+
 For N-fold cross-validation, specify `nfolds>1` instead of (or in addition to) a validation frame, and `N+1` models will be built: 1 model on the full training data, and N models with each 1/N-th of the data held out (there are different holdout strategies). Those N models then score on the held out data, and their combined predictions on the full training data are scored to get the cross-validation metrics.
 
 ```{r}
