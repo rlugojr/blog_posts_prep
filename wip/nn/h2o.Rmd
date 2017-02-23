@@ -140,7 +140,7 @@ The h2o R package provides access to the H2O distributed Java-based implementati
 install.packages("rsparkling")
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, tidy=TRUE}
 library(rsparkling)
 options(rsparkling.sparklingwater.version = "2.0.3")
 
@@ -151,7 +151,7 @@ library(sparklyr)
 sc <- spark_connect(master = "local", version = "2.0.0")
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, tidy=TRUE}
 library(ggplot2)
 
 my_theme <- function(base_size = 12, base_family = "sans"){
@@ -176,7 +176,7 @@ https://archive.ics.uci.edu/ml/datasets/Arrhythmia
 
 Class 01 refers to 'normal' ECG classes 02 to 15 refers to different classes of arrhythmia and class 16 refers to the rest of unclassified ones.
 
-```{r}
+```{r, tidy=TRUE}
 arrhythmia <- read.table("arrhythmia.data.txt", sep = ",")
 
 arrhythmia[-280] <- lapply(arrhythmia[-280], as.numeric)
@@ -185,17 +185,17 @@ colnames(arrhythmia)[280] <- "class"
 arrhythmia$class <- as.factor(arrhythmia$class)
 ```
 
-```{r fig.width=4, fig.height=2, fig.align='center'}
+```{r fig.width=4, fig.height=2, fig.align='center', tidy=TRUE}
 p1 <- ggplot(arrhythmia, aes(x = class)) +
   geom_bar(fill = "navy", alpha = 0.7) +
   my_theme()
 ```
 
-```{r}
+```{r, tidy=TRUE}
 arrhythmia$class <- ifelse(arrhythmia$class == 1, "normal", "arrhythmia")
 ```
 
-```{r fig.width=3, fig.height=2, fig.align='center'}
+```{r fig.width=3, fig.height=2, fig.align='center', tidy=TRUE}
 p2 <- ggplot(arrhythmia, aes(x = class)) +
   geom_bar(fill = "navy", alpha = 0.7) +
   my_theme()
@@ -208,7 +208,7 @@ library(grid)
 grid.arrange(p1, p2, ncol = 2)
 ```
 
-```{r warning=FALSE, message=FALSE}
+```{r warning=FALSE, message=FALSE, tidy=TRUE}
 library(pcaGoPromoter)
 
 pca_func <- function(pcaOutput2, group_name){
@@ -235,7 +235,7 @@ pca_func <- function(pcaOutput2, group_name){
 }
 ```
 
-```{r fig.width=5, fig.height=3}
+```{r fig.width=5, fig.height=3, tidy=TRUE}
 pcaOutput <- pca(t(arrhythmia[-280]), printDropped = FALSE, scale = TRUE, center = TRUE)
 pcaOutput2 <- as.data.frame(pcaOutput$scores)
 
@@ -244,7 +244,7 @@ pcaOutput2$groups <- arrhythmia$class
 pca_func(pcaOutput2, group_name = "")
 ```
 
-```{r}
+```{r tidy=TRUE}
 weights <- ifelse(pcaOutput2$PC1 < -5 & abs(pcaOutput2$PC2) > 10, 2, 1)
 ```
 
@@ -262,16 +262,16 @@ subset(colvars, variance > 50) %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
-```{r}
+```{r tidy=TRUE}
 arrhythmia_subset <- cbind(weights, arrhythmia[, c(280, which(colvars$variance > 50))])
 ```
 
-```{r}
+```{r tidy=TRUE}
 arrhythmia_sc <- copy_to(sc, arrhythmia_subset, overwrite = TRUE)
 arrhythmia_hf <- as_h2o_frame(sc, arrhythmia_sc, strict_version_check = FALSE)
 ```
 
-```{r warning=FALSE, message=FALSE, fig.width=17, fig.height=4, fig.align='center'}
+```{r warning=FALSE, message=FALSE, fig.width=17, fig.height=4, fig.align='center', tidy=TRUE}
 library(tidyr)
 h2o.describe(arrhythmia_hf[, -1]) %>%
   gather(x, y, Min:Mean) %>%
@@ -283,7 +283,7 @@ h2o.describe(arrhythmia_hf[, -1]) %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
-```{r warning=FALSE, message=FALSE, fig.width=20, fig.height=20, fig.align='center'}
+```{r warning=FALSE, message=FALSE, fig.width=20, fig.height=20, fig.align='center', tidy=TRUE}
 library(reshape2)
 
 arrhythmia_hf[, 2] <- h2o.asfactor(arrhythmia_hf[, 2])
@@ -314,7 +314,7 @@ summary(as.factor(training$class), exact_quantiles=TRUE)
 summary(as.factor(test$class), exact_quantiles=TRUE)
 ```
 
-```{r}
+```{r tidy=TRUE}
 splits <- h2o.splitFrame(arrhythmia_hf, 
                          ratios = c(0.7, 0.15), 
                          seed = 1)
@@ -427,7 +427,7 @@ Smooth Functions with a Monotonic derivative have been shown to generalize bette
 Approximates identity near the origin: When activation functions have this property, the neural network will learn efficiently when its weights are initialized with small random values. When the activation function does not approximate identity near the origin, special care must be used when initializing the weights.[6] In the table below, activation functions where {\displaystyle f(0)=0} f(0)=0 and {\displaystyle f'(0)=1} f'(0)=1 and {\displaystyle f'} f' is continuous at 0 are indicated as having this property.
 The following table compares the properties of several activation functions that are functions of one fold x from the previous layer or layers:
 
-```{r}
+```{r tidy=TRUE}
 dl_model <- h2o.deeplearning(x = features,
                              y = response,
                              weights_column = weights,
